@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-950: #020617;
+}
+
+/* Force class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-200 dark:bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-300 dark:bg-slate-600;
+}

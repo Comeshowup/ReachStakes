@@ -1,0 +1,548 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "email": "brand@demo.com",
+      "password": "password",
+      "role": "brand",
+      "profileId": 1,
+      "name": "Acme Co.",
+      "tagline": "Leading the way in skincare innovation",
+      "industry": "Beauty & Wellness",
+      "location": "San Francisco, CA",
+      "about": "Acme Co. is dedicated to creating organic, sustainable skincare products.",
+      "logo": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=100&q=80",
+      "stats": {
+        "campaigns": 12,
+        "hiringSince": "2021",
+        "rating": "4.8/5"
+      },
+      "contact": {
+        "email": "partnerships@acmeco.com",
+        "phone": "+1 (555) 123-4567"
+      },
+      "socials": {
+        "instagr  am": "#",
+        "linkedi  n": "#",
+        "website  ": "#",
+        "twitter  ": "#"
+      },
+      "analytics": {
+      "rio_data": [
+        {
+          "name": "Jan",
+          "revenue": 4000,
+          "spend": 2400
+        },
+        {
+          "name": "Feb",
+          "revenue": 3000,
+          "spend": 1398
+        },
+        {
+          "name": "Mar",
+          "revenue": 2000,
+          "spend": 9800
+        },
+        {
+          "name": "Apr",
+          "revenue": 2780,
+          "spend": 3908
+        },
+        {
+          "name": "May",
+          "revenue": 1890,
+          "spend": 4800
+        },
+        {
+          "name": "Jun",
+          "revenue": 2390,
+          "spend": 3800
+        },
+        {
+          "name": "Jul",
+          "revenue": 3490,
+          "spend": 4300
+        }
+      ],
+      "stats_data": [
+              {
+                "label": "Total Revenue",
+                "value": "$54,239",
+                "change": "+12.5%",
+                "icon": "DollarSign",
+                "color": "text-green-600"
+              },
+              {
+                "label": "Active Campaigns",
+                "value": "12",
+                "change": "+4",
+                "icon": "Briefcase",
+                "color": "text-blue-600"
+              },
+              {
+                "label": "Total Content",
+                "value": "1,234",
+                "change": "+28%",
+                "icon": "Video",
+                "color": "text-purple-600"
+              },
+              {
+                "label": "Creator Reach",
+                "value": "4.2M",
+                "change": "+8.4%",
+                "icon": "Users",
+                "color": "text-orange-600"
+              }
+            ]
+    }
+  },
+  {
+    "id": "u2",
+    "email": "creator@demo.com",
+    "password": "password",
+    "role": "brand",
+    "profileId": 1,
+    "name": "Nike",
+    "logo": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=100&q=80",
+    "industry": "Retail",
+    "budget": "$5k - $15k",
+    "size": "Enterprise",
+    "status": "Hiring",
+    "tagline": "Just Do It.",
+    "hiringSince": "2018",
+    "campaigns": [
+      {
+        "id": 102,
+        "brand": "TechNova",
+        "logo": "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=100&q=80",
+        "title": "Wireless Earbuds Review",
+        "platform": "YouTube",
+        "budget": "$2,000 - $3,500",
+        "type": "Tech",
+        "description": "Deep dive review.",
+        "deadline": "Dec 20"
+      }
+    ],
+    "analytics": {
+      "rio_data": [
+        {
+          "name": "Jan",
+          "revenue": 4000,
+          "spend": 2400
+        },
+        {
+          "name": "Feb",
+          "revenue": 3000,
+          "spend": 1398
+        },
+        {
+          "name": "Mar",
+          "revenue": 2000,
+          "spend": 9800
+        },
+        {
+          "name": "Apr",
+          "revenue": 2780,
+          "spend": 3908
+        },
+        {
+          "name": "May",
+          "revenue": 1890,
+          "spend": 4800
+        },
+        {
+          "name": "Jun",
+          "revenue": 2390,
+          "spend": 3800
+        },
+        {
+          "name": "Jul",
+          "revenue": 3490,
+          "spend": 4300
+        }
+      ],
+      "stats_data": [
+        {
+          "label": "Total Revenue",
+          "value": "$54,239",
+          "change": "+12.5%",
+          "icon": "DollarSign",
+          "color": "text-green-600"
+        },
+        {
+          "label": "Active Campaigns",
+          "value": "12",
+          "change": "+4",
+          "icon": "Briefcase",
+          "color": "text-blue-600"
+        },
+        {
+          "label": "Total Content",
+          "value": "1,234",
+          "change": "+28%",
+          "icon": "Video",
+          "color": "text-purple-600"
+        },
+        {
+          "label": "Creator Reach",
+          "value": "4.2M",
+          "change": "+8.4%",
+          "icon": "Users",
+          "color": "text-orange-600"
+        }
+      ]
+    }
+  },
+  {
+    "id": "u3",
+    "email": "john.doe@brand.com",
+    "password": "password",
+    "role": "brand",
+    "profileId": 2,
+    "name": "TechNova",
+    "logo": "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=100&q=80",
+    "industry": "SaaS",
+    "budget": "$2k - $8k",
+    "size": "Mid-Market",
+    "status": "Active",
+    "tagline": "Innovating the future of tech.",
+    "hiringSince": "2021",
+    "campaigns": [
+      {
+        "id": 101,
+        "brand": "Nike",
+        "logo": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=100&q=80",
+        "title": "Summer Run Club 2025",
+        "platform": "TikTok",
+        "budget": "$500 - $1,500",
+        "type": "Fitness",
+        "description": "Looking for energetic runners.",
+        "deadline": "Dec 15"
+      }
+    ],
+    "analytics": {
+      "roi_data": [
+        {
+          "name": "Jan",
+          "revenue": 4000,
+          "spend": 2400
+        },
+        {
+          "name": "Feb",
+          "revenue": 3000,
+          "spend": 1398
+        },
+        {
+          "name": "Mar",
+          "revenue": 2000,
+          "spend": 9800
+        },
+        {
+          "name": "Apr",
+          "revenue": 2780,
+          "spend": 3908
+        },
+        {
+          "name": "May",
+          "revenue": 1890,
+          "spend": 4800
+        },
+        {
+          "name": "Jun",
+          "revenue": 2390,
+          "spend": 3800
+        },
+        {
+          "name": "Jul",
+          "revenue": 3490,
+          "spend": 4300
+        }
+      ],
+      "stats_data": [
+        {
+          "label": "Total Revenue",
+          "value": "$54,239",
+          "change": "+12.5%",
+          "icon": "DollarSign",
+          "color": "text-green-600"
+        },
+        {
+          "label": "Active Campaigns",
+          "value": "12",
+          "change": "+4",
+          "icon": "Briefcase",
+          "color": "text-blue-600"
+        },
+        {
+          "label": "Total Content",
+          "value": "1,234",
+          "change": "+28%",
+          "icon": "Video",
+          "color": "text-purple-600"
+        },
+        {
+          "label": "Creator Reach",
+          "value": "4.2M",
+          "change": "+8.4%",
+          "icon": "Users",
+          "color": "text-orange-600"
+        }
+      ]
+    }
+  },
+  {
+    "id": "u4",
+    "email": "jane.smith@creator.com",
+    "password": "password",
+    "role": "creator",
+    "profileId": 2,
+    "name": "David Kim",
+    "handle": "@david.travels",
+    "avatar": "https://i.pravatar.cc/150?u=a042581f4e29026704e",
+    "niche": [
+      "Travel",
+      "Photography"
+    ],
+    "platform": "Instagram",
+    "engagement": "6.5%",
+    "followers": "500k"
+  },
+  {
+    "id": "u5",
+    "email": "admin@technova.com",
+    "password": "password",
+    "role": "creator",
+    "profileId": 3,
+    "name": "Emily Davis",
+    "handle": "@emily.eats",
+    "avatar": "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    "niche": [
+      "Food",
+      "Health"
+    ],
+    "platform": "TikTok",
+    "engagement": "9.1%",
+    "followers": "1.2M"
+  },
+  {
+    "id": "u6",
+    "email": "mike.gamer@creator.com",
+    "password": "password",
+    "role": "creator",
+    "profileId": 3,
+    "name": "Mike Johnson",
+    "handle": "@mike_plays",
+    "avatar": "https://i.pravatar.cc/150?u=a04258114e29026302d",
+    "niche": [
+      "Gaming",
+      "Tech"
+    ],
+    "platform": "Twitch",
+    "engagement": "12.5%",
+    "followers": "2.5M",
+    "price": "$5,000",
+    "image": "https://i.pravatar.cc/150?u=a04258114e29026302d"
+  },
+  {
+    "id": "u7",
+    "email": "sarah.beauty@creator.com",
+    "password": "password",
+    "role": "creator",
+    "profileId": 4,
+    "name": "Sarah Chen",
+    "handle": "@sarah.glows",
+    "avatar": "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+    "niche": [
+      "Beauty",
+      "Lifestyle"
+    ],
+    "platform": "Instagram",
+    "engagement": "8.2%",
+    "followers": "850k",
+    "price": "$1,800",
+    "image": "https://i.pravatar.cc/150?u=a042581f4e29026704d"
+  },
+  {
+    "id": "u8",
+    "email": "contact@glowup.com",
+    "password": "password",
+    "role": "brand",
+    "profileId": 4,
+    "name": "FreshEats",
+    "logo": "https://images.unsplash.com/photo-1493723843684-a4368d8565cd?auto=format&fit=crop&w=100&q=80",
+    "industry": "Food & Bev",
+    "budget": "$1k - $5k",
+    "size": "Mid-Market",
+    "status": "Active",
+    "tagline": "Healthy meals delivered.",
+    "hiringSince": "2020",
+    "campaigns": [
+      {
+        "id": 2,
+        "name": "Tech Review Series",
+        "status": "Completed",
+        "budget": "$8,500",
+        "roi": "4.5x",
+        "creators": 5,
+        "type": "Tech",
+        "progress": 100
+      }
+    ],
+    "posts": [
+      {
+        "id": 7,
+        "author": {
+          "name": "Nike Sportswear",
+          "avatar": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=100&q=80",
+          "type": "brand",
+          "badge": "Hiring"
+        },
+        "content": {
+          "text": "Join our Summer '25 campaign!",
+          "media": {
+            "type": "video",
+            "url": "https://assets.mixkit.co/videos/preview/mixkit-man-running-on-the-road-sunny-day-41484-large.mp4",
+            "aspectRatio": "video"
+          },
+          "timestamp": "2h ago"
+        },
+        "stats": {
+          "likes": 1240,
+          "comments": 45,
+          "shares": 12
+        },
+        "type": "casting_call"
+      }
+    ],
+    "analytics": {
+      "roi_data": [
+        {
+          "name": "Jan",
+          "revenue": 4000,
+          "spend": 2400
+        },
+        {
+          "name": "Feb",
+          "revenue": 3000,
+          "spend": 1398
+        },
+        {
+          "name": "Mar",
+          "revenue": 2000,
+          "spend": 9800
+        },
+        {
+          "name": "Apr",
+          "revenue": 2780,
+          "spend": 3908
+        },
+        {
+          "name": "May",
+          "revenue": 1890,
+          "spend": 4800
+        },
+        {
+          "name": "Jun",
+          "revenue": 2390,
+          "spend": 3800
+        },
+        {
+          "name": "Jul",
+          "revenue": 3490,
+          "spend": 4300
+        }
+      ],
+      "stats_data": [
+        {
+          "label": "Total Revenue",
+          "value": "$54,239",
+          "change": "+12.5%",
+          "icon": "DollarSign",
+          "color": "text-green-600"
+        },
+        {
+          "label": "Active Campaigns",
+          "value": "12",
+          "change": "+4",
+          "icon": "Briefcase",
+          "color": "text-blue-600"
+        },
+        {
+          "label": "Total Content",
+          "value": "1,234",
+          "change": "+28%",
+          "icon": "Video",
+          "color": "text-purple-600"
+        },
+        {
+          "label": "Creator Reach",
+          "value": "4.2M",
+          "change": "+8.4%",
+          "icon": "Users",
+          "color": "text-orange-600"
+        }
+      ]
+    }
+  },
+  {
+    "id": "u9",
+    "email": "david.travel@creator.com",
+    "password": "password",
+    "role": "creator",
+    "profileId": 5,
+    "name": "Alex Rivera",
+    "tagline": "Tech Reviewer & Content Creator",
+    "industry": "Consumer Electronics",
+    "location": "Austin, TX",
+    "about": "Technology reviewer passionate about gadgets.",
+    "image": "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    "stats": {
+      "campaigns": 45,
+      "hiringSince": "2020",
+      "rating": "4.9/5"
+    },
+    "contact": {
+      "email": "alex.rivera@example.com",
+      "phone": "+1 (555) 987-6543"
+    },
+    "socials": {
+      "instagram": "#",
+      "linkedin": "#",
+      "website": "#",
+      "twitter": "#"
+    },
+    "niche": "Tech",
+    "followers": "1.2M",
+    "price": "$2,500"
+  },
+  {
+    "id": "u10",
+    "email": "marketing@fresheats.com",
+    "password": "password",
+    "role": "brand",
+    "profileId": 5,
+    "name": "GlowUp",
+    "logo": "https://images.unsplash.com/photo-1571781565036-d3f7595ca814?auto=format&fit=crop&w=100&q=80",
+    "industry": "Beauty",
+    "budget": "$500 - $2k",
+    "size": "Startup",
+    "status": "Hiring",
+    "tagline": "Clean beauty for everyone.",
+    "hiringSince": "2023",
+    "campaigns": [
+      {
+        "id": 1,
+        "name": "Summer Launch 2025",
+        "status": "Active",
+        "budget": "$15,000",
+        "roi": "3.2x",
+        "creators": 12,
+        "type": "Beauty",
+        "progress": 75
+      }
+    ]
+
+  }
+  ]
+}
