@@ -19,6 +19,7 @@ import {
     Twitch,
     Loader2
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ALL_BRANDS, ALL_CREATORS } from "../../data";
 
 // --- Mock Platform Icons Helper ---
@@ -68,6 +69,7 @@ const AccordionFilter = ({ title, children, isOpen, onToggle }) => {
 };
 
 const DiscoveryHub = () => {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [activeType, setActiveType] = useState("brands"); // "brands" or "creators"
@@ -298,7 +300,9 @@ const DiscoveryHub = () => {
                                                     <button className="py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center justify-center gap-2">
                                                         <MessageSquare className="w-4 h-4" /> Message
                                                     </button>
-                                                    <button className="py-2.5 bg-transparent border border-gray-200 dark:border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl font-bold text-sm transition-all">
+                                                    <button
+                                                        onClick={() => navigate(`/profile/${activeType === 'brands' ? 'brand' : 'creator'}/${item.id}`)}
+                                                        className="py-2.5 bg-transparent border border-gray-200 dark:border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl font-bold text-sm transition-all">
                                                         View Profile
                                                     </button>
                                                 </div>
@@ -348,8 +352,10 @@ const DiscoveryHub = () => {
                                                     <button className="py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 flex items-center justify-center gap-2">
                                                         <MessageSquare className="w-4 h-4" /> Start Chat
                                                     </button>
-                                                    <button className="py-2.5 bg-transparent border border-gray-200 dark:border-slate-700 hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl font-bold text-sm transition-all">
-                                                        Portfolio
+                                                    <button
+                                                        onClick={() => navigate(`/profile/creator/${item.id}`)}
+                                                        className="py-2.5 bg-transparent border border-gray-200 dark:border-slate-700 hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl font-bold text-sm transition-all">
+                                                        View Profile
                                                     </button>
                                                 </div>
                                             </div>

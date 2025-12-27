@@ -224,10 +224,10 @@ const MasonryPostCard = ({ post, onLike, onOpen, isLiked, onFollow, isFollowing 
 
     const handleProfileClick = (e) => {
         e.stopPropagation();
-        if (isBrand) {
-            navigate("/dashboard/profile");
+        if (post.author.type === "brand") {
+            navigate(`/profile/brand/${post.author.id || 1}`);
         } else {
-            navigate("/dashboard/discovery"); // Or specific creator profile
+            navigate(`/profile/creator/${post.author.id || 1}`);
         }
     };
 

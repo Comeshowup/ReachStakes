@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: true, // Listen on all addresses
+    allowedHosts: ['.ngrok-free.app'], // Allow ngrok domains
     proxy: {
       "/api": {
         target: "http://localhost:3000",

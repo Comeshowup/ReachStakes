@@ -12,6 +12,7 @@ import {
     DollarSign,
     X
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // --- Mock Data ---
 import { creators } from "../data";
@@ -60,6 +61,7 @@ const PRICE_RANGES = [
 
 const CreatorCard = ({ creator }) => {
     const [invited, setInvited] = useState(false);
+    const navigate = useNavigate();
 
     return (
         <motion.div
@@ -147,6 +149,12 @@ const CreatorCard = ({ creator }) => {
                     ) : (
                         "Invite to Campaign"
                     )}
+                </button>
+                <button
+                    onClick={() => navigate(`/profile/creator/${creator.id}`)}
+                    className="w-full mt-2 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 bg-transparent border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500/50"
+                >
+                    View Profile
                 </button>
             </div>
             <div className="h-6"></div>

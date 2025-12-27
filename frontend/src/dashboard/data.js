@@ -126,6 +126,7 @@ export const FEED_DATA = posts.map((post) => {
         if (foundAuthor) {
             author = {
                 name: foundAuthor.name,
+                id: foundAuthor.id,
                 avatar: foundAuthor.logo || foundAuthor.image || foundAuthor.avatar || "https://i.pravatar.cc/150",
                 type: post.authorType,
                 badge: foundAuthor.status || foundAuthor.niche || 'User'
@@ -160,7 +161,7 @@ export const FEED_DATA = posts.map((post) => {
 });
 
 // Navigation Data
-import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle } from 'lucide-react';
+import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link } from 'lucide-react';
 
 export const NAV_GROUPS = [
     {
@@ -176,6 +177,7 @@ export const NAV_GROUPS = [
         items: [
             { label: "Community Hub", path: "/brand/community", icon: UsersIcon },
             { label: "Messages", path: "/brand/messages", icon: MessageSquare },
+            { label: "Book a Meeting", path: "/meetings", icon: Video },
         ]
     },
     {
@@ -202,13 +204,32 @@ export const CREATOR_NAV_GROUPS = [
         items: [
             { label: "Creator Hub", path: "/creator/discovery", icon: UsersIcon },
             { label: "Messages", path: "/creator/messages", icon: MessageSquare },
+            { label: "Book a Meeting", path: "/meetings", icon: Video },
         ]
     },
     {
         title: "Management",
         items: [
             { label: "Earnings", path: "/creator/financials", icon: DollarIcon },
+            { label: "Social Accounts", path: "/creator/social-accounts", icon: Link },
             { label: "Profile", path: "/creator/profile", icon: User },
+        ]
+    }
+];
+
+export const ADMIN_NAV_GROUPS = [
+    {
+        title: "Overview",
+        items: [
+            { label: "Dashboard", path: "/admin", icon: LayoutGrid },
+        ]
+    },
+    {
+        title: "Management",
+        items: [
+            { label: "Users", path: "/admin/users", icon: UsersIcon },
+            { label: "Campaigns", path: "/admin/campaigns", icon: Target },
+            { label: "Financials", path: "/admin/financials", icon: CreditCard },
         ]
     }
 ];

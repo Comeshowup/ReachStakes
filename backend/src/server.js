@@ -1,17 +1,29 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { connectDB, disconnectDB, prisma } from './config/db.js';
-import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
+import campaignRoutes from './routes/campaignRoutes.js';
+import socialRoutes from './routes/socialRoutes.js';
 
-dotenv.config();
 connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-    origin: 'http://localhost:5173', // Your React URL
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Allow localhost and ngrok URLs
+        if (origin.startsWith('http://localhost') || origin.endsWith('.ngrok-free.app') || origin.endsWith('.loca.lt')) {
+            return callback(null, true);
+        }
+
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        return callback(new Error(msg), false);
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -23,6 +35,8 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/social', socialRoutes);
 
 
 const server = app.listen(PORT, () => {

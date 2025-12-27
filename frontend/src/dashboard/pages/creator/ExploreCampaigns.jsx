@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Filter, SlidersHorizontal, MapPin, DollarSign, Calendar, ArrowUpRight } from "lucide-react";
 import { AVAILABLE_CAMPAIGNS } from "../../data";
@@ -42,8 +43,8 @@ const ExploreCampaigns = () => {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeFilter === filter
-                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                                    : "bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700"
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                : "bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700"
                                 }`}
                         >
                             {filter}
@@ -99,10 +100,10 @@ const ExploreCampaigns = () => {
                                 </div>
                             </div>
 
-                            <button className="w-full py-3 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white font-bold text-sm group-hover:bg-indigo-600 group-hover:text-white transition-all flex items-center justify-center gap-2">
+                            <Link to={`/campaign/${campaign.id}`} className="w-full py-3 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white font-bold text-sm group-hover:bg-indigo-600 group-hover:text-white transition-all flex items-center justify-center gap-2">
                                 View Details & Apply
                                 <ArrowUpRight className="w-4 h-4" />
-                            </button>
+                            </Link>
                         </div>
                     </motion.div>
                 ))}

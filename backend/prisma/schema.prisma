@@ -13,7 +13,7 @@ datasource db {
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash")
   role         Role
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -30,9 +30,10 @@ model User {
   creatorCollabs CampaignCollaboration[] @relation("CreatorCollaborations")
 
   // Financials and Content
-  transactions Transaction[]
-  analytics    AnalyticsDaily[]
-  posts        CommunityPost[]
+  transactions   Transaction[]
+  analytics      AnalyticsDaily[]
+  posts          CommunityPost[]
+  socialAccounts SocialAccount[]
 
   @@index([email])
   @@index([role])
@@ -178,6 +179,26 @@ model CommunityPost {
   @@map("community_posts")
 }
 
+// 9. Social Accounts
+model SocialAccount {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  platform     Platform
+  username     String    @db.VarChar(100)
+  handle       String?   @db.VarChar(100)
+  profileUrl   String?   @map("profile_url") @db.VarChar(255)
+  accessToken  String?   @map("access_token") @db.Text
+  refreshToken String?   @map("refresh_token") @db.Text
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("social_accounts")
+}
+
 // --- ENUMS ---
 
 enum Role {
@@ -203,6 +224,7 @@ enum Platform {
   TikTok
   YouTube
   Twitch
+  Twitter
   Other
 }
 

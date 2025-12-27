@@ -32,6 +32,8 @@ export default {
                 'sonar': 'sonar-wave 3s cubic-bezier(0, 0, 0.2, 1) infinite',
                 'border-spin': 'border-spin 2.5s linear infinite',
                 'shimmer': 'shimmer 4s linear infinite',
+                'shimmer-x': 'shimmer-x 2s linear infinite',
+                'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'breathe': 'breathe 4.5s linear infinite',
             },
             keyframes: {
@@ -48,6 +50,10 @@ export default {
                 },
                 shimmer: {
                     to: { transform: 'translate(-50%, -50%) rotate(360deg)' }
+                },
+                'shimmer-x': {
+                    '0%': { transform: 'translate(-150%) skewX(-12deg)' },
+                    '100%': { transform: 'translate(150%) skewX(-12deg)' }
                 },
                 breathe: {
                     '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)' },

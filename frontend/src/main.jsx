@@ -5,12 +5,18 @@ import './index.css'
 import App from './App.jsx'
 import { ThemeProvider } from "./components/ThemeProvider";
 
+
+
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ThemeProvider>
+    <GoogleOAuthProvider clientId="409654536762-lhko0apednm5jbhvo6itgkskqtdtikcq.apps.googleusercontent.com">
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   </StrictMode>,
 )

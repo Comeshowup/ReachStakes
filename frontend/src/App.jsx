@@ -16,14 +16,24 @@ import ExploreCampaigns from "./dashboard/pages/creator/ExploreCampaigns";
 import CreatorFinancials from "./dashboard/pages/creator/CreatorFinancials";
 import DiscoveryHub from "./dashboard/pages/creator/DiscoveryHub";
 import MySubmissions from "./dashboard/pages/creator/MySubmissions";
+import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
 import ProfilePage from "./dashboard/pages/ProfilePage";
+import AdminLayout from "./dashboard/layout/AdminLayout";
+import AdminDashboardHome from "./dashboard/pages/admin/AdminDashboardHome";
+import UserManagement from "./dashboard/pages/admin/UserManagement";
+import CampaignManagementAdmin from "./dashboard/pages/admin/CampaignManagementAdmin";
+import FinancialManagementAdmin from "./dashboard/pages/admin/FinancialManagementAdmin";
 import AuthPage from "./AuthPage/AuthPage";
+import MeetingPage from "./pages/MeetingPage/MeetingPage";
+import CampaignPage from "./pages/CampaignPage/CampaignPage";
 import "./App.css";
 
 function App() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/meetings" element={<MeetingPage />} />
+      <Route path="/campaign/:id" element={<CampaignPage />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/new-landing" element={<NewLandingPage />} />
       <Route path="/brand" element={<DashboardLayout />}>
@@ -45,6 +55,15 @@ function App() {
         <Route path="community" element={<CommunityHub />} />
         <Route path="messages" element={<MessagingPanel />} />
         <Route path="financials" element={<CreatorFinancials />} />
+        <Route path="social-accounts" element={<SocialAccounts />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboardHome />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="campaigns" element={<CampaignManagementAdmin />} />
+        <Route path="financials" element={<FinancialManagementAdmin />} />
       </Route>
 
       {/* Public Profile Routes */}

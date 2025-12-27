@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BackgroundEffects from "./components/BackgroundEffects";
 import RoleSelector from "./components/RoleSelector";
@@ -114,6 +114,7 @@ const AuthPage = () => {
             <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 relative z-10">
                 <motion.div
                     className="w-full max-w-[450px] relative z-10"
+                    layout
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
@@ -124,7 +125,20 @@ const AuthPage = () => {
                         {/* Rim Light */}
                         <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10 pointer-events-none"></div>
 
-                        <RoleSelector role={role} setRole={setRole} />
+                        <AnimatePresence mode="wait">
+                            {mode === "signup" && (
+                                <motion.div
+                                    key="role-selector"
+                                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                                    animate={{ height: "auto", opacity: 1, marginBottom: 32 }}
+                                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="overflow-hidden"
+                                >
+                                    <RoleSelector role={role} setRole={setRole} />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* HEADER */}
                         <div className="text-center space-y-2 mb-8">
@@ -150,7 +164,7 @@ const AuthPage = () => {
                             errors={errors}
                         />
 
-                        <SocialLogin />
+                        <SocialLogin role={role} mode={mode} />
 
                         <p className="text-center text-xs text-white/30 mt-6">
                             By clicking continue, you agree to our <a href="#" className="underline hover:text-white transition-colors">Terms of Service</a> and <a href="#" className="underline hover:text-white transition-colors">Privacy Policy</a>.

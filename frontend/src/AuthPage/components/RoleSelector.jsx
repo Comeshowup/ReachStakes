@@ -5,7 +5,7 @@ import { Briefcase, Sparkles } from "lucide-react";
 
 const RoleSelector = ({ role, setRole }) => {
     return (
-        <div className="relative flex p-1 bg-black/40 rounded-xl mb-8 border border-white/5">
+        <div className="relative flex p-1 bg-black/40 rounded-xl border border-white/5">
             {["brand", "creator"].map((r) => (
                 <button
                     key={r}
