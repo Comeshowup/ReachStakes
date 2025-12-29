@@ -165,3 +165,79 @@ export const getCreatorCampaigns = async (req, res) => {
         });
     }
 };
+
+// @desc    Get all active campaigns for discovery
+// @route   GET /api/campaigns/all
+// @access  Public (or Private)
+export const getAllCampaigns = async (req, res) => {
+    try {
+        const campaigns = await prisma.campaign.findMany({
+            // where: { status: 'Active' }, // Uncomment when status field is strictly managed
+            orderBy: { createdAt: 'desc' },
+            include: {
+                brand: {
+                    select: {
+                        brandProfile: {
+                            select: {
+                                companyName: true,
+                                logoUrl: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        res.json({
+            status: 'success',
+            data: campaigns
+        });
+    } catch (error) {
+        console.error("Error fetching all campaigns:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch campaigns'
+        });
+    }
+};
+
+// @desc    Get single campaign by ID
+// @route   GET /api/campaigns/:id
+// @access  Public (or Private)
+export const getCampaignById = async (req, res) => {
+    try {
+        const campaign = await prisma.campaign.findUnique({
+            where: { id: parseInt(req.params.id) },
+            include: {
+                brand: {
+                    select: {
+                        brandProfile: {
+                            select: {
+                                companyName: true,
+                                logoUrl: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!campaign) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Campaign not found'
+            });
+        }
+
+        res.json({
+            status: 'success',
+            data: campaign
+        });
+    } catch (error) {
+        console.error("Error fetching campaign:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch campaign'
+        });
+    }
+};

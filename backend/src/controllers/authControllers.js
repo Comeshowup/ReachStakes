@@ -110,6 +110,7 @@ const googleLogin = async (req, res) => {
 
     try {
         // Verify access token and get user info from Google
+        // This ensures the token is valid and belongs to the user claiming it
         const googleResponse = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
             headers: {
                 Authorization: `Bearer ${access_token}`
@@ -118,20 +119,24 @@ const googleLogin = async (req, res) => {
 
         const { email, name, sub: googleId } = googleResponse.data;
 
-        // RESTRICTION: Only allow specific test email
-        if (email !== "comeshowup@gmail.com" && email !== "bytecraft77@gmail.com") {
+        // RESTRICTION: Only allow specific allowed emails from env
+        // This provides better security and configurability than hardcoded strings
+        const allowedEmails = process.env.ALLOWED_EMAILS ? process.env.ALLOWED_EMAILS.split(',') : [];
+        if (allowedEmails.length > 0 && !allowedEmails.includes(email)) {
             return res.status(403).json({
                 status: "error",
-                message: "Access restricted. Only authorized test users can login via Google at this time."
+                message: "Access restricted. Your email is not authorized for this application."
             });
         }
 
+        // Check if user already exists in the database
         let user = await prisma.user.findUnique({
             where: { email },
         });
 
         if (!user) {
-            // Create new user
+            // Create new user if they don't exist
+            // Defaulting role to "brand" if not provided, though typically role should be selected on frontend
             const userRole = role || "brand";
 
             user = await prisma.user.create({
@@ -139,11 +144,12 @@ const googleLogin = async (req, res) => {
                     name,
                     email,
                     role: userRole,
-                    // passwordHash is optional
+                    // passwordHash is optional for Google users
                 },
             });
         }
 
+        // Generate JWT token for session management
         const token = generateToken(user.id, res);
 
         res.status(200).json({

@@ -198,6 +198,94 @@ const linkInstagram = async (req, res) => {
     }
 };
 
+const linkTikTok = async (req, res) => {
+    const { code, userId, redirectUri } = req.body;
+
+    // Validate Env Vars
+    if (!process.env.TIKTOK_CLIENT_KEY || !process.env.TIKTOK_CLIENT_SECRET) {
+        console.error("CRITICAL: TIKTOK_CLIENT_KEY or TIKTOK_CLIENT_SECRET is missing.");
+        return res.status(500).json({ status: 'error', message: 'Server Misconfiguration: Missing TikTok Credentials' });
+    }
+
+    if (!userId) {
+        return res.status(400).json({ status: 'error', message: 'User ID is missing' });
+    }
+
+    try {
+        // 1. Exchange Code for Access Token
+        // Endpoint: https://open.tiktokapis.com/v2/oauth/token/
+        const tokenParams = new URLSearchParams();
+        tokenParams.append('client_key', process.env.TIKTOK_CLIENT_KEY);
+        tokenParams.append('client_secret', process.env.TIKTOK_CLIENT_SECRET);
+        tokenParams.append('code', code);
+        tokenParams.append('grant_type', 'authorization_code');
+        tokenParams.append('redirect_uri', redirectUri);
+
+        const tokenResponse = await axios.post('https://open.tiktokapis.com/v2/oauth/token/', tokenParams, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        const { access_token, refresh_token, expires_in, open_id } = tokenResponse.data;
+
+        // 2. Fetch User Info
+        // Endpoint: https://open.tiktokapis.com/v2/user/info/
+        const userInfoResponse = await axios.get('https://open.tiktokapis.com/v2/user/info/', {
+            headers: {
+                'Authorization': `Bearer ${access_token}`
+            },
+            params: {
+                fields: 'open_id,display_name,avatar_url'
+            }
+        });
+
+        const tiktokUser = userInfoResponse.data.data.user;
+
+        // 3. Save directly to DB
+        // Check if account already linked
+        const existingAccount = await prisma.socialAccount.findFirst({
+            where: {
+                userId: parseInt(userId),
+                platform: 'TikTok',
+            }
+        });
+
+        const expiryDate = new Date(Date.now() + (expires_in * 1000));
+
+        let newAccount;
+        const accountData = {
+            username: tiktokUser.display_name,
+            handle: tiktokUser.display_name, // TikTok often uses display_name akin to handle, or we can fetch 'union_id' if needed but 'display_name' is usually the public handle.
+            profileUrl: `https://www.tiktok.com/@${tiktokUser.display_name}`, // Construct URL. Note: display_name might allow spaces/special chars, ideally we'd get the unique handle if available in other scopes/fields. Basic scope grants display_name.
+            accessToken: access_token,
+            refreshToken: refresh_token,
+            expiresAt: expiryDate,
+            platform: 'TikTok'
+        };
+
+        if (existingAccount) {
+            newAccount = await prisma.socialAccount.update({
+                where: { id: existingAccount.id },
+                data: accountData
+            });
+        } else {
+            newAccount = await prisma.socialAccount.create({
+                data: {
+                    ...accountData,
+                    userId: parseInt(userId)
+                }
+            });
+        }
+
+        console.log('TikTok account saved/updated for:', tiktokUser.display_name);
+        res.status(200).json({ status: 'success', data: newAccount });
+
+    } catch (error) {
+        console.error('TikTok Link Error:', error.response?.data || error.message);
+        const errorMsg = error.response?.data?.error_description || error.message;
+        res.status(500).json({ status: 'error', message: 'Failed to link TikTok account: ' + errorMsg });
+    }
+};
+
 const verifyWebhook = (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -247,4 +335,4 @@ const disconnectSocialAccount = async (req, res) => {
     }
 };
 
-export { linkYoutube, linkInstagram, verifyWebhook, getSocialAccounts, disconnectSocialAccount };
+export { linkYoutube, linkInstagram, linkTikTok, verifyWebhook, getSocialAccounts, disconnectSocialAccount };

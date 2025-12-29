@@ -4,6 +4,12 @@ import { Instagram, Youtube, Twitter, ExternalLink, Unlink, Plus, BadgeCheck } f
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../../../api/axios'; // Adjust if path is different
 
+const TikTokIcon = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z" />
+    </svg>
+);
+
 const SocialAccounts = () => {
     // We'll manage state for the accounts loaded from DB
     const [socialData, setSocialData] = useState([]);
@@ -26,41 +32,62 @@ const SocialAccounts = () => {
     useEffect(() => {
         fetchAccounts();
 
-        // Check for Instagram Code in URL
+        // Check for Code in URL
         const params = new URLSearchParams(window.location.search);
-        const igCode = params.get('code');
+        const code = params.get('code');
+        const state = params.get('state');
 
-        if (igCode) {
-            if (!userId) {
-                return;
-            }
+        if (code) {
+            if (!userId) return;
 
             // Removing 'code' from URL without refresh to avoid re-runs
             const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.pushState({ path: newUrl }, '', newUrl);
 
-            const linkInstagram = async () => {
-                setLoading(true);
-                try {
-                    const currentRedirectUri = `${window.location.origin}/creator/social-accounts`;
+            setLoading(true);
 
-                    const response = await api.post('/social/instagram/link', {
-                        code: igCode,
-                        userId: userId,
-                        redirectUri: currentRedirectUri
-                    });
-
-                    alert("Instagram account connected successfully!");
-                    fetchAccounts();
-                } catch (err) {
-                    console.error("Instagram Link Error:", err);
-                    const msg = err.response?.data?.message || err.message;
-                    alert("Failed to link Instagram: " + msg);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            linkInstagram();
+            if (state === 'tiktok') {
+                const linkTikTok = async () => {
+                    try {
+                        const currentRedirectUri = `${window.location.origin}/creator/social-accounts`;
+                        await api.post('/social/tiktok/link', {
+                            code: code,
+                            userId: userId,
+                            redirectUri: currentRedirectUri
+                        });
+                        alert("TikTok account connected successfully!");
+                        fetchAccounts();
+                    } catch (err) {
+                        console.error("TikTok Link Error:", err);
+                        const msg = err.response?.data?.message || err.message;
+                        alert("Failed to link TikTok: " + msg);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                linkTikTok();
+            } else {
+                // Default to Instagram (existing flow)
+                const linkInstagram = async () => {
+                    try {
+                        const currentRedirectUri = `${window.location.origin}/creator/social-accounts`;
+                        await api.post('/social/instagram/link', {
+                            code: code,
+                            userId: userId,
+                            redirectUri: currentRedirectUri
+                        });
+                        alert("Instagram account connected successfully!");
+                        fetchAccounts();
+                    } catch (err) {
+                        console.error("Instagram Link Error:", err);
+                        const msg = err.response?.data?.message || err.message;
+                        alert("Failed to link Instagram: " + msg);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                linkInstagram();
+            }
         }
 
     }, [userId]);
@@ -142,6 +169,29 @@ const SocialAccounts = () => {
             bg: 'bg-red-50 dark:bg-red-900/20',
             maxAccounts: 5,
             connectAction: linkYoutube,
+        },
+        {
+            id: 'tiktok',
+            name: 'TikTok',
+            icon: TikTokIcon,
+            color: 'text-black dark:text-white',
+            bg: 'bg-slate-100 dark:bg-slate-800',
+            maxAccounts: 5,
+            connectAction: () => {
+                const clientKey = import.meta.env.VITE_TIKTOK_CLIENT_KEY;
+                console.log("TikTok Client Key being used:", clientKey); // DEBUG LOG
+
+                if (!clientKey || clientKey === 'YOUR_TIKTOK_CLIENT_KEY') {
+                    alert("TikTok Client Key is missing! Please check your .env file and RESTART the server.");
+                    return;
+                }
+                const redirectUri = `${window.location.origin}/creator/social-accounts`;
+                const scope = 'user.info.basic,video.list';
+                const state = 'tiktok';
+                const authUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=${scope}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+
+                window.location.href = authUrl;
+            },
         }
     ];
 
@@ -151,34 +201,7 @@ const SocialAccounts = () => {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Social Accounts</h1>
                 <p className="text-gray-500 dark:text-slate-400 mt-1">Connect up to 5 accounts per platform to showcase your reach and analytics.</p>
 
-                {/* DEBUG SECTION */}
-                <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">DEBUG DIAL:</h4>
-                    <div className="text-xs space-y-1 font-mono">
-                        <p><span className="text-slate-500">API URL:</span> {import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}</p>
-                        <p><span className="text-slate-500">User ID:</span> {userId || 'NOT LOGGED IN'}</p>
-                        <p><span className="text-slate-500">Origin:</span> {window.location.origin}</p>
-                        <button
-                            onClick={async () => {
-                                try {
-                                    // Strip /api from end of baseURL
-                                    const fullBaseUrl = api.defaults.baseURL;
-                                    const rootUrl = fullBaseUrl.endsWith('/api') ? fullBaseUrl.slice(0, -4) : fullBaseUrl;
 
-                                    const res = await axios.get(rootUrl + '/', {
-                                        headers: { 'ngrok-skip-browser-warning': 'true' }
-                                    });
-                                    alert('Backend Linked! Response: ' + res.data.message);
-                                } catch (err) {
-                                    alert('Backend UNREACHABLE: ' + (err.response?.status || err.message));
-                                }
-                            }}
-                            className="mt-2 px-2 py-1 bg-indigo-600 text-white rounded text-[10px] hover:bg-indigo-700 transition-colors"
-                        >
-                            Test API Connection
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">

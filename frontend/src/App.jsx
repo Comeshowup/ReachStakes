@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import LandingPage from "./LandingPage/LandingPage";
+
 import NewLandingPage from "./NewLandingPage/NewLandingPage";
 import HomePage from "./Homepage/HomePage";
 import DashboardLayout from "./dashboard/layout/DashboardLayout";
@@ -28,14 +28,20 @@ import MeetingPage from "./pages/MeetingPage/MeetingPage";
 import CampaignPage from "./pages/CampaignPage/CampaignPage";
 import "./App.css";
 
+// Main App Component managing all application routes
+// Uses React Router for navigation between public pages and dashboards
+
 function App() {
   return (
     <Routes>
+      {/* Public Routes */}
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/meetings" element={<MeetingPage />} />
       <Route path="/campaign/:id" element={<CampaignPage />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/new-landing" element={<NewLandingPage />} />
+
+      {/* Brand Dashboard Routes - Protected Layout */}
       <Route path="/brand" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="campaigns" element={<CampaignManagement />} />
@@ -46,6 +52,8 @@ function App() {
         <Route path="financials" element={<FinancialManagementPanel />} />
         <Route path="messages" element={<MessagingPanel />} />
       </Route>
+
+      {/* Creator Dashboard Routes - Protected Layout */}
       <Route path="/creator" element={<CreatorLayout />}>
         <Route index element={<CreatorDashboardHome />} />
         <Route path="explore" element={<ExploreCampaigns />} />
@@ -58,7 +66,7 @@ function App() {
         <Route path="social-accounts" element={<SocialAccounts />} />
       </Route>
 
-      {/* Admin Routes */}
+      {/* Admin Dashboard Routes */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardHome />} />
         <Route path="users" element={<UserManagement />} />
@@ -66,7 +74,7 @@ function App() {
         <Route path="financials" element={<FinancialManagementAdmin />} />
       </Route>
 
-      {/* Public Profile Routes */}
+      {/* Public Profile Routes (Shareable links) */}
       <Route path="/profile/brand/:id" element={<ProfilePage type="brand" />} />
       <Route path="/profile/creator/:id" element={<ProfilePage type="creator" />} />
     </Routes>

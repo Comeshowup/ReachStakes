@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import {
     ArrowLeft,
     Calendar,
@@ -16,15 +17,73 @@ import {
     Clock,
     Zap,
     AlertCircle,
-    Check
+    Check,
+    Loader2
 } from 'lucide-react';
-import { AVAILABLE_CAMPAIGNS } from '../../dashboard/data';
 
 const CampaignPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [campaign, setCampaign] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [applying, setApplying] = useState(false);
+    const [error, setError] = useState(null);
 
-    const campaign = AVAILABLE_CAMPAIGNS.find(c => String(c.id) === String(id));
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+
+    useEffect(() => {
+        const fetchCampaign = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get(`${API_BASE_URL}/campaigns/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                // Format data to match UI expectations
+                const c = response.data.data;
+                const formattedCampaign = {
+                    id: c.id,
+                    title: c.title,
+                    description: c.description || "",
+                    brand: c.brand?.brandProfile?.companyName || "Unknown Brand",
+                    logo: c.brand?.brandProfile?.logoUrl || "https://via.placeholder.com/80",
+                    platform: c.platformRequired || "Any",
+                    type: c.campaignType || "General",
+                    budget: c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable"),
+                    deadline: c.deadline ? new Date(c.deadline).toLocaleDateString() : "Open",
+                    rawDeadline: c.deadline
+                };
+
+                setCampaign(formattedCampaign);
+            } catch (err) {
+                console.error("Failed to fetch campaign", err);
+                setError("Failed to load campaign details.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCampaign();
+    }, [id]);
+
+    const handleApply = async () => {
+        if (!confirm("Are you sure you want to apply to this campaign?")) return;
+
+        setApplying(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API_BASE_URL}/campaigns/${id}/apply`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert("Successfully applied! Redirecting to your submissions...");
+            navigate('/creator/submissions');
+        } catch (err) {
+            console.error("Failed to apply", err);
+            alert(err.response?.data?.message || "Failed to apply to campaign. You may have already applied.");
+        } finally {
+            setApplying(false);
+        }
+    };
 
     // Animation Variants
     const containerVariants = {
@@ -48,7 +107,9 @@ const CampaignPage = () => {
         visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut", delay: 0.4 } }
     };
 
-    if (!campaign) return null; // Or reuse the Not Found state
+    if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
+    if (error) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">{error}</div>;
+    if (!campaign) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Campaign not found</div>;
 
     return (
         <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30">
@@ -85,7 +146,7 @@ const CampaignPage = () => {
                                     <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-slate-900/50 backdrop-blur-md border border-white/10 p-1 flex items-center justify-center shadow-2xl overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
                                         <img
-                                            src={campaign.logo || "https://via.placeholder.com/80"}
+                                            src={campaign.logo}
                                             alt={campaign.brand}
                                             className="w-full h-full object-cover rounded-2xl"
                                         />
@@ -109,13 +170,10 @@ const CampaignPage = () => {
                                         {/* Stylized Tags */}
                                         <span className="px-4 py-1.5 rounded-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 text-pink-200 text-sm font-semibold flex items-center gap-2">
                                             <Instagram className="w-3.5 h-3.5" />
-                                            Instagram Reels
+                                            {campaign.platform}
                                         </span>
                                         <span className="px-4 py-1.5 rounded-full bg-slate-800/50 border border-white/10 text-slate-300 text-sm font-medium">
-                                            Lifestyle
-                                        </span>
-                                        <span className="px-4 py-1.5 rounded-full bg-slate-800/50 border border-white/10 text-slate-300 text-sm font-medium">
-                                            Tech
+                                            {campaign.type}
                                         </span>
                                     </div>
                                 </div>
@@ -124,14 +182,8 @@ const CampaignPage = () => {
                             {/* Mobile-only Actions Placeholders or secondary info text could go here */}
                         </div>
 
-                        {/* Desktop Actions - Floated or Integrated? Keeping it clean, the main CTA is in the content flow for mobile, or sidebar for desktop usually.
-                            BUT per Requirements: "Apply Now" is the star. Let's put a massive one in the Hero for impact.
-                        */}
+                        {/* Desktop Actions */}
                         <motion.div variants={itemVariants} className="hidden lg:block">
-                            {/* This space intentionally left blank for visual balance, CTA is in sidebar or below title? 
-                                Actually, high conversion pages often put the Main CTA near the headline or in the sticky sidebar.
-                                The prompt asks for it to be a "prominent position".
-                            */}
                         </motion.div>
                     </motion.div>
                 </div>
@@ -155,12 +207,7 @@ const CampaignPage = () => {
                                     About the Campaign
                                 </h3>
                                 <p className="text-xl text-slate-300 leading-relaxed font-light">
-                                    {campaign.description} we are inviting creators to showcase our latest product line in a high-energy, authentic way.
-                                    We believe in storytelling that connects lifestyle with innovation.
-                                </p>
-                                <p className="text-zinc-400 leading-relaxed">
-                                    Ideally, you are a creator who loves tech and aesthetics. You know how to make a product shine without it feeling like a forced ad.
-                                    We're looking for <strong className="text-white">bold visuals</strong>, crisp audio, and genuine enthusiasm.
+                                    {campaign.description}
                                 </p>
                             </motion.div>
 
@@ -184,28 +231,6 @@ const CampaignPage = () => {
                                                 <h4 className="text-lg font-bold text-white">{item.title}</h4>
                                                 <p className="text-zinc-400 text-sm mt-1">{item.desc}</p>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-
-                            {/* Inspiration Grid */}
-                            <motion.div variants={itemVariants} className="mt-16">
-                                <h3 className="text-2xl font-bold text-white mb-6">Inspiration & Assets</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 h-96">
-                                    {[1, 2, 3].map((n) => (
-                                        <div key={n} className={`rounded-3xl overflow-hidden relative group cursor-pointer border border-white/5 ${n === 1 ? 'md:col-span-2 md:row-span-2' : ''}`}>
-                                            <img
-                                                src={`https://source.unsplash.com/random/800x800?tech,neon&sig=${n}`}
-                                                alt="Moodboard"
-                                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                            />
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <div className="p-4 bg-white/10 backdrop-blur-md rounded-full border border-white/20 transform scale-50 group-hover:scale-100 transition-transform duration-300">
-                                                    <ExternalLink className="w-6 h-6 text-white" />
-                                                </div>
-                                            </div>
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60"></div>
                                         </div>
                                     ))}
                                 </div>
@@ -262,7 +287,7 @@ const CampaignPage = () => {
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                                                     </span>
-                                                    5 Remaining
+                                                    Limited
                                                 </span>
                                             </div>
                                             {/* Progress Bar */}
@@ -273,33 +298,19 @@ const CampaignPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Quick Checklist */}
-                                    <div className="space-y-3 pt-2">
-                                        <div className="flex items-center gap-3 text-sm text-zinc-300">
-                                            <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-500">
-                                                <Check className="w-3.5 h-3.5" />
-                                            </div>
-                                            Min. 10k Followers
-                                        </div>
-                                        <div className="flex items-center gap-3 text-sm text-zinc-300">
-                                            <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-500">
-                                                <Check className="w-3.5 h-3.5" />
-                                            </div>
-                                            Tech / Lifestyle Niche
-                                        </div>
-                                    </div>
-
                                     {/* Primary CTA */}
                                     <button
-                                        className="relative w-full group overflow-hidden rounded-xl p-[1px]"
+                                        onClick={handleApply}
+                                        disabled={applying}
+                                        className="relative w-full group overflow-hidden rounded-xl p-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-border-spin" style={{ opacity: 0.5 }}></div>
                                         <div className="relative bg-indigo-600 h-full w-full rounded-xl px-4 py-4 flex items-center justify-center gap-2 group-hover:bg-indigo-700 transition-colors">
-                                            <span className="font-bold text-white text-lg tracking-wide">APPLY NOW</span>
-                                            <ExternalLink className="w-5 h-5 text-white" />
+                                            <span className="font-bold text-white text-lg tracking-wide">
+                                                {applying ? "APPLYING..." : "APPLY NOW"}
+                                            </span>
+                                            {!applying && <ExternalLink className="w-5 h-5 text-white" />}
                                         </div>
-                                        {/* Shimmer overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer-x pointer-events-none"></div>
                                     </button>
 
                                     <p className="text-xs text-center text-zinc-500">

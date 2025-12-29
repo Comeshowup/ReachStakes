@@ -113,15 +113,20 @@ model Campaign {
 
 // 5. Campaign Submissions / Collaborations
 model CampaignCollaboration {
-  id            Int           @id @default(autoincrement())
-  campaignId    Int           @map("campaign_id")
-  creatorId     Int           @map("creator_id")
-  status        CollabStatus? @default(Applied)
-  agreedPrice   Decimal?      @map("agreed_price") @db.Decimal(10, 2)
-  submissionUrl String?       @map("submission_url") @db.VarChar(255)
-  feedbackNotes String?       @map("feedback_notes") @db.Text
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id                 Int           @id @default(autoincrement())
+  campaignId         Int           @map("campaign_id")
+  creatorId          Int           @map("creator_id")
+  status             CollabStatus? @default(Applied)
+  agreedPrice        Decimal?      @map("agreed_price") @db.Decimal(10, 2)
+  submissionUrl      String?       @map("submission_url") @db.VarChar(255)
+  submissionTitle    String?       @map("submission_title") @db.VarChar(255)
+  submissionPlatform String?       @map("submission_platform") @db.VarChar(50)
+  submissionNotes    String?       @map("submission_notes") @db.Text
+  videoId            String?       @map("video_id") @db.VarChar(100)
+  videoStats         Json?         @map("video_stats")
+  feedbackNotes      String?       @map("feedback_notes") @db.Text
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
 
   campaign Campaign @relation(fields: [campaignId], references: [id])
   creator  User     @relation("CreatorCollaborations", fields: [creatorId], references: [id])
