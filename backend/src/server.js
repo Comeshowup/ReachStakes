@@ -19,8 +19,12 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
 
-        // Allow localhost and ngrok URLs
-        if (origin.startsWith('http://localhost') || origin.endsWith('.ngrok-free.app') || origin.endsWith('.loca.lt')) {
+        // Allow localhost, ngrok, and production URLs
+        if (origin.startsWith('http://localhost') ||
+            origin.endsWith('.ngrok-free.app') ||
+            origin.endsWith('.loca.lt') ||
+            origin.endsWith('.netlify.app') ||
+            origin.endsWith('.onrender.com')) {
             return callback(null, true);
         }
 
