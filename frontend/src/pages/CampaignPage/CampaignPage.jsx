@@ -29,7 +29,7 @@ const CampaignPage = () => {
     const [applying, setApplying] = useState(false);
     const [error, setError] = useState(null);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
     useEffect(() => {
         const fetchCampaign = async () => {
