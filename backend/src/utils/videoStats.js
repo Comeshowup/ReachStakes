@@ -151,60 +151,67 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
 
         const isVideoContent = matchedMedia.media_type === 'VIDEO';
 
-        // Always try insights endpoint for professional accounts - it's the most reliable
-        // Insights requires instagram_manage_insights permission for Business/Creator accounts
-        try {
-            // Different metrics available: plays, reach, impressions
-            // For reels/videos: 'plays' is the primary metric
-            // For images: 'impressions' or 'reach'
-            const metrics = isVideoContent ? 'plays,reach' : 'impressions,reach';
-            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=${metrics}&access_token=${accessToken}`;
-            console.log(`Fetching insights for media ${matchedMedia.id} (media_type: ${matchedMedia.media_type})`);
-            console.log(`Metrics requested: ${metrics}`);
+        // Try multiple approaches to get view counts
+        // The Basic Display API has limited metrics support
 
-            const insightsResp = await axios.get(insightsUrl);
-            const insights = insightsResp.data.data;
+        // Approach 1: Try fetching the media directly with video fields
+        if (isVideoContent && viewCount === 0) {
+            try {
+                // Try to get video_views field directly from the media endpoint
+                const videoUrl = `https://graph.instagram.com/${matchedMedia.id}?fields=id,media_type,like_count,comments_count&access_token=${accessToken}`;
+                console.log("Fetching video details...");
+                const videoResp = await axios.get(videoUrl);
+                console.log("Video details response:", JSON.stringify(videoResp.data, null, 2));
+                // Note: Basic Display API doesn't return view counts directly
+            } catch (videoErr) {
+                console.log("Video details fetch info:", videoErr.response?.data?.error?.message || videoErr.message);
+            }
+        }
 
-            console.log("Insights response:", JSON.stringify(insights, null, 2));
+        // Approach 2: Try insights endpoint with various metrics
+        // Different Instagram account types support different metrics:
+        // - For IG Reels via Business accounts: ig_reels_aggregated_all_plays_count, reach
+        // - For regular videos: video_views
+        // - For all media: reach, impressions
+        const metricsToTry = [
+            'reach',                              // Available for most media types
+            'impressions',                        // Available for images and some videos
+            'video_views',                        // Legacy video views metric
+            'ig_reels_aggregated_all_plays_count' // Reels specific metric (Business API)
+        ];
 
-            if (insights && insights.length > 0) {
-                // Try 'plays' for video content
-                const playsMetric = insights.find(m => m.name === 'plays');
-                const playsValue = playsMetric?.values?.[0]?.value || 0;
+        for (const metric of metricsToTry) {
+            if (viewCount > 0) break; // Stop if we got a value
 
-                // Try 'impressions' as fallback (total views including repeat)
-                const impressionsMetric = insights.find(m => m.name === 'impressions');
-                const impressionsValue = impressionsMetric?.values?.[0]?.value || 0;
+            try {
+                const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=${metric}&access_token=${accessToken}`;
+                console.log(`Trying metric: ${metric}`);
 
-                // Try 'reach' as final fallback (unique accounts)
-                const reachMetric = insights.find(m => m.name === 'reach');
-                const reachValue = reachMetric?.values?.[0]?.value || 0;
+                const insightsResp = await axios.get(insightsUrl);
+                const insights = insightsResp.data.data;
 
-                console.log("Insights values:", { plays: playsValue, impressions: impressionsValue, reach: reachValue });
+                if (insights && insights.length > 0) {
+                    const metricData = insights[0];
+                    const value = metricData?.values?.[0]?.value || 0;
+                    console.log(`${metric} returned:`, value);
 
-                // Priority: plays > impressions > reach > initial plays
-                if (playsValue > 0) {
-                    viewCount = playsValue;
-                    console.log("Using 'plays' metric:", viewCount);
-                } else if (impressionsValue > 0) {
-                    viewCount = impressionsValue;
-                    console.log("Using 'impressions' metric:", viewCount);
-                } else if (reachValue > 0) {
-                    viewCount = reachValue;
-                    console.log("Using 'reach' metric:", viewCount);
+                    if (value > 0) {
+                        viewCount = value;
+                        console.log(`Using '${metric}' as view count:`, viewCount);
+                        break;
+                    }
                 }
+            } catch (metricErr) {
+                const errorMsg = metricErr.response?.data?.error?.message || metricErr.message;
+                console.log(`Metric '${metric}' not available:`, errorMsg);
             }
-        } catch (insightErr) {
-            const errorMsg = insightErr.response?.data?.error?.message || insightErr.message;
-            const errorCode = insightErr.response?.data?.error?.code;
-            console.warn("Insights API error:", { code: errorCode, message: errorMsg });
-            console.warn("Full error response:", JSON.stringify(insightErr.response?.data, null, 2));
+        }
 
-            // Keep using the 'plays' value from initial media request if we have it
-            if (matchedMedia.plays) {
-                viewCount = matchedMedia.plays;
-                console.log("Falling back to 'plays' from media response:", viewCount);
-            }
+        // If no insights worked, log the limitation
+        if (viewCount === 0 && isVideoContent) {
+            console.log("NOTE: View counts unavailable. This is a known limitation of the Instagram Basic Display API.");
+            console.log("To access view counts, the Instagram account needs to be a Business/Creator account");
+            console.log("connected via Facebook Login (Instagram Graph API), not Basic Display API.");
         }
 
         // 4. Return Stats
