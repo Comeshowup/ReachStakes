@@ -1,13 +1,1 @@
-version: "2"
-authtoken: 2vIvNaWkZkWUaRJpUwaaaYpDGYZ_6v54aMEC3BuHr5jifGtLm
-tunnels:
-  frontend:
-    proto: http
-    addr: 5173
-    # If you have a paid domain, uncomment and add it here:
-    # domain: my-frontend.ngrok.app
-  backend:
-    proto: http
-    addr: 3000
-    # If you have a paid domain, uncomment and add it here:
-    # domain: my-backend.ngrok.app
+
