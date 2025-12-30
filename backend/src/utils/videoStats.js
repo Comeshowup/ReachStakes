@@ -110,13 +110,17 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
     try {
         if (!accessToken) throw new Error("Missing Instagram access token.");
 
-        // 1. Fetch User's Media
-        // Note: view_count is ONLY available for VIDEO and REEL media types, not IMAGE or CAROUSEL_ALBUM
-        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count,media_type&access_token=${accessToken}`;
+        // 1. Fetch User's Media with all available fields including plays
+        // Note: 'plays' field is for VIDEO/REEL content
+        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count,media_type,plays&access_token=${accessToken}`;
 
+        console.log("=== INSTAGRAM STATS FETCH START ===");
         console.log("Fetching Instagram media list...");
         const response = await axios.get(url);
         const mediaList = response.data.data;
+
+        console.log("Media count:", mediaList?.length || 0);
+        console.log("First 2 media items:", JSON.stringify(mediaList?.slice(0, 2), null, 2));
 
         if (!mediaList || mediaList.length === 0) {
             throw new Error("No media found on your Instagram account.");
@@ -133,61 +137,73 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
         });
 
         if (!matchedMedia) {
+            console.log("Could not match. Looking for:", cleanSubmissionUrl);
+            console.log("Available permalinks:", mediaList.map(m => m.permalink));
             throw new Error("Could not find this post on your connected Instagram account. Please ensure you are submitting your own post.");
         }
 
-        console.log("Matched IG Media:", matchedMedia);
+        console.log("Matched IG Media:", JSON.stringify(matchedMedia, null, 2));
 
-        // 3. Fetch detailed media info including view_count for VIDEO/REEL types
-        let viewCount = 0;
-        const isVideoContent = matchedMedia.media_type === 'VIDEO' || matchedMedia.media_type === 'REEL';
+        // 3. Fetch detailed media info and insights
+        // Check if 'plays' was returned (only for VIDEO type)
+        let viewCount = matchedMedia.plays || 0;
+        console.log("Initial plays from media response:", viewCount);
 
-        if (isVideoContent) {
-            try {
-                // Fetch view_count specifically for video content
-                const videoMediaUrl = `https://graph.instagram.com/${matchedMedia.id}?fields=id,media_type,like_count,comments_count,plays&access_token=${accessToken}`;
-                console.log(`Fetching video details for media ${matchedMedia.id}`);
+        const isVideoContent = matchedMedia.media_type === 'VIDEO';
 
-                const videoResp = await axios.get(videoMediaUrl);
-                const videoData = videoResp.data;
+        // Always try insights endpoint for professional accounts - it's the most reliable
+        // Insights requires instagram_manage_insights permission for Business/Creator accounts
+        try {
+            // Different metrics available: plays, reach, impressions
+            // For reels/videos: 'plays' is the primary metric
+            // For images: 'impressions' or 'reach'
+            const metrics = isVideoContent ? 'plays,reach' : 'impressions,reach';
+            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=${metrics}&access_token=${accessToken}`;
+            console.log(`Fetching insights for media ${matchedMedia.id} (media_type: ${matchedMedia.media_type})`);
+            console.log(`Metrics requested: ${metrics}`);
 
-                // 'plays' is the official field for video plays/views in Basic Display API
-                viewCount = videoData.plays || 0;
-                console.log("Video plays/views:", viewCount);
-            } catch (videoErr) {
-                console.warn("Could not fetch video plays:", videoErr.response?.data?.error?.message || videoErr.message);
-            }
-        } else {
-            // For IMAGE and CAROUSEL_ALBUM, views are not available via Basic Display API
-            // We can try the insights endpoint, but it requires Business/Creator account
-            console.log(`Media type is ${matchedMedia.media_type} - views not available via Basic Display API`);
+            const insightsResp = await axios.get(insightsUrl);
+            const insights = insightsResp.data.data;
 
-            try {
-                // Try insights endpoint (only works for Business/Creator accounts)
-                const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=impressions,reach&access_token=${accessToken}`;
-                console.log(`Attempting to fetch insights for ${matchedMedia.id} (requires Business account)`);
+            console.log("Insights response:", JSON.stringify(insights, null, 2));
 
-                const insightsResp = await axios.get(insightsUrl);
-                const insights = insightsResp.data.data;
+            if (insights && insights.length > 0) {
+                // Try 'plays' for video content
+                const playsMetric = insights.find(m => m.name === 'plays');
+                const playsValue = playsMetric?.values?.[0]?.value || 0;
 
-                if (insights) {
-                    // Find 'impressions' metric (total views including repeat views)
-                    const impressionsMetric = insights.find(m => m.name === 'impressions');
-                    const impressionsValue = impressionsMetric?.values?.[0]?.value || 0;
+                // Try 'impressions' as fallback (total views including repeat)
+                const impressionsMetric = insights.find(m => m.name === 'impressions');
+                const impressionsValue = impressionsMetric?.values?.[0]?.value || 0;
 
-                    // Find 'reach' metric (unique accounts that saw the post)
-                    const reachMetric = insights.find(m => m.name === 'reach');
-                    const reachValue = reachMetric?.values?.[0]?.value || 0;
+                // Try 'reach' as final fallback (unique accounts)
+                const reachMetric = insights.find(m => m.name === 'reach');
+                const reachValue = reachMetric?.values?.[0]?.value || 0;
 
-                    // Use impressions as "views" (closest equivalent)
-                    viewCount = impressionsValue || reachValue;
-                    console.log("Fetched IG Insights:", { impressions: impressionsValue, reach: reachValue });
+                console.log("Insights values:", { plays: playsValue, impressions: impressionsValue, reach: reachValue });
+
+                // Priority: plays > impressions > reach > initial plays
+                if (playsValue > 0) {
+                    viewCount = playsValue;
+                    console.log("Using 'plays' metric:", viewCount);
+                } else if (impressionsValue > 0) {
+                    viewCount = impressionsValue;
+                    console.log("Using 'impressions' metric:", viewCount);
+                } else if (reachValue > 0) {
+                    viewCount = reachValue;
+                    console.log("Using 'reach' metric:", viewCount);
                 }
-            } catch (insightErr) {
-                // This is expected to fail for non-Business accounts
-                const errorMsg = insightErr.response?.data?.error?.message || insightErr.message;
-                console.warn("Insights not available (requires Instagram Business/Creator account):", errorMsg);
-                // viewCount remains 0 - this is expected for personal accounts with image posts
+            }
+        } catch (insightErr) {
+            const errorMsg = insightErr.response?.data?.error?.message || insightErr.message;
+            const errorCode = insightErr.response?.data?.error?.code;
+            console.warn("Insights API error:", { code: errorCode, message: errorMsg });
+            console.warn("Full error response:", JSON.stringify(insightErr.response?.data, null, 2));
+
+            // Keep using the 'plays' value from initial media request if we have it
+            if (matchedMedia.plays) {
+                viewCount = matchedMedia.plays;
+                console.log("Falling back to 'plays' from media response:", viewCount);
             }
         }
 
