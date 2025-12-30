@@ -163,6 +163,11 @@ router.post("/:id/submit", protect, async (req, res) => {
             const fetched = await fetchVideoStats(platform, submissionUrl, userId);
             console.log("Fetched IG stats:", fetched);
             initialStats = fetched;
+        } else if (platform === 'TikTok' && submissionUrl) {
+            console.log(`Fetching stats for TikTok video ${submissionUrl} for user ${userId}`);
+            const fetched = await fetchVideoStats(platform, submissionUrl, userId);
+            console.log("Fetched TikTok stats:", fetched);
+            initialStats = fetched;
         }
 
         const updated = await prisma.campaignCollaboration.update({

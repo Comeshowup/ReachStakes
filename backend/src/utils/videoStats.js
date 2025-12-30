@@ -33,6 +33,8 @@ export const fetchVideoStats = async (platform, videoId, userId) => {
             // Let's rely on the caller passing the URL as 'videoId' or handle it differently?
             // actually, in collaborationRoutes, we can pass the URL as the second arg for IG.
             return await fetchInstagramStats(videoId, account.accessToken);
+        } else if (platform === 'TikTok') {
+            return await fetchTikTokStats(videoId, account.accessToken);
         }
 
         // Placeholder for other platforms
@@ -110,7 +112,7 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
 
         // 1. Fetch User's Media
         // "me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count"
-        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count&access_token=${accessToken}`;
+        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count,media_type,view_count&access_token=${accessToken}`;
 
         const response = await axios.get(url);
         const mediaList = response.data.data;
@@ -133,9 +135,11 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
             throw new Error("Could not find this post on your connected Instagram account. Please ensure you are submitting your own post.");
         }
 
+        console.log("Matched IG Media:", matchedMedia);
+
         // 3. Return Stats
         return {
-            views: 0, // Views are not available via Basic Display API for all account types easily
+            views: matchedMedia.view_count || 0, // Try to use view_count if available (for Videos/Reels)
             likes: matchedMedia.like_count || 0,
             comments: matchedMedia.comments_count || 0,
             updatedAt: new Date().toISOString()
@@ -153,3 +157,74 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
     }
 };
 
+const fetchTikTokStats = async (submissionUrl, accessToken) => {
+    try {
+        if (!accessToken) throw new Error("Missing TikTok access token.");
+
+        // 1. Fetch User's Videos from TikTok Display API
+        // For Sandbox, we mostly use the /video/list/ endpoint.
+        // POST https://open.tiktokapis.com/v2/video/list/
+        // Headers: Authorization: Bearer <access_token>, Content-Type: application/json
+        // Body: { "max_count": 20 }
+
+        const url = 'https://open.tiktokapis.com/v2/video/list/?fields=id,title,share_url,like_count,comment_count,share_count,view_count';
+        // Note: 'view_count' availability depends on permissions, standard scope usually includes it for own videos.
+
+        const response = await axios.post(url, {
+            max_count: 20 // Fetch last 20 videos
+        }, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const videos = response.data.data?.videos;
+
+        if (!videos || videos.length === 0) {
+            throw new Error("No videos found on your TikTok account.");
+        }
+
+        // 2. Find matching video
+        // TikTok share URLs can vary (vm.tiktok.com vs tiktok.com/@user/video/ID).
+        // Best bet: extract ID from submissionUrl if possible, OR fuzzy match the share_url.
+        // Assuming submissionUrl contains the video ID. Let's try to find if the video ID or share URL matches.
+
+        const matchedVideo = videos.find(video => {
+            // Check if share_url matches (fuzzy)
+            if (video.share_url && submissionUrl.includes(video.share_url)) return true;
+            if (video.share_url && video.share_url.includes(submissionUrl)) return true;
+
+            // Check ID if possible (frontend logic might not extract ID for TikTok yet)
+            return false;
+        });
+
+        if (!matchedVideo) {
+            // Fallback: If we can't match, maybe we just return the most recent one? NO, that's bad.
+            // Let's log the share_urls available for debugging
+            console.log("Available TikTok Videos:", videos.map(v => v.share_url));
+            throw new Error("Could not find this video on your connected TikTok account. Please check the URL.");
+        }
+
+        console.log("Matched TikTok Video:", matchedVideo);
+
+        // 3. Return Stats
+        return {
+            views: matchedVideo.view_count || 0,
+            likes: matchedVideo.like_count || 0,
+            comments: matchedVideo.comment_count || 0,
+            updatedAt: new Date().toISOString()
+        };
+
+    } catch (err) {
+        if (err.response) {
+            console.error("TikTok API Error:", err.response.data);
+            if (err.response.status === 401) {
+                throw new Error("Your TikTok connection has expired. Please reconnect it.");
+            }
+            const platformErr = err.response.data.error?.message || JSON.stringify(err.response.data);
+            throw new Error("TikTok API Error: " + platformErr);
+        }
+        throw err;
+    }
+};
