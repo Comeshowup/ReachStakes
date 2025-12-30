@@ -26,6 +26,13 @@ export const fetchVideoStats = async (platform, videoId, userId) => {
         // 2. Fetch based on platform
         if (platform === 'YouTube') {
             return await fetchYouTubeStats(videoId, account.accessToken);
+        } else if (platform === 'Instagram') {
+            // For Instagram, we need the full URL to find the matching media
+            // We pass the second argument (videoId) as the URL if logic demands, 
+            // but the caller passed 'videoId' which might be null for IG.
+            // Let's rely on the caller passing the URL as 'videoId' or handle it differently?
+            // actually, in collaborationRoutes, we can pass the URL as the second arg for IG.
+            return await fetchInstagramStats(videoId, account.accessToken);
         }
 
         // Placeholder for other platforms
@@ -92,6 +99,55 @@ const fetchYouTubeStats = async (videoId, accessToken) => {
             }
 
             throw new Error("YouTube API Error: " + (err.response.data.error?.message || err.message));
+        }
+        throw err;
+    }
+};
+
+const fetchInstagramStats = async (submissionUrl, accessToken) => {
+    try {
+        if (!accessToken) throw new Error("Missing Instagram access token.");
+
+        // 1. Fetch User's Media
+        // "me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count"
+        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count&access_token=${accessToken}`;
+
+        const response = await axios.get(url);
+        const mediaList = response.data.data;
+
+        if (!mediaList || mediaList.length === 0) {
+            throw new Error("No media found on your Instagram account.");
+        }
+
+        // 2. Find matching post
+        // Normalize URLs to remove query params for comparison
+        const cleanSubmissionUrl = submissionUrl.split('?')[0].replace(/\/$/, "");
+
+        const matchedMedia = mediaList.find(media => {
+            if (!media.permalink) return false;
+            const cleanPermalink = media.permalink.split('?')[0].replace(/\/$/, "");
+            return cleanPermalink.includes(cleanSubmissionUrl) || cleanSubmissionUrl.includes(cleanPermalink);
+        });
+
+        if (!matchedMedia) {
+            throw new Error("Could not find this post on your connected Instagram account. Please ensure you are submitting your own post.");
+        }
+
+        // 3. Return Stats
+        return {
+            views: 0, // Views are not available via Basic Display API for all account types easily
+            likes: matchedMedia.like_count || 0,
+            comments: matchedMedia.comments_count || 0,
+            updatedAt: new Date().toISOString()
+        };
+
+    } catch (err) {
+        if (err.response) {
+            console.error("Instagram API Error:", err.response.data);
+            if (err.response.status === 401) {
+                throw new Error("Your Instagram connection has expired. Please reconnect it.");
+            }
+            throw new Error("Instagram API Error: " + (err.response.data.error?.message || err.message));
         }
         throw err;
     }

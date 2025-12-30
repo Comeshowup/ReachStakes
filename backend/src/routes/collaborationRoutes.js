@@ -157,6 +157,12 @@ router.post("/:id/submit", protect, async (req, res) => {
             console.log("Fetched stats:", fetched);
             // Ensure we use the fetched stats
             initialStats = fetched;
+        } else if (platform === 'Instagram' && submissionUrl) {
+            console.log(`Fetching stats for Instagram post ${submissionUrl} for user ${userId}`);
+            // Pass submissionUrl as the "videoId" argument for Instagram
+            const fetched = await fetchVideoStats(platform, submissionUrl, userId);
+            console.log("Fetched IG stats:", fetched);
+            initialStats = fetched;
         }
 
         const updated = await prisma.campaignCollaboration.update({

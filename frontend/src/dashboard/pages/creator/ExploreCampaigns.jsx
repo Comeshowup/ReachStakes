@@ -25,7 +25,7 @@ const ExploreCampaigns = () => {
                     title: c.title,
                     description: c.description || "",
                     brand: c.brand?.brandProfile?.companyName || "Unknown Brand",
-                    logo: c.brand?.brandProfile?.logoUrl || "https://via.placeholder.com/50",
+                    logo: c.brand?.brandProfile?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.brand?.brandProfile?.companyName || 'Brand')}&background=random`,
                     platform: c.platformRequired || "Any",
                     type: c.campaignType || "General",
                     budget: c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable"),
