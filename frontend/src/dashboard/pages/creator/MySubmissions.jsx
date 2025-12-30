@@ -62,7 +62,7 @@ const SubmissionModal = ({ isOpen, onClose, campaigns, onSuccess }) => {
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        campaignId: "",
+        collaborationId: "", // The collaboration ID, not campaign ID
         platform: "YouTube",
         link: "",
         title: "",
@@ -72,15 +72,29 @@ const SubmissionModal = ({ isOpen, onClose, campaigns, onSuccess }) => {
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('token'); // Assuming auth token is stored here
-            await axios.post(`${API_BASE_URL}/collaborations/submit`, formData, {
+            const token = localStorage.getItem('token');
+
+            // Extract videoId from YouTube URL if applicable
+            let videoId = null;
+            if (formData.platform === "YouTube" && formData.link) {
+                // Supports standard watch, short URL, shorts, and embed
+                const match = formData.link.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                if (match) videoId = match[1];
+            }
+
+            // Call the correct endpoint with collaboration ID
+            await axios.post(`${API_BASE_URL}/collaborations/${formData.collaborationId}/submit`, {
+                submissionUrl: formData.link,
+                platform: formData.platform,
+                videoId: videoId
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             onSuccess();
             onClose();
             setStep(1);
             setFormData({
-                campaignId: "",
+                collaborationId: "",
                 platform: "YouTube",
                 link: "",
                 title: "",
@@ -127,8 +141,8 @@ const SubmissionModal = ({ isOpen, onClose, campaigns, onSuccess }) => {
                                     campaigns.map(campaign => (
                                         <button
                                             key={campaign.id}
-                                            onClick={() => setFormData({ ...formData, campaignId: campaign.campaignId })}
-                                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${formData.campaignId === campaign.campaignId
+                                            onClick={() => setFormData({ ...formData, collaborationId: campaign.id })}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${formData.collaborationId === campaign.id
                                                 ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500"
                                                 : "border-gray-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700"
                                                 }`}
@@ -138,7 +152,7 @@ const SubmissionModal = ({ isOpen, onClose, campaigns, onSuccess }) => {
                                                 <p className="text-sm font-bold text-gray-900 dark:text-white">{campaign.campaignTitle}</p>
                                                 <p className="text-xs text-gray-500 dark:text-slate-400">{campaign.brandName}</p>
                                             </div>
-                                            {formData.campaignId === campaign.campaignId && <CheckCircle className="w-5 h-5 text-indigo-500 ml-auto" />}
+                                            {formData.collaborationId === campaign.id && <CheckCircle className="w-5 h-5 text-indigo-500 ml-auto" />}
                                         </button>
                                     ))
                                 )}
@@ -217,7 +231,7 @@ const SubmissionModal = ({ isOpen, onClose, campaigns, onSuccess }) => {
                     {step < 3 ? (
                         <button
                             onClick={() => setStep(step + 1)}
-                            disabled={step === 1 && !formData.campaignId || step === 2 && !formData.link}
+                            disabled={step === 1 && !formData.collaborationId || step === 2 && !formData.link}
                             className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20"
                         >
                             Next Step

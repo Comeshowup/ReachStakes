@@ -1,6 +1,7 @@
 import express from "express";
 import { prisma } from "../config/db.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { fetchVideoStats } from "../utils/videoStats.js";
 
 const router = express.Router();
 
@@ -132,10 +133,31 @@ router.patch("/:id/status", async (req, res) => {
 });
 
 // Submit Content URL
-router.post("/:id/submit", async (req, res) => {
+router.post("/:id/submit", protect, async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = parseInt(req.params.id);
         const { submissionUrl, platform, videoId } = req.body;
+        const userId = req.user.id; // protect middleware ensures this exists
+
+        if (isNaN(id)) {
+            return res.status(400).json({ error: "Invalid submission ID" });
+        }
+
+        // Fetch initial stats immediately to verify ownership and populate data
+        let initialStats = {
+            views: "0",
+            likes: "0",
+            comments: "0"
+        };
+
+        if (platform === 'YouTube' && videoId) {
+            // We allow this to throw (e.g. Ownership Mismatch) so the user gets the error
+            console.log(`Fetching stats for video ${videoId} on platform ${platform} for user ${userId}`);
+            const fetched = await fetchVideoStats(platform, videoId, userId);
+            console.log("Fetched stats:", fetched);
+            // Ensure we use the fetched stats
+            initialStats = fetched;
+        }
 
         const updated = await prisma.campaignCollaboration.update({
             where: { id: id },
@@ -143,20 +165,18 @@ router.post("/:id/submit", async (req, res) => {
                 submissionUrl,
                 submissionPlatform: platform,
                 videoId, // Store the YouTube video ID
-                status: "SUBMITTED",
-                submittedAt: new Date(),
-                videoStats: { // Initialize stats
-                    viewCount: "0",
-                    likeCount: "0",
-                    commentCount: "0"
-                }
+                status: "Under_Review",
+                videoStats: initialStats
             }
         });
 
         res.json(updated);
     } catch (error) {
         console.error("Error submitting content:", error);
-        res.status(500).json({ error: "Failed to submit content" });
+        res.status(500).json({
+            error: "Failed to submit content",
+            details: error.message
+        });
     }
 });
 
