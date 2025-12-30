@@ -137,9 +137,47 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
 
         console.log("Matched IG Media:", matchedMedia);
 
-        // 3. Return Stats
+        // 3. Fetch Insights (for Views, Reach, Engagement)
+        // Endpoint: GET graph.instagram.com/{media-id}/insights?metric=views,engagement,reach
+        // Permissions: instagram_business_basic, instagram_business_manage_insights
+
+        let viewCount = matchedMedia.view_count || 0; // Default to media field if available
+
+        try {
+            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=views,engagement,reach&access_token=${accessToken}`;
+            console.log(`Fetching IG Insights for ${matchedMedia.id}`);
+
+            const insightsResp = await axios.get(insightsUrl);
+            const insights = insightsResp.data.data;
+
+            if (insights) {
+                // Find 'views' metric
+                const viewsMetric = insights.find(m => m.name === 'views');
+                // The API returns values as an array [{ value: X }] usually
+                const viewsValue = viewsMetric?.values?.[0]?.value || 0;
+
+                // Find 'reach' metric (fallback or supplementary)
+                const reachMetric = insights.find(m => m.name === 'reach');
+                const reachValue = reachMetric?.values?.[0]?.value || 0;
+
+                // Use 'views' if available (it refers to total displays)
+                if (viewsValue > 0) {
+                    viewCount = viewsValue;
+                } else if (!viewCount && reachValue > 0) {
+                    // Fallback to reach if no views/view_count available
+                    viewCount = reachValue;
+                }
+
+                console.log("Fetched IG Insights:", { views: viewsValue, reach: reachValue });
+            }
+        } catch (insightErr) {
+            console.warn("Could not fetch IG Insights:", insightErr.response?.data?.error?.message || insightErr.message);
+            // Don't fail the whole request, just proceed with basic stats
+        }
+
+        // 4. Return Stats
         return {
-            views: matchedMedia.view_count || 0, // Try to use view_count if available (for Videos/Reels)
+            views: viewCount,
             likes: matchedMedia.like_count || 0,
             comments: matchedMedia.comments_count || 0,
             updatedAt: new Date().toISOString()
