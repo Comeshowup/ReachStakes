@@ -144,7 +144,8 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
         let viewCount = matchedMedia.view_count || 0; // Default to media field if available
 
         try {
-            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=views,engagement,reach&access_token=${accessToken}`;
+            // We request 'impressions' specifically because 'views' is often 0 for static image posts in current API versions
+            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=views,engagement,reach,impressions&access_token=${accessToken}`;
             console.log(`Fetching IG Insights for ${matchedMedia.id}`);
 
             const insightsResp = await axios.get(insightsUrl);
