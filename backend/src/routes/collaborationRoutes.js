@@ -139,6 +139,14 @@ router.post("/:id/submit", protect, async (req, res) => {
         const { submissionUrl, platform, videoId } = req.body;
         const userId = req.user.id; // protect middleware ensures this exists
 
+        // DEBUG: Log all incoming data
+        console.log("=== SUBMISSION REQUEST RECEIVED ===");
+        console.log("Collaboration ID:", id);
+        console.log("Platform received:", platform);
+        console.log("Submission URL:", submissionUrl);
+        console.log("Video ID:", videoId);
+        console.log("User ID:", userId);
+
         if (isNaN(id)) {
             return res.status(400).json({ error: "Invalid submission ID" });
         }
