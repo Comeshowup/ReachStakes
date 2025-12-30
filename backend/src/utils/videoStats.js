@@ -111,9 +111,10 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
         if (!accessToken) throw new Error("Missing Instagram access token.");
 
         // 1. Fetch User's Media
-        // "me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count"
-        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count,media_type,view_count&access_token=${accessToken}`;
+        // Note: view_count is ONLY available for VIDEO and REEL media types, not IMAGE or CAROUSEL_ALBUM
+        const url = `https://graph.instagram.com/me/media?fields=id,permalink,like_count,comments_count,media_type&access_token=${accessToken}`;
 
+        console.log("Fetching Instagram media list...");
         const response = await axios.get(url);
         const mediaList = response.data.data;
 
@@ -137,46 +138,61 @@ const fetchInstagramStats = async (submissionUrl, accessToken) => {
 
         console.log("Matched IG Media:", matchedMedia);
 
-        // 3. Fetch Insights (for Views, Reach, Engagement)
-        // Endpoint: GET graph.instagram.com/{media-id}/insights?metric=views,engagement,reach
-        // Permissions: instagram_business_basic, instagram_business_manage_insights
+        // 3. Fetch detailed media info including view_count for VIDEO/REEL types
+        let viewCount = 0;
+        const isVideoContent = matchedMedia.media_type === 'VIDEO' || matchedMedia.media_type === 'REEL';
 
-        let viewCount = matchedMedia.view_count || 0; // Default to media field if available
+        if (isVideoContent) {
+            try {
+                // Fetch view_count specifically for video content
+                const videoMediaUrl = `https://graph.instagram.com/${matchedMedia.id}?fields=id,media_type,like_count,comments_count,plays&access_token=${accessToken}`;
+                console.log(`Fetching video details for media ${matchedMedia.id}`);
 
-        try {
-            // We request 'impressions' specifically because 'views' is often 0 for static image posts in current API versions
-            const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=views,engagement,reach,impressions&access_token=${accessToken}`;
-            console.log(`Fetching IG Insights for ${matchedMedia.id}`);
+                const videoResp = await axios.get(videoMediaUrl);
+                const videoData = videoResp.data;
 
-            const insightsResp = await axios.get(insightsUrl);
-            const insights = insightsResp.data.data;
-
-            if (insights) {
-                // Find 'views' metric
-                const viewsMetric = insights.find(m => m.name === 'views');
-                // The API returns values as an array [{ value: X }] usually
-                const viewsValue = viewsMetric?.values?.[0]?.value || 0;
-
-                // Find 'reach' metric (fallback or supplementary)
-                const reachMetric = insights.find(m => m.name === 'reach');
-                const reachValue = reachMetric?.values?.[0]?.value || 0;
-
-                // Use 'views' if available (it refers to total displays)
-                if (viewsValue > 0) {
-                    viewCount = viewsValue;
-                } else if (!viewCount && reachValue > 0) {
-                    // Fallback to reach if no views/view_count available
-                    viewCount = reachValue;
-                }
-
-                console.log("Fetched IG Insights:", { views: viewsValue, reach: reachValue });
+                // 'plays' is the official field for video plays/views in Basic Display API
+                viewCount = videoData.plays || 0;
+                console.log("Video plays/views:", viewCount);
+            } catch (videoErr) {
+                console.warn("Could not fetch video plays:", videoErr.response?.data?.error?.message || videoErr.message);
             }
-        } catch (insightErr) {
-            console.warn("Could not fetch IG Insights:", insightErr.response?.data?.error?.message || insightErr.message);
-            // Don't fail the whole request, just proceed with basic stats
+        } else {
+            // For IMAGE and CAROUSEL_ALBUM, views are not available via Basic Display API
+            // We can try the insights endpoint, but it requires Business/Creator account
+            console.log(`Media type is ${matchedMedia.media_type} - views not available via Basic Display API`);
+
+            try {
+                // Try insights endpoint (only works for Business/Creator accounts)
+                const insightsUrl = `https://graph.instagram.com/${matchedMedia.id}/insights?metric=impressions,reach&access_token=${accessToken}`;
+                console.log(`Attempting to fetch insights for ${matchedMedia.id} (requires Business account)`);
+
+                const insightsResp = await axios.get(insightsUrl);
+                const insights = insightsResp.data.data;
+
+                if (insights) {
+                    // Find 'impressions' metric (total views including repeat views)
+                    const impressionsMetric = insights.find(m => m.name === 'impressions');
+                    const impressionsValue = impressionsMetric?.values?.[0]?.value || 0;
+
+                    // Find 'reach' metric (unique accounts that saw the post)
+                    const reachMetric = insights.find(m => m.name === 'reach');
+                    const reachValue = reachMetric?.values?.[0]?.value || 0;
+
+                    // Use impressions as "views" (closest equivalent)
+                    viewCount = impressionsValue || reachValue;
+                    console.log("Fetched IG Insights:", { impressions: impressionsValue, reach: reachValue });
+                }
+            } catch (insightErr) {
+                // This is expected to fail for non-Business accounts
+                const errorMsg = insightErr.response?.data?.error?.message || insightErr.message;
+                console.warn("Insights not available (requires Instagram Business/Creator account):", errorMsg);
+                // viewCount remains 0 - this is expected for personal accounts with image posts
+            }
         }
 
         // 4. Return Stats
+        console.log("Final Instagram stats:", { views: viewCount, likes: matchedMedia.like_count || 0, comments: matchedMedia.comments_count || 0 });
         return {
             views: viewCount,
             likes: matchedMedia.like_count || 0,
