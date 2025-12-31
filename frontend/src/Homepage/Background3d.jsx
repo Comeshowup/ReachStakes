@@ -200,17 +200,8 @@ const Background3D = () => {
 function Wave() {
   return (
     <>
-      <div className="absolute inset-0 -z-10">
-        <iframe
-          src="https://my.spline.design/claritystream-a72K0KUwFoZV82QBzvu52Kai/"
-          frameBorder="0"
-          width="100%"
-          height="100%"
-          className="w-full h-full"
-          style={{ filter: "saturate(0.95) contrast(1.05)" }}
-        ></iframe>
-
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]"></div>
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-indigo-900/20 via-black to-black">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent opacity-50 blur-3xl"></div>
       </div>
     </>
   );

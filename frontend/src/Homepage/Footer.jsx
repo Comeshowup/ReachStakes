@@ -7,11 +7,11 @@ import { motion } from "framer-motion";
 
 export default function ReachStakesFooterAnimated() {
   return (
-    <footer className="relative text-gray-100 mx-20 overflow-hidden">
+    <footer className="relative text-gray-100 overflow-hidden">
 
 
 
-      <div className="relative max-w-8xl mx-auto px-6 py-16">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
 
           {/* Brand + Animated Logo */}
@@ -19,7 +19,7 @@ export default function ReachStakesFooterAnimated() {
             <div className="flex items-center gap-3">
               <motion.div animate={{ rotate: [0, 8, -6, 0] }} transition={{ repeat: Infinity, duration: 6 }} className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                  <path d="M3 12c0 4.418 3.582 8 8 8s8-3.582 8-8" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95"/>
+                  <path d="M3 12c0 4.418 3.582 8 8 8s8-3.582 8-8" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
                   <circle cx="11" cy="8" r="2.2" fill="white" opacity="0.95" />
                 </svg>
               </motion.div>
@@ -107,10 +107,10 @@ function SocialIcon({ ariaLabel, svgPath }) {
 
 function FeatureCard({ title, desc, icon, delay = 0 }) {
   const icons = {
-    rocket: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 22s1-4 4-6l7-7 3 3-7 7c-2 3-6 4-6 4z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>),
-    chart: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3v18h18" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 13V7M12 17V5M16 11v-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>),
-    wallet: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="7" width="20" height="12" rx="2" stroke="white" strokeWidth="1.2"/><circle cx="18" cy="13" r="1" fill="white"/></svg>),
-    chat: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>)
+    rocket: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 22s1-4 4-6l7-7 3 3-7 7c-2 3-6 4-6 4z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+    chart: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3v18h18" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /><path d="M8 13V7M12 17V5M16 11v-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+    wallet: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="7" width="20" height="12" rx="2" stroke="white" strokeWidth="1.2" /><circle cx="18" cy="13" r="1" fill="white" /></svg>),
+    chat: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>)
   };
 
   return (

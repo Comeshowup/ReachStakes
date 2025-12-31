@@ -7,10 +7,10 @@ function Features() {
     <>
       {/* Features Section */}
       <main>
-        <div className="max-w-8xl mx-10 px-6 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24">
           {/* Section header */}
-          <div className="space-y-16 mx-20">
-        
+          <div className="space-y-16">
+
             <Feature3 />
             <Feature4 />
             <Header />

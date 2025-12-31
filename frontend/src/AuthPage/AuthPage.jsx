@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -11,8 +11,14 @@ import SocialLogin from "./components/SocialLogin";
 
 const AuthPage = () => {
     const navigate = useNavigate();
-    const [role, setRole] = useState("brand"); // "brand" | "creator"
-    const [mode, setMode] = useState("login"); // "login" | "signup"
+    const [searchParams] = useSearchParams();
+
+    // Initialize state from URL query parameters or defaults
+    const initialRole = searchParams.get("role") === "creator" ? "creator" : "brand";
+    const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+
+    const [role, setRole] = useState(initialRole); // "brand" | "creator"
+    const [mode, setMode] = useState(initialMode); // "login" | "signup"
     const [loading, setLoading] = useState(false);
 
     // Form State
