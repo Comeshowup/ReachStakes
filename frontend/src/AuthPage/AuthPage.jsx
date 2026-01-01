@@ -112,7 +112,7 @@ const AuthPage = () => {
 
 
     return (
-        <div className={cn("flex min-h-screen w-full items-center justify-center overflow-hidden transition-colors duration-1000", bgGradient, "text-white")}>
+        <div className={cn("flex min-h-[100dvh] w-full items-center justify-center overflow-hidden transition-colors duration-1000 relative", bgGradient, "text-white")}>
 
             <BackgroundEffects isBrand={isBrand} />
 

@@ -19,7 +19,7 @@ const BackgroundEffects = ({ isBrand }) => {
 
                 {/* Pulsing Nodes - Optimized Animation */}
                 <motion.div
-                    className={cn("absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full mix-blend-screen blur-[100px] opacity-20", isBrand ? "bg-indigo-600" : "bg-teal-600")}
+                    className={cn("absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full mix-blend-screen blur-[100px] opacity-20 will-change-transform", isBrand ? "bg-indigo-600" : "bg-teal-600")}
                     animate={{
                         scale: [1, 1.05, 1],
                         opacity: [0.15, 0.2, 0.15],
@@ -27,7 +27,7 @@ const BackgroundEffects = ({ isBrand }) => {
                     transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
                 />
                 <motion.div
-                    className={cn("absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full mix-blend-screen blur-[100px] opacity-10", isBrand ? "bg-purple-600" : "bg-cyan-600")}
+                    className={cn("absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full mix-blend-screen blur-[100px] opacity-10 will-change-transform", isBrand ? "bg-purple-600" : "bg-cyan-600")}
                     animate={{
                         scale: [1, 1.1, 1],
                         opacity: [0.1, 0.15, 0.1],
