@@ -1,31 +1,32 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const ModeToggle = ({ mode, setMode, isBrand }) => {
     return (
-        <div className="flex justify-center gap-8 text-sm mb-6">
-            <button
-                onClick={() => setMode("login")}
-                className={cn(
-                    "transition-all duration-300 pb-1 border-b-2",
-                    mode === "login"
-                        ? (isBrand ? "border-indigo-500 text-white font-medium drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" : "border-teal-500 text-white font-medium drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]")
-                        : "border-transparent text-white/40 hover:text-white/80"
-                )}
-            >
-                Log In
-            </button>
-            <button
-                onClick={() => setMode("signup")}
-                className={cn(
-                    "transition-all duration-300 pb-1 border-b-2",
-                    mode === "signup"
-                        ? (isBrand ? "border-indigo-500 text-white font-medium drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" : "border-teal-500 text-white font-medium drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]")
-                        : "border-transparent text-white/40 hover:text-white/80"
-                )}
-            >
-                Create Account
-            </button>
+        <div className="flex justify-center gap-1 bg-white/5 p-1 rounded-md relative mb-8 backdrop-blur-sm border border-white/10 w-fit mx-auto">
+            {["login", "signup"].map((m) => (
+                <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={cn(
+                        "relative z-10 px-6 py-2 text-sm font-medium transition-colors duration-300",
+                        mode === m ? "text-white" : "text-white/50 hover:text-white/80"
+                    )}
+                >
+                    {mode === m && (
+                        <motion.div
+                            layoutId="active-mode"
+                            className={cn(
+                                "absolute inset-0 rounded-sm shadow-lg",
+                                isBrand ? "bg-indigo-600" : "bg-teal-600"
+                            )}
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                    )}
+                    <span className="relative z-10">{m === "login" ? "Log In" : "Create Account"}</span>
+                </button>
+            ))}
         </div>
     );
 };

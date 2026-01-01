@@ -25,91 +25,82 @@ const AuthForm = ({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
-            <AnimatePresence initial={false}>
-                {mode === "signup" && isBrand && (
+            <AnimatePresence>
+                {mode === "signup" && (
                     <motion.div
-                        key="brand-signup"
-                        initial={{ opacity: 0, height: 0, y: -10 }}
-                        animate={{ opacity: 1, height: "auto", y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
+                        initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                        animate={{ height: "auto", opacity: 1, marginBottom: 20 }}
+                        exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
                         className="overflow-hidden"
                     >
-                        <FormInput
-                            id="companyName"
-                            name="companyName"
-                            label="Company Name"
-                            placeholder="Acme Inc."
-                            value={formData.companyName}
-                            onChange={handleInputChange}
-                            error={errors.companyName}
-                            icon={Building2}
-                            isBrand={isBrand}
-                        />
+                        {isBrand ? (
+                            <FormInput
+                                id="companyName"
+                                name="companyName"
+                                label="Company Name"
+                                placeholder="Acme Inc."
+                                value={formData.companyName}
+                                onChange={handleInputChange}
+                                error={errors.companyName}
+                                icon={Building2}
+                                isBrand={isBrand}
+                            />
+                        ) : (
+                            <FormInput
+                                id="fullName"
+                                name="fullName"
+                                label="Full Name"
+                                placeholder="John Doe"
+                                value={formData.fullName}
+                                onChange={handleInputChange}
+                                error={errors.fullName}
+                                icon={User}
+                                isBrand={isBrand}
+                            />
+                        )}
                     </motion.div>
                 )}
-
-                {mode === "signup" && !isBrand && (
-                    <motion.div
-                        key="creator-signup"
-                        initial={{ opacity: 0, height: 0, y: -10 }}
-                        animate={{ opacity: 1, height: "auto", y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden space-y-5"
-                    >
-                        <FormInput
-                            id="fullName"
-                            name="fullName"
-                            label="Full Name"
-                            placeholder="John Doe"
-                            value={formData.fullName}
-                            onChange={handleInputChange}
-                            error={errors.fullName}
-                            icon={User}
-                            isBrand={isBrand}
-                        />
-                    </motion.div>
-                )}
-
-                {/* Common Fields */}
-                <motion.div key="common-fields" layout className="space-y-5">
-                    <FormInput
-                        id="email"
-                        name="email"
-                        label="Email Address"
-                        type="email"
-                        placeholder="name@example.com"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        error={errors.email}
-                        icon={Mail}
-                        isBrand={isBrand}
-                    />
-
-                    <FormInput
-                        id="password"
-                        name="password"
-                        label="Password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        error={errors.password}
-                        icon={Lock}
-                        isBrand={isBrand}
-                        endIcon={
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-2.5 text-white/40 hover:text-white focus:outline-none transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                        }
-                    />
-                </motion.div>
             </AnimatePresence>
+
+            {/* Common Fields */}
+            <motion.div key="common-fields" className="space-y-5">
+                <FormInput
+                    id="email"
+                    name="email"
+                    label="Email Address"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    error={errors.email}
+                    icon={Mail}
+                    isBrand={isBrand}
+                />
+
+                <FormInput
+                    id="password"
+                    name="password"
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    error={errors.password}
+                    icon={Lock}
+                    isBrand={isBrand}
+                    endIcon={
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-2.5 text-white/40 hover:text-white focus:outline-none transition-colors"
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    }
+                />
+            </motion.div>
+
 
             <div className="pt-2">
                 {errors.apiError && (
@@ -117,19 +108,25 @@ const AuthForm = ({
                         {errors.apiError}
                     </div>
                 )}
-                <Button
-                    type="submit"
-                    disabled={loading}
-                    className={cn(
-                        "w-full h-12 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
-                        activeBtnGradient
-                    )}
+                <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
                 >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {loading ? "Processing..." : (mode === "login" ? `Sign In as ${isBrand ? 'Brand' : 'Creator'}` : `Join as ${isBrand ? 'Brand' : 'Creator'}`)}
-                </Button>
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className={cn(
+                            "w-full h-12 text-base font-semibold text-white transition-all duration-300",
+                            activeBtnGradient
+                        )}
+                    >
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {loading ? "Processing..." : (mode === "login" ? `Sign In as ${isBrand ? 'Brand' : 'Creator'}` : `Join as ${isBrand ? 'Brand' : 'Creator'}`)}
+                    </Button>
+                </motion.div>
             </div>
-        </form>
+        </form >
     );
 };
 

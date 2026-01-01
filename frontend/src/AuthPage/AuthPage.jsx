@@ -117,17 +117,16 @@ const AuthPage = () => {
             <BackgroundEffects isBrand={isBrand} />
 
             {/* RIGHT PANEL - FORM SIDE (Now Centered) */}
-            <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 relative z-10">
+            <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-12 relative z-10 w-full">
                 <motion.div
                     className="w-full max-w-[450px] relative z-10"
-                    layout
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                 >
 
                     {/* GLASS CARD CONTAINER */}
-                    <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl overflow-hidden ring-1 ring-white/5">
+                    <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-hidden ring-1 ring-white/5">
                         {/* Rim Light */}
                         <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10 pointer-events-none"></div>
 
@@ -135,11 +134,11 @@ const AuthPage = () => {
                             {mode === "signup" && (
                                 <motion.div
                                     key="role-selector"
-                                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-                                    animate={{ height: "auto", opacity: 1, marginBottom: 32 }}
-                                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="overflow-hidden"
+                                    initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, height: "auto", scale: 1 }}
+                                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden mb-6"
                                 >
                                     <RoleSelector role={role} setRole={setRole} />
                                 </motion.div>
@@ -160,17 +159,19 @@ const AuthPage = () => {
 
                         <ModeToggle mode={mode} setMode={setMode} isBrand={isBrand} />
 
-                        <AuthForm
-                            mode={mode}
-                            role={role}
-                            loading={loading}
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            handleSubmit={handleSubmit}
-                            errors={errors}
-                        />
+                        <div className="relative">
+                            <AuthForm
+                                mode={mode}
+                                role={role}
+                                loading={loading}
+                                formData={formData}
+                                handleInputChange={handleInputChange}
+                                handleSubmit={handleSubmit}
+                                errors={errors}
+                            />
 
-                        <SocialLogin role={role} mode={mode} />
+                            <SocialLogin role={role} mode={mode} />
+                        </div>
 
                         <p className="text-center text-xs text-white/30 mt-6">
                             By clicking continue, you agree to our <a href="#" className="underline hover:text-white transition-colors">Terms of Service</a> and <a href="#" className="underline hover:text-white transition-colors">Privacy Policy</a>.

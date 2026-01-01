@@ -51,12 +51,14 @@ const FormInput = ({
                     name={name}
                     type={type}
                     placeholder={placeholder}
-                    className={cn("pl-9 bg-black/20 border-white/10 text-white placeholder:text-white/20 transition-all duration-300",
+                    className={cn("pl-9 bg-black/30 border-white/10 text-white placeholder:text-white/30 transition-all duration-300 backdrop-blur-sm",
+                        "hover:border-white/30 hover:bg-black/40",
                         activeBorderFocus, activeGlow,
-                        "focus:bg-black/40 hover:border-white/20"
+                        "focus:bg-black/50 focus:ring-1 focus:ring-white/10"
                     )}
                     value={value}
                     onChange={onChange}
+                    style={{ fontSize: '16px' }} // Prevent iOS zoom
                 />
                 {endIcon}
             </div>
