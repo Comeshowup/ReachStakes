@@ -122,7 +122,9 @@ const SocialAccounts = () => {
         },
         onError: () => alert('YouTube connection failed'),
         flow: 'auth-code',
-        scope: 'https://www.googleapis.com/auth/youtube.readonly'
+        scope: 'https://www.googleapis.com/auth/youtube.readonly',
+        // key addition: force consent to get refresh_token
+        prompt: 'consent'
     });
 
     const getAccountsFor = (platformName) => {

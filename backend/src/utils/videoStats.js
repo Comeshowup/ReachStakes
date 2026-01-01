@@ -9,13 +9,15 @@ import { prisma } from '../config/db.js';
  * @param {number} userId - The ID of the user (creator) to fetch tokens for
  * @returns {Promise<Object>} - The stats object { views, likes, comments, updatedAt }
  */
+import { OAuth2Client } from 'google-auth-library';
+
 export const fetchVideoStats = async (platform, videoId, userId) => {
     try {
-        // 1. Get the Access Token for the user & platform
+        // 1. Get the Social Account
         const account = await prisma.socialAccount.findFirst({
             where: {
                 userId: userId,
-                platform: { equals: platform } // Case insensitive match might be needed depending on DB, but Enum usually matches
+                platform: { equals: platform }
             }
         });
 
@@ -23,27 +25,143 @@ export const fetchVideoStats = async (platform, videoId, userId) => {
             throw new Error(`You have not linked your ${platform} account. Please link it in Settings > Social Accounts first.`);
         }
 
-        // 2. Fetch based on platform
+        // 2. Get a Valid Access Token (Refresh if needed)
+        const accessToken = await getValidAccessToken(account);
+
+        // 3. Fetch based on platform
         if (platform === 'YouTube') {
-            return await fetchYouTubeStats(videoId, account.accessToken);
+            return await fetchYouTubeStats(videoId, accessToken);
         } else if (platform === 'Instagram') {
-            // For Instagram, we need the full URL to find the matching media
-            // We pass the second argument (videoId) as the URL if logic demands, 
-            // but the caller passed 'videoId' which might be null for IG.
-            // Let's rely on the caller passing the URL as 'videoId' or handle it differently?
-            // actually, in collaborationRoutes, we can pass the URL as the second arg for IG.
-            return await fetchInstagramStats(videoId, account.accessToken);
+            return await fetchInstagramStats(videoId, accessToken);
         } else if (platform === 'TikTok') {
-            return await fetchTikTokStats(videoId, account.accessToken);
+            return await fetchTikTokStats(videoId, accessToken);
         }
 
-        // Placeholder for other platforms
         throw new Error(`Strict verification not yet implemented for ${platform}.`);
 
     } catch (error) {
         console.error(`Error fetching stats for ${platform}:`, error.message);
-        throw error; // Re-throw the error so the caller can handle it
+        throw error;
     }
+};
+
+/**
+ * Checks if the access token is valid or expiring soon.
+ * If expiring (or expired), attempts to refresh it and updates the DB.
+ */
+const getValidAccessToken = async (account) => {
+    // Buffer time: Refresh if expiring within the next 5 minutes
+    const REFRESH_BUFFER = 5 * 60 * 1000;
+    const now = Date.now();
+    const expiryTime = new Date(account.expiresAt).getTime();
+
+    // If token is valid for more than 5 mins, use it.
+    if (expiryTime - now > REFRESH_BUFFER) {
+        return account.accessToken;
+    }
+
+    console.log(`Token for ${account.platform} (User ${account.userId}) is expiring or expired. Refreshing...`);
+
+    let newAccessToken = null;
+    let newExpiryDate = null;
+    let newRefreshToken = account.refreshToken; // Initialize with old one
+
+    try {
+        if (account.platform === 'YouTube') {
+            const { token, expiry } = await refreshYouTubeToken(account.refreshToken);
+            newAccessToken = token;
+            newExpiryDate = expiry;
+        } else if (account.platform === 'Instagram') {
+            // Instagram Long-Lived tokens last 60 days. We refresh them if they are old.
+            const { token, expiry } = await refreshInstagramToken(account.accessToken);
+            newAccessToken = token;
+            newExpiryDate = expiry;
+        } else if (account.platform === 'TikTok') {
+            // TikTok tokens last ~24h.
+            const { token, expiry, refreshToken } = await refreshTikTokToken(account.refreshToken);
+            newAccessToken = token;
+            newExpiryDate = expiry;
+            newRefreshToken = refreshToken; // TikTok rotates refresh tokens!
+        } else {
+            // For platforms without refresh logic implemented yet, return old token and hope it works or user re-auths
+            console.warn(`No refresh logic for ${account.platform}. using existing token.`);
+            return account.accessToken;
+        }
+
+        // Update DB
+        if (newAccessToken) {
+            await prisma.socialAccount.update({
+                where: { id: account.id },
+                data: {
+                    accessToken: newAccessToken,
+                    expiresAt: newExpiryDate,
+                    refreshToken: newRefreshToken
+                }
+            });
+            console.log(`Successfully refreshed token for ${account.platform}.`);
+            return newAccessToken;
+        }
+
+    } catch (error) {
+        console.error(`Failed to refresh token for ${account.platform}:`, error.message);
+        // If refresh fails (revoked, etc.), we throw error so the main loop knows.
+        // The user effectively needs to re-login.
+        throw new Error(`Your ${account.platform} connection has expired and could not be auto-refreshed. Please reconnect your account.`);
+    }
+};
+
+const refreshYouTubeToken = async (refreshToken) => {
+    if (!refreshToken) throw new Error("No refresh token available for YouTube.");
+
+    const client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    client.setCredentials({ refresh_token: refreshToken });
+
+    const { credentials } = await client.refreshAccessToken();
+    return {
+        token: credentials.access_token,
+        expiry: new Date(credentials.expiry_date)
+    };
+};
+
+const refreshInstagramToken = async (currentAccessToken) => {
+    // GET https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token={access_token}
+    const response = await axios.get('https://graph.instagram.com/refresh_access_token', {
+        params: {
+            grant_type: 'ig_refresh_token',
+            access_token: currentAccessToken
+        }
+    });
+
+    const { access_token, expires_in } = response.data;
+    const expiryDate = new Date(Date.now() + expires_in * 1000);
+
+    return { token: access_token, expiry: expiryDate };
+};
+
+const refreshTikTokToken = async (currentRefreshToken) => {
+    // POST https://open.tiktokapis.com/v2/oauth/token/
+    const params = new URLSearchParams();
+    params.append('client_key', process.env.TIKTOK_CLIENT_KEY);
+    params.append('client_secret', process.env.TIKTOK_CLIENT_SECRET);
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', currentRefreshToken);
+
+    const response = await axios.post('https://open.tiktokapis.com/v2/oauth/token/', params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const { access_token, refresh_token, expires_in } = response.data; // TikTok returns new refresh token
+    const expiryDate = new Date(Date.now() + expires_in * 1000);
+
+    return {
+        token: access_token,
+        refreshToken: refresh_token,
+        expiry: expiryDate
+    };
 };
 
 const fetchYouTubeStats = async (videoId, accessToken) => {

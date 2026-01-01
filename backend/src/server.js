@@ -53,8 +53,8 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/collaborations', collaborationRoutes);
 
-// Cron Job: Update Video Stats every hour
-cron.schedule('0 * * * *', async () => {
+// Cron Job: Update Video Stats every 5 minutes
+cron.schedule('*/5 * * * *', async () => {
     console.log('Running video stats update...');
     try {
         // Find all collaborations with a videoId that are not active/completed? Or just all?
