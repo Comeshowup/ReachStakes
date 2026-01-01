@@ -264,23 +264,31 @@ const fetchTikTokStats = async (submissionUrl, accessToken) => {
         }
 
         // 2. Find matching video
-        // TikTok share URLs can vary (vm.tiktok.com vs tiktok.com/@user/video/ID).
-        // Best bet: extract ID from submissionUrl if possible, OR fuzzy match the share_url.
-        // Assuming submissionUrl contains the video ID. Let's try to find if the video ID or share URL matches.
+        console.log("Submission URL:", submissionUrl);
+        const resolvedUrl = await resolveTikTokUrl(submissionUrl);
+        console.log("Resolved URL:", resolvedUrl);
+
+        const submissionVideoId = extractTikTokVideoId(resolvedUrl);
 
         const matchedVideo = videos.find(video => {
-            // Check if share_url matches (fuzzy)
-            if (video.share_url && submissionUrl.includes(video.share_url)) return true;
-            if (video.share_url && video.share_url.includes(submissionUrl)) return true;
+            // Priority 1: Match by ID
+            if (submissionVideoId && video.id === submissionVideoId) return true;
 
-            // Check ID if possible (frontend logic might not extract ID for TikTok yet)
+            // Priority 2: Match by share_url (fuzzy)
+            if (video.share_url) {
+                const cleanShareUrl = video.share_url.split('?')[0];
+                const cleanResolvedUrl = resolvedUrl.split('?')[0];
+
+                if (cleanResolvedUrl === cleanShareUrl) return true;
+                if (cleanResolvedUrl.includes(cleanShareUrl)) return true;
+                if (cleanShareUrl.includes(cleanResolvedUrl)) return true;
+            }
             return false;
         });
 
         if (!matchedVideo) {
-            // Fallback: If we can't match, maybe we just return the most recent one? NO, that's bad.
-            // Let's log the share_urls available for debugging
-            console.log("Available TikTok Videos:", videos.map(v => v.share_url));
+            console.log("Available TikTok Videos (IDs):", videos.map(v => v.id));
+            console.log("Available TikTok Videos (URLs):", videos.map(v => v.share_url));
             throw new Error("Could not find this video on your connected TikTok account. Please check the URL.");
         }
 
@@ -305,4 +313,39 @@ const fetchTikTokStats = async (submissionUrl, accessToken) => {
         }
         throw err;
     }
+};
+
+/**
+ * Resolves a shortened TikTok URL (e.g. vt.tiktok.com) to the full canonical URL.
+ */
+const resolveTikTokUrl = async (shortUrl) => {
+    if (!shortUrl.includes('tiktok.com')) return shortUrl;
+
+    try {
+        // Use a real user agent to avoid bot detection on redirects
+        const response = await axios.get(shortUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            maxRedirects: 5,
+            validateStatus: (status) => status < 400 // Accept redirects if axios doesn't follow automatically (it does by default)
+        });
+        return response.request.res.responseUrl || shortUrl;
+    } catch (error) {
+        console.log("Error resolving TikTok URL:", error.message);
+        // If we got a response URL before failing, return it
+        if (error.request && error.request.res && error.request.res.responseUrl) {
+            return error.request.res.responseUrl;
+        }
+        return shortUrl;
+    }
+};
+
+/**
+ * Extracts the video ID from a full TikTok URL.
+ * Format: https://www.tiktok.com/@user/video/741961...
+ */
+const extractTikTokVideoId = (url) => {
+    const match = url.match(/\/video\/(\d+)/);
+    return match ? match[1] : null;
 };
