@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import {
     MapPin,
     Edit,
@@ -24,10 +25,35 @@ import {
     Users,
     CheckCircle2,
     ArrowRight,
-    X
+    X,
+    DollarSign,
+    PieChart,
+    BarChart3,
+    Clock,
+    Settings,
+    AlertCircle,
+    Loader2
 } from "lucide-react";
-import { CREATOR_PROFILE, CREATOR_POSTS, CAMPAIGNS_DATA } from "../../data";
+import { deleteAccount } from "../../../api/userService";
+import { calculateSuggestedRate, getPriceRange } from "../../../utils/rateUtils";
+import { CREATOR_POSTS, CAMPAIGNS_DATA } from "../../data";
 import EditProfileModal from "../../components/EditProfileModal";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+// --- Mock Data for New Features ---
+const CREATOR_SERVICES = [
+    { id: 1, title: "Instagram Reel", price: 1500, time: "3 Days", description: "60-second vertical video, high-quality edit, includes 1 revision." },
+    { id: 2, title: "TikTok Video", price: 1200, time: "2 Days", description: "Engaging, trend-focused short content." },
+    { id: 3, title: "YouTube Integration", price: 3000, time: "5 Days", description: "30-60s integrated ad spot within a long-form video." },
+    { id: 4, title: "User Generated Content", price: 800, time: "3 Days", description: "Raw video files for your brand's use (no posting on my channel)." },
+];
+
+const DEMOGRAPHICS = {
+    gender: { Male: 45, Female: 50, NonBinary: 5 },
+    age: { "18-24": 30, "25-34": 45, "35-44": 15, "45+": 10 },
+    countries: { "USA": 60, "UK": 15, "Canada": 10, "Australia": 5, "Other": 10 }
+};
 
 // --- Components ---
 
@@ -202,13 +228,82 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
 
 const CreatorProfile = () => {
     const [activeTab, setActiveTab] = useState("overview");
-    const [profile, setProfile] = useState(CREATOR_PROFILE);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [profile, setProfile] = useState({
+        name: "",
+        handle: "",
+        tagline: "",
+        location: "",
+        about: "",
+        logo: null,
+        banner: null,
+        socials: { instagram: "", linkedin: "", twitter: "", website: "" },
+        stats: { campaigns: 0, hiringSince: "2024", rating: 5.0 },
+        contact: { email: "", phone: "" }
+    });
+
+    // Use mock posts/campaigns for now, or fetch if available
     const [posts, setPosts] = useState(CREATOR_POSTS);
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get(`${API_BASE_URL}/users/me/profile`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.data.status === "success") {
+                    const data = response.data.data;
+
+                    // Transform backend data to frontend structure if necessary
+                    // Assuming socialAccounts is an array from backend, we might map it to the object structure
+                    const socialMap = { instagram: "", linkedin: "", twitter: "", website: "" };
+                    if (data.socialAccounts) {
+                        data.socialAccounts.forEach(acc => {
+                            if (socialMap.hasOwnProperty(acc.platform.toLowerCase())) {
+                                socialMap[acc.platform.toLowerCase()] = acc.profileUrl;
+                            }
+                        });
+                    }
+
+                    setProfile({
+                        ...data,
+                        socials: data.socialLinks || socialMap, // Use existing socialLinks or mapped accounts
+                        stats: {
+                            campaigns: data.completedCampaigns || 0,
+                            hiringSince: new Date(data.createdAt || Date.now()).getFullYear().toString(),
+                            rating: data.reliabilityScore ? (data.reliabilityScore / 20).toFixed(1) : 5.0 // Scale 0-100 to 0-5
+                        },
+                        contact: {
+                            email: data.email,
+                            phone: data.phone || ""
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to fetch profile:", err);
+                if (err.response && err.response.status === 401) {
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("userInfo");
+                    setError("Session expired. Please log in again.");
+                } else {
+                    setError("Failed to load profile data");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
     const handleSaveProfile = (updatedProfile) => {
         setProfile(updatedProfile);
+        // Here you would also send a PUT request to update the backend
     };
 
     const handleCreatePost = (newPost) => {
@@ -218,6 +313,51 @@ const CreatorProfile = () => {
     const handleDeletePost = (id) => {
         setPosts(posts.filter(post => post.id !== id));
     };
+
+    const handleDeleteAccount = async () => {
+        if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+            try {
+                const token = localStorage.getItem("token");
+                await axios.delete(`${API_BASE_URL}/users/me`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                window.location.href = '/login';
+            } catch (err) {
+                console.error('Error deleting account:', err);
+                alert("Failed to delete account. Please try again.");
+            }
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+                <AlertCircle className="w-12 h-12 mb-4 text-red-500" />
+                <p className="mb-4">{error}</p>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem("token");
+                        localStorage.removeItem("userInfo");
+                        window.location.href = "/login";
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-bold"
+                >
+                    Log Out & Reset
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 pb-12">
@@ -268,28 +408,43 @@ const CreatorProfile = () => {
                         </div>
 
                         {/* Actions */}
-                        <button
-                            onClick={() => setIsEditProfileOpen(true)}
-                            className="mb-2 px-5 py-2.5 rounded-full border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-bold text-sm hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-all"
-                        >
-                            Edit Profile
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => {
+                                    const shareUrl = `${window.location.origin}/profile/@${profile.handle}`;
+                                    navigator.clipboard.writeText(shareUrl);
+                                    alert("Media Kit link copied to clipboard!");
+                                }}
+                                className="mb-2 px-5 py-2.5 rounded-full bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
+                            >
+                                <LinkIcon className="w-4 h-4" />
+                                Share Media Kit
+                            </button>
+                            <button
+                                onClick={() => setIsEditProfileOpen(true)}
+                                className="mb-2 px-5 py-2.5 rounded-full border-2 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-bold text-sm hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-all"
+                            >
+                                Edit Profile
+                            </button>
+                        </div>
                     </div>
 
                     {/* Navigation Tabs */}
                     <div className="flex justify-center">
                         <div className="bg-white dark:bg-slate-900 p-1.5 rounded-full border border-gray-200 dark:border-slate-800 shadow-sm inline-flex">
                             <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>Overview</TabButton>
-                            <TabButton active={activeTab === "details"} onClick={() => setActiveTab("details")}>Details</TabButton>
+                            <TabButton active={activeTab === "details"} onClick={() => setActiveTab("details")}>Details & Audience</TabButton>
+                            <TabButton active={activeTab === "services"} onClick={() => setActiveTab("services")}>Services</TabButton>
                             <TabButton active={activeTab === "posts"} onClick={() => setActiveTab("posts")}>Posts</TabButton>
                             <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")}>Portfolio</TabButton>
+                            <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>Settings</TabButton>
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Content Area */}
-            <AnimatePresence mode="wait">
+            < AnimatePresence mode="wait" >
                 {activeTab === "overview" && (
                     <motion.div
                         key="overview"
@@ -328,150 +483,323 @@ const CreatorProfile = () => {
                     </motion.div>
                 )}
 
-                {activeTab === "details" && (
-                    <motion.div
-                        key="details"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="space-y-8">
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Creator Profile</h3>
-                                    <p className="text-gray-600 dark:text-slate-400 leading-relaxed">
-                                        {profile.about} I specialize in high-quality video production and in-depth written reviews.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Content Values</h3>
-                                    <ul className="space-y-3">
-                                        {['Authenticity', 'Quality First', 'Audience Engagement', 'Transparency'].map((value, i) => (
-                                            <li key={i} className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
-                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                                {value}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div className="space-y-8">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Contact Information</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
-                                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
-                                                <Mail className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 dark:text-slate-400">Email</p>
-                                                <p className="font-bold text-gray-900 dark:text-white">{profile.contact.email}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
-                                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
-                                                <Phone className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 dark:text-slate-400">Phone</p>
-                                                <p className="font-bold text-gray-900 dark:text-white">{profile.contact.phone}</p>
-                                            </div>
-                                        </div>
+                {
+                    activeTab === "details" && (
+                        <motion.div
+                            key="details"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                <div className="space-y-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Creator Profile</h3>
+                                        <p className="text-gray-600 dark:text-slate-400 leading-relaxed">
+                                            {profile.about} I specialize in high-quality video production and in-depth written reviews.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Content Values</h3>
+                                        <ul className="space-y-3">
+                                            {['Authenticity', 'Quality First', 'Audience Engagement', 'Transparency'].map((value, i) => (
+                                                <li key={i} className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
+                                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                                    {value}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
 
-                {activeTab === "posts" && (
-                    <motion.div
-                        key="posts"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Community Updates</h3>
-                            <button
-                                onClick={() => setIsCreatePostOpen(true)}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300"
-                            >
-                                <Plus className="w-4 h-4" />
-                                New Post
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {posts.map((post) => (
-                                <motion.div
-                                    key={post.id}
-                                    layout
-                                    className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
-                                >
-                                    <div className="flex items-start gap-4 mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                            {profile.name.charAt(0)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
-                                                    <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                                <div className="space-y-8">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Contact Information</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
+                                                <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
+                                                    <Mail className="w-5 h-5" />
                                                 </div>
-                                                <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 dark:text-slate-400">Email</p>
+                                                    <p className="font-bold text-gray-900 dark:text-white">{profile.contact.email}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
+                                                <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
+                                                    <Phone className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 dark:text-slate-400">Phone</p>
+                                                    <p className="font-bold text-gray-900 dark:text-white">{profile.contact.phone}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
+                                    {/* New Audience Demographics Section */}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                            <PieChart className="w-5 h-5 text-indigo-500" />
+                                            Audience Insights
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {/* Gender Split */}
+                                            <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl">
+                                                <h4 className="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">Gender Split</h4>
+                                                <div className="flex h-4 rounded-full overflow-hidden">
+                                                    <div style={{ width: `${DEMOGRAPHICS.gender.Male}%` }} className="bg-blue-500" title="Male" />
+                                                    <div style={{ width: `${DEMOGRAPHICS.gender.Female}%` }} className="bg-pink-500" title="Female" />
+                                                    <div style={{ width: `${DEMOGRAPHICS.gender.NonBinary}%` }} className="bg-purple-500" title="Non-Binary" />
+                                                </div>
+                                                <div className="flex justify-between mt-2 text-xs text-gray-500">
+                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> Male {DEMOGRAPHICS.gender.Male}%</div>
+                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-pink-500" /> Female {DEMOGRAPHICS.gender.Female}%</div>
+                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500" /> Other {DEMOGRAPHICS.gender.NonBinary}%</div>
+                                                </div>
+                                            </div>
 
-                                    {post.mediaType && (
-                                        <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400">
-                                            {post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+                                            {/* Top Age Ranges */}
+                                            <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl">
+                                                <h4 className="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">Top Age Ranges</h4>
+                                                <div className="space-y-2">
+                                                    {Object.entries(DEMOGRAPHICS.age).map(([range, percent]) => (
+                                                        <div key={range} className="flex items-center gap-3">
+                                                            <span className="text-xs font-medium w-10 text-gray-500">{range}</span>
+                                                            <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                                <div style={{ width: `${percent}%` }} className="h-full bg-indigo-500 rounded-full" />
+                                                            </div>
+                                                            <span className="text-xs font-bold w-8 text-right">{percent}%</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-
-                                    <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
-                                        <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
-                                            <Heart className="w-4 h-4" /> {post.likes}
-                                        </button>
-                                        <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
-                                            <MessageCircle className="w-4 h-4" /> {post.comments}
-                                        </button>
                                     </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )
+                }
 
-                {activeTab === "campaigns" && (
-                    <motion.div
-                        key="campaigns"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Portfolio & Past Work</h3>
-                            <button className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">View Full Portfolio</button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {CAMPAIGNS_DATA.map((campaign) => (
-                                <CampaignCard key={campaign.id} campaign={campaign} />
+                {
+                    activeTab === "services" && (
+                        <motion.div
+                            key="services"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                        >
+                            {CREATOR_SERVICES.map((service) => (
+                                <div key={service.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                                            <DollarSign className="w-6 h-6" />
+                                        </div>
+                                        <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-bold rounded-full">
+                                            ${service.price}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{service.title}</h3>
+                                    <p className="text-gray-500 dark:text-slate-400 mb-4 text-sm leading-relaxed">
+                                        {service.description}
+                                    </p>
+                                    <div className="flex items-center justify-between text-sm pt-4 border-t border-gray-50 dark:border-slate-800/50">
+                                        <span className="flex items-center gap-1.5 text-gray-500">
+                                            <Clock className="w-4 h-4" />
+                                            {service.time} turnaround
+                                        </span>
+                                        <button className="font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">Edit</button>
+                                    </div>
+                                </div>
                             ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            <button className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-3xl hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all gap-3 group">
+                                <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-full group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
+                                    <Plus className="w-6 h-6 text-gray-400 group-hover:text-indigo-600" />
+                                </div>
+                                <span className="font-bold text-gray-500 group-hover:text-gray-900 dark:text-slate-400 dark:group-hover:text-white">Add New Service</span>
+                            </button>
+
+                            {/* Suggested Rates Insight */}
+                            <div className="md:col-span-2 p-8 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2.5 bg-white/20 rounded-xl">
+                                            <TrendingUp className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">Smart Pricing Insight</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                                        <div className="space-y-4">
+                                            <p className="text-indigo-100/80 leading-relaxed">
+                                                Based on your current <span className="text-white font-bold">1.2M followers</span> and <span className="text-white font-bold">4.8% engagement rate</span>, your recommended market rate for a primary integration is:
+                                            </p>
+                                            <div className="text-5xl font-black">
+                                                ${calculateSuggestedRate(1200000, 4.8).toLocaleString()}
+                                            </div>
+                                            <div className="text-sm font-medium text-indigo-100/60 uppercase tracking-widest">
+                                                Market Fair Value
+                                            </div>
+                                        </div>
+                                        <div className="p-6 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10 space-y-4">
+                                            <h4 className="font-bold flex items-center gap-2">
+                                                <BarChart3 className="w-4 h-4" /> Recommended Range
+                                            </h4>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Minimum</span>
+                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(1200000, 4.8)).min.toLocaleString()}</span>
+                                                </div>
+                                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-indigo-300 w-2/3 mx-auto"></div>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span>Premium</span>
+                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(1200000, 4.8)).max.toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-indigo-200/50 italic py-2">
+                                                *Standard industry valuation based on reach and high engagement multiplier.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )
+                }
+
+                {
+                    activeTab === "posts" && (
+                        <motion.div
+                            key="posts"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Community Updates</h3>
+                                <button
+                                    onClick={() => setIsCreatePostOpen(true)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    New Post
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {posts.map((post) => (
+                                    <motion.div
+                                        key={post.id}
+                                        layout
+                                        className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
+                                    >
+                                        <div className="flex items-start gap-4 mb-4">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                                {profile.name.charAt(0)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
+                                                        <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                                                    </div>
+                                                    <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
+
+                                        {post.mediaType && (
+                                            <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400">
+                                                {post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
+                                                <Heart className="w-4 h-4" /> {post.likes}
+                                            </button>
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
+                                                <MessageCircle className="w-4 h-4" /> {post.comments}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )
+                }
+
+                {
+                    activeTab === "campaigns" && (
+                        <motion.div
+                            key="campaigns"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Portfolio & Past Work</h3>
+                                <button className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">View Full Portfolio</button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {CAMPAIGNS_DATA.map((campaign) => (
+                                    <CampaignCard key={campaign.id} campaign={campaign} />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )
+                }
+
+                {
+                    activeTab === "settings" && (
+                        <motion.div
+                            key="settings"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800"
+                        >
+                            <div className="max-w-2xl">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                    <Settings className="w-5 h-5" />
+                                    Account Settings
+                                </h3>
+
+                                <div className="mb-8 p-6 rounded-2xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+                                    <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5" />
+                                        Danger Zone
+                                    </h4>
+                                    <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-6">
+                                        Once you delete your account, there is no going back. All your data including profile information, campaigns, and posts will be permanently removed.
+                                    </p>
+                                    <button
+                                        onClick={handleDeleteAccount}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete Account
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )
+                }
+            </AnimatePresence >
 
             <AnimatePresence>
                 {isEditProfileOpen && (
@@ -490,7 +818,7 @@ const CreatorProfile = () => {
                     />
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 

@@ -5,7 +5,21 @@ import { prisma } from "../config/db.js";
 // @access  Private/Brand
 export const createCampaign = async (req, res) => {
     try {
-        const { title, description, platformRequired, campaignType, budgetMin, budgetMax, deadline } = req.body;
+        const {
+            title,
+            description,
+            platformRequired,
+            campaignType,
+            budgetMin,
+            budgetMax,
+            deadline,
+            // New Contractual Fields
+            usageRights,
+            usageCategory,
+            exclusivity,
+            exclusivityPeriod,
+            isWhitelistingRequired
+        } = req.body;
 
         // Ensure user is a brand
         // (Handled by middleware, but extra safety check if needed, though authorize('brand') covers it)
@@ -20,7 +34,13 @@ export const createCampaign = async (req, res) => {
                 budgetMin: budgetMin ? parseFloat(budgetMin) : null,
                 budgetMax: budgetMax ? parseFloat(budgetMax) : null,
                 deadline: deadline ? new Date(deadline) : null,
-                status: 'Active' // Default to Active or Draft based on logic, schema says default Draft
+                status: 'Active',
+                // New Contractual Fields
+                usageRights,
+                usageCategory,
+                exclusivity,
+                exclusivityPeriod: exclusivityPeriod ? parseInt(exclusivityPeriod) : null,
+                isWhitelistingRequired: isWhitelistingRequired === true || isWhitelistingRequired === 'true'
             }
         });
 
@@ -79,8 +99,15 @@ export const applyToCampaign = async (req, res) => {
                 campaignId,
                 creatorId: req.user.id,
                 status: 'Applied',
-                agreedPrice: agreedPrice ? parseFloat(agreedPrice) : null,
-                feedbackNotes: pitch // storing pitch in feedbackNotes or similar field if desired
+                agreedPrice: agreedPrice && !isNaN(parseFloat(agreedPrice)) ? parseFloat(agreedPrice) : null,
+                feedbackNotes: pitch || null,
+                milestones: {
+                    "Concept": "pending",
+                    "Script": "pending",
+                    "Draft": "pending",
+                    "Final": "pending",
+                    "Live": "pending"
+                }
             }
         });
 
@@ -239,5 +266,89 @@ export const getCampaignById = async (req, res) => {
             status: 'error',
             message: 'Failed to fetch campaign'
         });
+    }
+};
+
+// @desc    Invite a creator to a campaign
+// @route   POST /api/campaigns/:id/invite
+// @access  Private/Brand
+export const inviteToCampaign = async (req, res) => {
+    try {
+        const campaignId = parseInt(req.params.id);
+        const { creatorId } = req.body;
+
+        const campaign = await prisma.campaign.findUnique({
+            where: { id: campaignId }
+        });
+
+        if (!campaign) {
+            return res.status(404).json({ status: 'error', message: 'Campaign not found' });
+        }
+
+        if (campaign.brandId !== req.user.id) {
+            return res.status(403).json({ status: 'error', message: 'Not authorized' });
+        }
+
+        const existingCollab = await prisma.campaignCollaboration.findFirst({
+            where: { campaignId, creatorId: parseInt(creatorId) }
+        });
+
+        if (existingCollab) {
+            return res.status(400).json({ status: 'error', message: 'Already exists' });
+        }
+
+        const collaboration = await prisma.campaignCollaboration.create({
+            data: {
+                campaignId,
+                creatorId: parseInt(creatorId),
+                status: 'Invited',
+                milestones: {
+                    "Concept": "pending",
+                    "Script": "pending",
+                    "Draft": "pending",
+                    "Final": "pending",
+                    "Live": "pending"
+                }
+            }
+        });
+
+        res.status(201).json({ status: 'success', data: collaboration });
+    } catch (error) {
+        console.error("Error inviting:", error);
+        res.status(500).json({ status: 'error', message: 'Failed to invite' });
+    }
+};
+
+// @desc    Respond to an invitation (Accept/Decline)
+// @route   PATCH /api/campaigns/respond/:collabId
+// @access  Private/Creator
+export const respondToInvite = async (req, res) => {
+    try {
+        const collabId = parseInt(req.params.collabId);
+        const { action } = req.body; // 'accept' or 'decline'
+
+        const collaboration = await prisma.campaignCollaboration.findUnique({
+            where: { id: collabId }
+        });
+
+        if (!collaboration || collaboration.creatorId !== req.user.id) {
+            return res.status(404).json({ status: 'error', message: 'Invitation not found' });
+        }
+
+        if (collaboration.status !== 'Invited') {
+            return res.status(400).json({ status: 'error', message: 'Not a pending invitation' });
+        }
+
+        const updatedStatus = action === 'accept' ? 'Applied' : 'Declined';
+
+        const updated = await prisma.campaignCollaboration.update({
+            where: { id: collabId },
+            data: { status: updatedStatus }
+        });
+
+        res.json({ status: 'success', data: updated });
+    } catch (error) {
+        console.error("Error responding:", error);
+        res.status(500).json({ status: 'error', message: 'Failed to respond' });
     }
 };

@@ -38,7 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Navigation */}
-                <nav className="p-4 space-y-8 overflow-y-auto h-[calc(100vh-64px)]">
+                <nav className="p-4 space-y-8 overflow-y-auto flex-1">
                     {NAV_GROUPS.map((group) => (
                         <div key={group.title}>
                             <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2">
@@ -68,6 +68,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                                                 )}
                                                 <item.icon className={`w-[18px] h-[18px] stroke-[1.5px] ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-slate-500 group-hover:text-gray-600 dark:group-hover:text-slate-300"}`} />
                                                 <span>{item.label}</span>
+                                                {item.badge && (
+                                                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white shadow-lg shadow-indigo-500/30 animate-pulse">
+                                                        {item.badge}
+                                                    </span>
+                                                )}
                                             </>
                                         )}
                                     </NavLink>
@@ -76,6 +81,21 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </div>
                     ))}
                 </nav>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-gray-200/50 dark:border-slate-800/50">
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('userInfo'); // If stored
+                            window.location.href = '/login'; // Or use useNavigate if hook available, but window.location ensures clean state
+                        }}
+                        className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
+                        <span>Log Out</span>
+                    </button>
+                </div>
             </aside>
         </>
     );
@@ -159,7 +179,7 @@ const DashboardLayout = () => {
             <div className="md:pl-64 transition-all duration-300">
                 <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
 
-                <main className={location.pathname === "/brand/messages"
+                <main className={location.pathname === "/brand/messages" || location.pathname === "/brand/approvals" || location.pathname === "/brand/financials" || location.pathname.startsWith("/brand/workspace")
                     ? "h-[calc(100vh-64px)] overflow-hidden"
                     : "p-6 md:p-8 max-w-7xl mx-auto min-h-[calc(100vh-64px)]"
                 }>
@@ -170,7 +190,7 @@ const DashboardLayout = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
-                            className={location.pathname === "/brand/messages" ? "h-full" : ""}
+                            className={location.pathname === "/brand/messages" || location.pathname === "/brand/approvals" || location.pathname === "/brand/financials" ? "h-full" : ""}
                         >
                             <Outlet />
                         </motion.div>

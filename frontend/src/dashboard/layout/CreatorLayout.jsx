@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
             {/* Sidebar Container */}
             <aside className={`
-                fixed top-0 left-0 z-50 h-screen w-64 bg-zinc-50/80 dark:bg-slate-950/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-800/50 transition-transform duration-300 ease-in-out
+                fixed top-0 left-0 z-50 h-screen w-64 bg-zinc-50/80 dark:bg-slate-950/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-800/50 transition-transform duration-300 ease-in-out flex flex-col
                 ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
             `}>
                 {/* Logo */}
@@ -39,7 +39,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Navigation */}
-                <nav className="p-4 space-y-8 overflow-y-auto h-[calc(100vh-64px)]">
+                <nav className="p-4 space-y-8 overflow-y-auto flex-1">
                     {CREATOR_NAV_GROUPS.map((group) => (
                         <div key={group.title}>
                             <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2">
@@ -77,6 +77,21 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </div>
                     ))}
                 </nav>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-gray-200/50 dark:border-slate-800/50">
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('userInfo');
+                            window.location.href = '/login';
+                        }}
+                        className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
+                        <span>Log Out</span>
+                    </button>
+                </div>
             </aside>
         </>
     );

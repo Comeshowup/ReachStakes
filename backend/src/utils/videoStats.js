@@ -40,7 +40,6 @@ export const fetchVideoStats = async (platform, videoId, userId) => {
         throw new Error(`Strict verification not yet implemented for ${platform}.`);
 
     } catch (error) {
-        console.error(`Error fetching stats for ${platform}:`, error.message);
         throw error;
     }
 };

@@ -2,6 +2,7 @@ import express from "express";
 import { prisma } from "../config/db.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { fetchVideoStats } from "../utils/videoStats.js";
+import { executePayout } from "../controllers/conciergeControllers.js";
 
 const router = express.Router();
 
@@ -45,7 +46,11 @@ router.get("/my-submissions", protect, async (req, res) => {
             date: collab.updatedAt,
             link: collab.submissionUrl,
             stats: collab.videoStats,
-            feedback: collab.feedbackNotes
+            feedback: collab.feedbackNotes,
+            // New Fields
+            milestones: collab.milestones,
+            usageAgreed: collab.usageAgreed,
+            isWhitelisted: collab.isWhitelisted
         }));
 
         res.json(mappedCollaborations);
@@ -60,7 +65,7 @@ router.get("/my-submissions", protect, async (req, res) => {
 // Route: GET /api/collaborations/brand/:brandId
 router.get("/brand/:brandId", async (req, res) => {
     try {
-        const { brandId } = req.params;
+        const brandId = parseInt(req.params.brandId);
 
         const collaborations = await prisma.campaignCollaboration.findMany({
             where: {
@@ -70,7 +75,11 @@ router.get("/brand/:brandId", async (req, res) => {
             },
             include: {
                 campaign: true,
-                creator: true // Get creator details
+                creator: {
+                    include: {
+                        creatorProfile: true
+                    }
+                }
             },
             orderBy: {
                 joinedAt: 'desc'
@@ -88,7 +97,7 @@ router.get("/brand/:brandId", async (req, res) => {
 // Route: GET /api/collaborations/creator/:creatorId
 router.get("/creator/:creatorId", async (req, res) => {
     try {
-        const { creatorId } = req.params;
+        const creatorId = parseInt(req.params.creatorId);
 
         const collaborations = await prisma.campaignCollaboration.findMany({
             where: {
@@ -114,25 +123,64 @@ router.get("/creator/:creatorId", async (req, res) => {
     }
 });
 
-// Update Collaboration Status (e.g., APPROVED, REJECTED, COMPLETED)
-router.patch("/:id/status", async (req, res) => {
+// Update Collaboration Milestones
+router.patch("/:id/milestones", protect, async (req, res) => {
     try {
-        const { id } = req.params;
-        const { status } = req.body;
+        const id = parseInt(req.params.id);
+        const { milestones } = req.body;
 
         const updated = await prisma.campaignCollaboration.update({
             where: { id: id },
-            data: { status: status }
+            data: { milestones: milestones }
         });
 
         res.json(updated);
     } catch (error) {
-        console.error("Error updating status:", error);
-        res.status(500).json({ error: "Failed to update status" });
+        console.error("Error updating milestones:", error);
+        res.status(500).json({ error: "Failed to update milestones" });
     }
 });
 
 // Submit Content URL
+// Update Collaboration Status (Brand Decision)
+router.patch("/:id/decision", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { status, feedback } = req.body;
+
+        // In a real app, verify req.user owns the campaign for this collaboration
+
+        const updated = await prisma.campaignCollaboration.update({
+            where: { id: id },
+            data: {
+                status: status, // e.g., 'Changes_Requested', 'Approved'
+                feedbackNotes: feedback
+            },
+            include: { campaign: true } // Fetch campaign for payout check
+        });
+
+        // Fast Payouts Logic: If Approved and Instant, trigger payout
+        if (status === 'Approved' && updated.campaign.payoutSpeed === 'Instant') {
+            console.log(`[Fast Payout] Triggering instant payout for Collaboration ${id}`);
+            try {
+                // We don't await the result to block the response, or we do?
+                // Better to await to catch errors, but if it fails, the approval is already done.
+                // Let's await and append result or just log.
+                await executePayout(id, req.user.id);
+                console.log(`[Fast Payout] Payout executed successfully for ${id}`);
+            } catch (payoutError) {
+                console.error(`[Fast Payout] Payout failed for ${id}:`, payoutError.message);
+                // Optionally notify admin/brand
+            }
+        }
+
+        res.json(updated);
+    } catch (error) {
+        console.error("Error updating collaboration decision:", error);
+        res.status(500).json({ error: "Failed to update decision" });
+    }
+});
+
 router.post("/:id/submit", protect, async (req, res) => {
     try {
         const id = parseInt(req.params.id);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import {
     Wallet,
     DollarSign,
@@ -17,7 +18,8 @@ import {
     TrendingUp,
     Filter,
     Rocket,
-    X
+    X,
+    Loader2
 } from "lucide-react";
 import {
     AreaChart,
@@ -31,70 +33,7 @@ import {
     Line
 } from "recharts";
 
-// --- Mock Data ---
-
-const FINANCIAL_STATS = {
-    totalPayouts: 45200.00,
-    pendingEarnings: 1500.00,
-    nextPayoutDate: "Dec 15th",
-    nextPayoutEstimated: true,
-    currency: "USD"
-};
-
-const PAYOUT_HISTORY = [
-    {
-        id: "TX-1001",
-        date: "Nov 15, 2024",
-        description: "Payout Ref: 8832 via PayPal",
-        campaignsCovered: 4,
-        status: "Paid",
-        amount: 4250.00,
-    },
-    {
-        id: "TX-1002",
-        date: "Oct 15, 2024",
-        description: "Payout Ref: 6610 via Bank Transfer",
-        campaignsCovered: 4,
-        status: "Paid",
-        amount: 5600.00,
-    },
-    {
-        id: "TX-1003",
-        date: "Sep 15, 2024",
-        description: "Payout Ref: 5509 via PayPal",
-        campaignsCovered: 2,
-        status: "Paid",
-        amount: 2800.00,
-    },
-    {
-        id: "TX-1004",
-        date: "Aug 15, 2024",
-        description: "Payout Ref: 4421 via PayPal",
-        campaignsCovered: 3,
-        status: "Paid",
-        amount: 3150.00,
-    }
-];
-
-const CHART_DATA = [
-    { name: 'Jun', value: 0 },
-    { name: 'Jul', value: 3500 },
-    { name: 'Aug', value: 7200 },
-    { name: 'Sep', value: 4000 },
-    { name: 'Oct', value: 5500 },
-    { name: 'Nov', value: 3000 },
-    { name: 'Dec', value: 8500 },
-];
-
-const MINI_CHART_DATA = [
-    { value: 2000 },
-    { value: 4000 },
-    { value: 3000 },
-    { value: 6000 },
-    { value: 5000 },
-    { value: 8000 },
-    { value: 9000 },
-];
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // --- Components ---
 
@@ -125,42 +64,60 @@ const CountUp = ({ value, prefix = "" }) => {
     );
 };
 
-const CAMPAIGN_EARNINGS = [
-    {
-        id: "CMP-001",
-        name: "Summer Run Club 2025",
-        brand: "Nike",
-        brandLogo: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=100&q=80",
-        videosApproved: 3,
-        totalVideos: 3,
-        earnedToDate: 1500.00,
-        status: "Completed",
-        breakdown: [
-            { id: "v1", title: "Unboxing Pegasus 40", amount: 500.00, date: "Nov 10" },
-            { id: "v2", title: "5k Run Test", amount: 500.00, date: "Nov 12" },
-            { id: "v3", title: "Final Review", amount: 500.00, date: "Nov 14" }
-        ]
-    },
-    {
-        id: "CMP-002",
-        name: "Wireless Earbuds Review",
-        brand: "TechNova",
-        brandLogo: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=100&q=80",
-        videosApproved: 1,
-        totalVideos: 2,
-        earnedToDate: 1000.00,
-        status: "Active",
-        breakdown: [
-            { id: "v1", title: "First Impressions", amount: 1000.00, date: "Nov 28" },
-            { id: "v2", title: "Full Review", amount: 1000.00, date: "-" }
-        ]
-    }
-];
-
 const CreatorFinancials = () => {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("history");
     const [expandedCampaign, setExpandedCampaign] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Real data from API
+    const [stats, setStats] = useState({ totalPayouts: 0, pendingEarnings: 0, completedCampaigns: 0 });
+    const [chartData, setChartData] = useState([]);
+    const [payoutHistory, setPayoutHistory] = useState([]);
+    const [campaignEarnings, setCampaignEarnings] = useState([]);
+
+    useEffect(() => {
+        const fetchEarnings = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                console.log("Fetching earnings with token:", token ? "Token exists" : "No token found");
+
+                if (!token) {
+                    console.error("No token found in localStorage");
+                    setError("Authentication token missing. Please log in again.");
+                    setLoading(false);
+                    return;
+                }
+
+                const response = await axios.get(`${API_BASE_URL}/users/me/earnings`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.data.status === "success") {
+                    const data = response.data.data;
+                    setStats(data.stats);
+                    setChartData(data.chartData);
+                    setPayoutHistory(data.payoutHistory);
+                    setCampaignEarnings(data.campaignEarnings);
+                }
+            } catch (err) {
+                console.error("Failed to fetch earnings:", err);
+                if (err.response && err.response.status === 401) {
+                    // Token is invalid/expired
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("userInfo");
+                    setError("Session expired. Please log in again.");
+                } else {
+                    setError("Failed to load earnings data");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEarnings();
+    }, []);
 
     const toggleCampaign = (id) => {
         if (expandedCampaign === id) {
@@ -169,6 +126,37 @@ const CreatorFinancials = () => {
             setExpandedCampaign(id);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+                <AlertCircle className="w-12 h-12 mb-4 text-red-500" />
+                <p className="mb-4">{error}</p>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem("token");
+                        localStorage.removeItem("userInfo");
+                        window.location.href = "/login";
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-bold"
+                >
+                    Log Out & Reset
+                </button>
+            </div>
+        );
+    }
+
+    // Mini chart data from main chart
+    const miniChartData = chartData.map(d => ({ value: d.value }));
+
 
     return (
         <div className="space-y-6 pb-12 text-slate-200">
@@ -186,12 +174,12 @@ const CreatorFinancials = () => {
                         <div>
                             <p className="text-slate-400 text-sm font-medium mb-2">Total Payouts Received (Lifetime)</p>
                             <h3 className="text-4xl font-bold text-white mb-1">
-                                <CountUp value={FINANCIAL_STATS.totalPayouts} prefix="$" />
+                                <CountUp value={stats.totalPayouts} prefix="$" />
                             </h3>
-                            <p className="text-slate-500 text-xs">Across 42 completed campaigns</p>
+                            <p className="text-slate-500 text-xs">Across {stats.completedCampaigns} completed campaigns</p>
                         </div>
                         <div className="flex items-end justify-end w-32 h-16">
-                            <LineChart width={128} height={64} data={MINI_CHART_DATA}>
+                            <LineChart width={128} height={64} data={miniChartData}>
                                 <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={3} dot={false} />
                             </LineChart>
                         </div>
@@ -210,7 +198,7 @@ const CreatorFinancials = () => {
                         <p className="text-slate-400 text-sm font-medium mb-2">Pending Earnings (Awaiting Payout)</p>
                         <div className="flex items-center gap-3 mb-1">
                             <h3 className="text-4xl font-bold text-orange-400">
-                                <CountUp value={FINANCIAL_STATS.pendingEarnings} prefix="$" />
+                                <CountUp value={stats.pendingEarnings} prefix="$" />
                             </h3>
                             <Clock className="w-5 h-5 text-orange-400" />
                         </div>
@@ -226,9 +214,9 @@ const CreatorFinancials = () => {
                     className="bg-[#0B0E14] rounded-3xl p-6 border border-slate-800 shadow-lg flex flex-col justify-between"
                 >
                     <div>
-                        <p className="text-slate-400 text-sm font-medium mb-2">Next Payout Estimate</p>
-                        <h3 className="text-4xl font-bold text-white mb-1">{FINANCIAL_STATS.nextPayoutDate}</h3>
-                        <p className="text-slate-500 text-xs">Based on your payment schedule</p>
+                        <p className="text-slate-400 text-sm font-medium mb-2">Completed Campaigns</p>
+                        <h3 className="text-4xl font-bold text-white mb-1">{stats.completedCampaigns}</h3>
+                        <p className="text-slate-500 text-xs">Total paid collaborations</p>
                     </div>
                     <button className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
                         <DollarSign className="w-4 h-4" /> Request Payout
@@ -255,7 +243,7 @@ const CreatorFinancials = () => {
 
                     <div className="relative z-10" style={{ width: "100%", height: 300, minHeight: 300 }}>
                         <ResponsiveContainer width="99%" height="100%">
-                            <AreaChart data={CHART_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
@@ -374,21 +362,29 @@ const CreatorFinancials = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/50">
-                                    {PAYOUT_HISTORY.map((txn) => (
-                                        <tr key={txn.id} className="group hover:bg-slate-800/30 transition-colors">
-                                            <td className="px-8 py-5 text-sm text-slate-300 font-medium">{txn.date}</td>
-                                            <td className="px-8 py-5 text-sm text-slate-400">{txn.description}</td>
-                                            <td className="px-8 py-5 text-sm text-slate-400">{txn.campaignsCovered} Campaigns</td>
-                                            <td className="px-8 py-5 text-center">
-                                                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                                    {txn.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-5 text-right text-sm font-bold text-emerald-400">
-                                                +${txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {payoutHistory.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="px-8 py-12 text-center text-slate-500">
+                                                No transaction history found
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        payoutHistory.map((txn) => (
+                                            <tr key={txn.id} className="group hover:bg-slate-800/30 transition-colors">
+                                                <td className="px-8 py-5 text-sm text-slate-300 font-medium">{txn.date}</td>
+                                                <td className="px-8 py-5 text-sm text-slate-400">{txn.description}</td>
+                                                <td className="px-8 py-5 text-sm text-slate-400">{txn.campaignsCovered} Campaigns</td>
+                                                <td className="px-8 py-5 text-center">
+                                                    <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                                        {txn.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right text-sm font-bold text-emerald-400">
+                                                    +${txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -396,58 +392,62 @@ const CreatorFinancials = () => {
 
                     {activeTab === "campaigns" && (
                         <div className="p-6 space-y-4">
-                            {CAMPAIGN_EARNINGS.map((campaign) => (
-                                <div key={campaign.id} className="border border-slate-800 rounded-2xl overflow-hidden bg-[#131823]">
-                                    <div
-                                        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors"
-                                        onClick={() => toggleCampaign(campaign.id)}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <img src={campaign.brandLogo} alt={campaign.brand} className="w-10 h-10 rounded-lg object-cover" />
-                                            <div>
-                                                <h4 className="font-bold text-white text-sm">{campaign.name}</h4>
-                                                <p className="text-xs text-slate-500">{campaign.brand}</p>
+                            {campaignEarnings.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    No active or completed campaigns yet
+                                </div>
+                            ) : (
+                                campaignEarnings.map((campaign) => (
+                                    <div key={campaign.id} className="border border-slate-800 rounded-2xl overflow-hidden bg-[#131823]">
+                                        <div
+                                            className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 transition-colors"
+                                            onClick={() => toggleCampaign(campaign.id)}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <img src={campaign.brandLogo} alt={campaign.brand} className="w-10 h-10 rounded-lg object-cover" />
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">{campaign.name}</h4>
+                                                    <p className="text-xs text-slate-500">{campaign.brand}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-8 text-sm">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-slate-500 uppercase font-bold">Earned</p>
+                                                    <p className="font-bold text-white">${campaign.earnedToDate.toLocaleString()}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-slate-500 uppercase font-bold">Status</p>
+                                                    <span className={`text-xs font-bold ${campaign.status === 'Completed' ? 'text-emerald-400' : 'text-indigo-400'}`}>{campaign.status}</span>
+                                                </div>
+                                                <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${expandedCampaign === campaign.id ? "rotate-180" : ""}`} />
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-8 text-sm">
-                                            <div className="text-right">
-                                                <p className="text-[10px] text-slate-500 uppercase font-bold">Earned</p>
-                                                <p className="font-bold text-white">${campaign.earnedToDate.toLocaleString()}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[10px] text-slate-500 uppercase font-bold">Status</p>
-                                                <span className={`text-xs font-bold ${campaign.status === 'Completed' ? 'text-emerald-400' : 'text-indigo-400'}`}>{campaign.status}</span>
-                                            </div>
-                                            <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${expandedCampaign === campaign.id ? "rotate-180" : ""}`} />
-                                        </div>
-                                    </div>
-
-                                    <AnimatePresence>
-                                        {expandedCampaign === campaign.id && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="border-t border-slate-800 bg-[#0B0E14]"
-                                            >
-                                                <div className="p-4 pl-20 grid gap-2">
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Deliverable Breakdown</p>
-                                                    {campaign.breakdown.map((item) => (
-                                                        <div key={item.id} className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
-                                                            <span className="text-slate-300 font-medium">{item.title}</span>
+                                        <AnimatePresence>
+                                            {expandedCampaign === campaign.id && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="border-t border-slate-800 bg-[#0B0E14]"
+                                                >
+                                                    <div className="p-4 pl-20 grid gap-2">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Campaign Details</p>
+                                                        <div className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                                                            <span className="text-slate-300 font-medium">Agreed Price</span>
                                                             <div className="flex items-center gap-6">
-                                                                <span className="text-slate-500 text-xs">{item.date}</span>
-                                                                <span className="font-bold text-white w-20 text-right">${item.amount.toLocaleString()}</span>
+                                                                <span className="text-slate-500 text-xs">Total</span>
+                                                                <span className="font-bold text-white w-20 text-right">${campaign.totalValue.toLocaleString()}</span>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     )}
                 </div>

@@ -6,10 +6,22 @@ import authRoutes from './routes/authRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
 import socialRoutes from './routes/socialRoutes.js';
 import collaborationRoutes from './routes/collaborationRoutes.js'; // Collaboration routes
+import conciergeRoutes from './routes/conciergeRoutes.js'; // Concierge SaaS routes
+import userRoutes from './routes/userRoutes.js';
+import brandRoutes from './routes/brandRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
+import mediaKitRoutes from './routes/mediaKitRoutes.js';
+import documentRoutes from './routes/documentRoutes.js';
 import cron from 'node-cron';
 import { fetchVideoStats } from './utils/videoStats.js';
 
+// BigInt Serialization Polyfill
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
+
 connectDB();
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +64,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/collaborations', collaborationRoutes);
+app.use('/api/concierge', conciergeRoutes); // New Consierge Route
+app.use('/api/users', userRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/invoices', invoiceRoutes); // Phase 1: Automated Invoicing
+app.use('/api/media-kit', mediaKitRoutes); // Phase 2: Live Media Kit
+app.use('/api/documents', documentRoutes); // Creator Documents Hub
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
@@ -67,13 +85,22 @@ cron.schedule('*/5 * * * *', async () => {
         });
 
         for (const submission of activeSubmissions) {
-            // Fetch real stats using creator's token
-            const mockStats = await fetchVideoStats(submission.submissionPlatform, submission.videoId, submission.creatorId);
+            try {
+                // Fetch real stats using creator's token
+                const stats = await fetchVideoStats(submission.submissionPlatform, submission.videoId, submission.creatorId);
 
-            await prisma.campaignCollaboration.update({
-                where: { id: submission.id },
-                data: { videoStats: mockStats }
-            });
+                await prisma.campaignCollaboration.update({
+                    where: { id: submission.id },
+                    data: { videoStats: stats }
+                });
+            } catch (error) {
+                // Log specific warning for unlinked accounts to avoid cluttering error logs
+                if (error.message.includes('not linked') || error.message.includes('expired')) {
+                    console.warn(`[Stats Update] User ${submission.creatorId} (Submission ${submission.id}): ${error.message}`);
+                } else {
+                    console.error(`[Stats Update] Error updating stats for submission ${submission.id}:`, error.message);
+                }
+            }
         }
         console.log(`Updated stats for ${activeSubmissions.length} videos.`);
     } catch (error) {

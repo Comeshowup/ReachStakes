@@ -51,7 +51,13 @@ const CampaignPage = () => {
                     type: c.campaignType || "General",
                     budget: c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable"),
                     deadline: c.deadline ? new Date(c.deadline).toLocaleDateString() : "Open",
-                    rawDeadline: c.deadline
+                    rawDeadline: c.deadline,
+                    // New fields
+                    usageRights: c.usageRights,
+                    usageCategory: c.usageCategory,
+                    exclusivity: c.exclusivity,
+                    exclusivityPeriod: c.exclusivityPeriod,
+                    isWhitelistingRequired: c.isWhitelistingRequired
                 };
 
                 setCampaign(formattedCampaign);
@@ -67,11 +73,19 @@ const CampaignPage = () => {
     }, [id]);
 
     const handleApply = async () => {
+        const token = localStorage.getItem('token');
+
+        // Check if user is logged in
+        if (!token) {
+            alert("Please log in to apply to campaigns.");
+            navigate('/auth');
+            return;
+        }
+
         if (!confirm("Are you sure you want to apply to this campaign?")) return;
 
         setApplying(true);
         try {
-            const token = localStorage.getItem('token');
             await axios.post(`${API_BASE_URL}/campaigns/${id}/apply`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -79,7 +93,16 @@ const CampaignPage = () => {
             navigate('/creator/submissions');
         } catch (err) {
             console.error("Failed to apply", err);
-            alert(err.response?.data?.message || "Failed to apply to campaign. You may have already applied.");
+            const errorMessage = err.response?.data?.message ||
+                (err.response?.status === 401 ? "Session expired. Please log in again." :
+                    err.response?.status === 400 ? "You have already applied to this campaign." :
+                        "Failed to apply to campaign. Please try again.");
+            alert(errorMessage);
+
+            // Redirect to auth if unauthorized
+            if (err.response?.status === 401) {
+                navigate('/auth');
+            }
         } finally {
             setApplying(false);
         }
@@ -233,6 +256,40 @@ const CampaignPage = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </motion.div>
+
+                            {/* New: Contractual Terms Section */}
+                            <motion.div variants={itemVariants} className="mt-12 p-8 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[80px] group-hover:bg-indigo-500/20 transition-all"></div>
+                                <h3 className="text-2xl font-bold text-white mb-8 flex items-center gap-3 relative z-10">
+                                    <AlertCircle className="w-6 h-6 text-indigo-400" />
+                                    Contractual Terms
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Usage Rights</p>
+                                            <p className="text-lg text-white font-medium">{campaign.usageRights || "Standard (30 Days)"}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{campaign.usageCategory || "Digital/Social Media only"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Whitelisting</p>
+                                            <p className="text-lg text-white font-medium">{campaign.isWhitelistingRequired ? "Required" : "Not Required"}</p>
+                                            <p className="text-xs text-slate-400 mt-1">Permission to run paid ads using your handle.</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Exclusivity</p>
+                                            <p className="text-lg text-white font-medium">{campaign.exclusivity || "None"}</p>
+                                            {campaign.exclusivityPeriod && <p className="text-xs text-slate-400 mt-1">{campaign.exclusivityPeriod} days post-campaign.</p>}
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                            <p className="text-xs text-indigo-400 font-bold mb-1 italic">Pro Tip</p>
+                                            <p className="text-[12px] text-slate-400 leading-snug">Brands often pay 20-50% more for perpetual usage rights. Negotiate wisely!</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>

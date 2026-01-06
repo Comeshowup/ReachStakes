@@ -31,6 +31,7 @@ const EditProfileModal = ({ isOpen, onClose, profile, onSave }) => {
     });
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [error, setError] = useState(null);
 
     // Refs for file inputs
     const bannerInputRef = useRef(null);
@@ -66,25 +67,32 @@ const EditProfileModal = ({ isOpen, onClose, profile, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
+        setError(null);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            const submissionData = {
+                ...formData,
+                skills: typeof formData.skills === 'string'
+                    ? formData.skills.split(",").map(s => s.trim()).filter(s => s)
+                    : formData.skills
+            };
 
-        const submissionData = {
-            ...formData,
-            skills: typeof formData.skills === 'string'
-                ? formData.skills.split(",").map(s => s.trim()).filter(s => s)
-                : formData.skills
-        };
-        onSave(submissionData);
-        setIsSaving(false);
-        setIsSaved(true);
+            // Call onSave and await if it returns a promise
+            await onSave(submissionData);
 
-        // Close after showing success state
-        setTimeout(() => {
-            setIsSaved(false);
-            onClose();
-        }, 1000);
+            setIsSaved(true);
+
+            // Close after showing success state
+            setTimeout(() => {
+                setIsSaved(false);
+                onClose();
+            }, 1000);
+        } catch (err) {
+            console.error('Error saving profile:', err);
+            setError(err.response?.data?.message || 'Failed to save profile. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -388,40 +396,47 @@ const EditProfileModal = ({ isOpen, onClose, profile, onSave }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-end gap-3 sticky bottom-0 z-10">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSaving || isSaved}
-                        className={`
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky bottom-0 z-10">
+                    {error && (
+                        <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                            {error}
+                        </div>
+                    )}
+                    <div className="flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSaving || isSaved}
+                            className={`
                             px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2
                             ${isSaved
-                                ? "bg-green-500 hover:bg-green-600"
-                                : "bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98]"
-                            }
+                                    ? "bg-green-500 hover:bg-green-600"
+                                    : "bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98]"
+                                }
                             ${isSaving ? "opacity-80 cursor-wait" : ""}
                         `}
-                    >
-                        {isSaving ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : isSaved ? (
-                            <>
-                                <Check className="w-4 h-4" />
-                                Saved!
-                            </>
-                        ) : (
-                            "Save Changes"
-                        )}
-                    </button>
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : isSaved ? (
+                                <>
+                                    <Check className="w-4 h-4" />
+                                    Saved!
+                                </>
+                            ) : (
+                                "Save Changes"
+                            )}
+                        </button>
+                    </div>
                 </div>
             </motion.div>
         </div>

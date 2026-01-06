@@ -5,6 +5,7 @@ import Features from './Features'
 import Footer from './Footer'
 import { Background3D, Wave } from './Background3d'
 import CreatorsSection from './CreatorsSection'
+import RateCalculator from './RateCalculator'
 
 
 function HomePage() {
@@ -17,6 +18,7 @@ function HomePage() {
       <div className='relative z-10 '>
         <Hero />
         <CreatorsSection />
+        <RateCalculator />
         <Features />
         <Footer />
       </div>

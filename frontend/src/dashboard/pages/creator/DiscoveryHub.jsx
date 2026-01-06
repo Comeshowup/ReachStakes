@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ALL_BRANDS, ALL_CREATORS } from "../../data";
+import { ReachVerifiedBadgeCompact } from "../../components/ReachVerifiedBadge";
 
 // --- Mock Platform Icons Helper ---
 const PlatformIcon = ({ platform }) => {
@@ -330,7 +331,12 @@ const DiscoveryHub = () => {
                                             </div>
 
                                             <div className="mb-5">
-                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 group-hover:text-purple-500 transition-colors">{item.name}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-purple-500 transition-colors">{item.name}</h3>
+                                                    {item.verificationTier && item.verificationTier !== "None" && (
+                                                        <ReachVerifiedBadgeCompact tier={item.verificationTier} />
+                                                    )}
+                                                </div>
                                                 <p className="text-sm text-purple-600 dark:text-purple-400 font-medium mb-2">{item.handle}</p>
                                             </div>
 

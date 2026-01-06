@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     MapPin,
@@ -23,10 +23,23 @@ import {
     TrendingUp,
     Users,
     CheckCircle2,
-    ArrowRight
+    ArrowRight,
+    Loader2,
+    AlertCircle,
+    RefreshCw,
+    Settings
 } from "lucide-react";
-import { BRAND_PROFILE, BRAND_POSTS, CAMPAIGNS_DATA } from "../data";
 import EditProfileModal from "../components/EditProfileModal";
+import {
+    getBrandProfile,
+    updateBrandProfile,
+    getBrandPosts,
+    createBrandPost,
+    deleteBrandPost,
+    deleteBrandPost,
+    getBrandCampaigns,
+    deleteAccount
+} from "../../api/brandService";
 
 // --- Components ---
 
@@ -70,12 +83,16 @@ const CampaignCard = ({ campaign }) => (
     >
         <div className="h-40 bg-gray-100 dark:bg-slate-800 relative overflow-hidden">
             <img
-                src={`https://source.unsplash.com/random/800x600?${campaign.name.split(' ')[0]}`}
+                src={`https://source.unsplash.com/random/800x600?${campaign.name?.split(' ')[0] || 'campaign'}`}
                 alt={campaign.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute top-3 right-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/90 dark:bg-slate-900/90 text-gray-900 dark:text-white backdrop-blur-sm shadow-sm">
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide backdrop-blur-sm shadow-sm ${campaign.status === 'Active' ? 'bg-green-100/90 text-green-700' :
+                    campaign.status === 'Completed' ? 'bg-blue-100/90 text-blue-700' :
+                        campaign.status === 'Paused' ? 'bg-yellow-100/90 text-yellow-700' :
+                            'bg-white/90 text-gray-900 dark:bg-slate-900/90 dark:text-white'
+                    }`}>
                     {campaign.status}
                 </span>
             </div>
@@ -112,7 +129,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                 <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50 dark:bg-slate-800">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors">
-                        <X className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+                        <span className="sr-only">Close</span>
+                        ×
                     </button>
                 </div>
                 <div className="p-6">
@@ -123,21 +141,18 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     );
 };
 
-const CreatePostModal = ({ isOpen, onClose, onPost }) => {
+const CreatePostModal = ({ isOpen, onClose, onPost, isSubmitting }) => {
     const [content, setContent] = useState("");
     const [mediaType, setMediaType] = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!content.trim()) return;
 
-        onPost({
-            id: Date.now(),
+        await onPost({
             content,
-            date: "Just now",
-            likes: 0,
-            comments: 0,
-            mediaType
+            mediaType: mediaType || 'none',
+            type: 'General'
         });
         setContent("");
         setMediaType(null);
@@ -180,9 +195,22 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
 
                 <div className="pt-4 flex justify-end gap-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-slate-400 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2">
-                        <Send className="w-4 h-4" />
-                        Post
+                    <button
+                        type="submit"
+                        disabled={isSubmitting || !content.trim()}
+                        className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Posting...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-4 h-4" />
+                                Post
+                            </>
+                        )}
                     </button>
                 </div>
             </form>
@@ -190,26 +218,150 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
     );
 };
 
+// Loading Skeleton
+const ProfileSkeleton = () => (
+    <div className="space-y-8 pb-12 animate-pulse">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div className="h-64 bg-gray-200 dark:bg-slate-800" />
+            <div className="px-8 pb-8">
+                <div className="flex items-end gap-6 -mt-16 mb-8">
+                    <div className="w-32 h-32 rounded-full bg-gray-300 dark:bg-slate-700" />
+                    <div className="pb-1 space-y-3">
+                        <div className="h-8 w-48 bg-gray-300 dark:bg-slate-700 rounded" />
+                        <div className="h-4 w-32 bg-gray-200 dark:bg-slate-600 rounded" />
+                    </div>
+                </div>
+                <div className="flex gap-8 border-b border-gray-100 dark:border-slate-800 pb-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-4 w-20 bg-gray-200 dark:bg-slate-700 rounded" />
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+// Error State
+const ErrorState = ({ message, onRetry }) => (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Failed to Load Profile</h3>
+        <p className="text-gray-500 dark:text-slate-400 mb-4">{message}</p>
+        <button
+            onClick={onRetry}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+        </button>
+    </div>
+);
+
 // --- Main Page Component ---
 
 const BrandProfile = () => {
     const [activeTab, setActiveTab] = useState("overview");
-    const [profile, setProfile] = useState(BRAND_PROFILE);
-    const [posts, setPosts] = useState(BRAND_POSTS);
+    const [profile, setProfile] = useState(null);
+    const [posts, setPosts] = useState([]);
+    const [campaigns, setCampaigns] = useState([]);
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
-    const handleSaveProfile = (updatedProfile) => {
-        setProfile(updatedProfile);
+    // Loading states
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Fetch all data on mount
+    useEffect(() => {
+        fetchProfileData();
+    }, []);
+
+    const fetchProfileData = async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const [profileRes, postsRes, campaignsRes] = await Promise.all([
+                getBrandProfile(),
+                getBrandPosts(),
+                getBrandCampaigns()
+            ]);
+
+            setProfile(profileRes.data);
+            setPosts(postsRes.data || []);
+            setCampaigns(campaignsRes.data || []);
+        } catch (err) {
+            console.error('Error fetching profile data:', err);
+            setError(err.response?.data?.message || 'Failed to load profile data');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleCreatePost = (newPost) => {
-        setPosts([newPost, ...posts]);
+    const handleSaveProfile = async (updatedProfile) => {
+        try {
+            await updateBrandProfile(updatedProfile);
+            // Refetch profile to get updated data
+            const profileRes = await getBrandProfile();
+            setProfile(profileRes.data);
+            return true;
+        } catch (err) {
+            console.error('Error updating profile:', err);
+            throw err;
+        }
     };
 
-    const handleDeletePost = (id) => {
-        setPosts(posts.filter(post => post.id !== id));
+    const handleCreatePost = async (postData) => {
+        setIsSubmittingPost(true);
+        try {
+            const response = await createBrandPost(postData);
+            setPosts([response.data, ...posts]);
+        } catch (err) {
+            console.error('Error creating post:', err);
+            throw err;
+        } finally {
+            setIsSubmittingPost(false);
+        }
     };
+
+    const handleDeletePost = async (id) => {
+        try {
+            await deleteBrandPost(id);
+            setPosts(posts.filter(post => post.id !== id));
+        } catch (err) {
+            console.error('Error deleting post:', err);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+            try {
+                await deleteAccount();
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                window.location.href = '/login';
+            } catch (err) {
+                console.error('Error deleting account:', err);
+                alert("Failed to delete account. Please try again.");
+            }
+        }
+    };
+
+    // Show loading state
+    if (isLoading) {
+        return <ProfileSkeleton />;
+    }
+
+    // Show error state
+    if (error) {
+        return <ErrorState message={error} onRetry={fetchProfileData} />;
+    }
+
+    // Profile not found
+    if (!profile) {
+        return <ErrorState message="Profile not found" onRetry={fetchProfileData} />;
+    }
 
     return (
         <div className="space-y-8 pb-12">
@@ -233,7 +385,7 @@ const BrandProfile = () => {
                                     <img src={profile.logo} alt={profile.name} className="w-full h-full rounded-full object-cover border-4 border-white dark:border-slate-900" />
                                 ) : (
                                     <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-indigo-800/50 flex items-center justify-center text-4xl font-bold text-indigo-600 dark:text-indigo-400 border-4 border-white dark:border-slate-900">
-                                        {profile.name.charAt(0)}
+                                        {profile.name?.charAt(0) || 'B'}
                                     </div>
                                 )}
                             </div>
@@ -243,18 +395,36 @@ const BrandProfile = () => {
                                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{profile.name}</h1>
                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-500 dark:text-slate-400">
                                     <span className="text-lg font-medium">{profile.tagline}</span>
-                                    <div className="flex items-center gap-1.5 text-sm">
-                                        <MapPin className="w-4 h-4" />
-                                        {profile.location}
-                                    </div>
+                                    {profile.location && (
+                                        <div className="flex items-center gap-1.5 text-sm">
+                                            <MapPin className="w-4 h-4" />
+                                            {profile.location}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Integrated Socials */}
                                 <div className="flex items-center gap-4 mt-4">
-                                    <a href={profile.socials.instagram} className="text-gray-400 hover:text-pink-600 transition-colors"><Instagram className="w-5 h-5" /></a>
-                                    <a href={profile.socials.linkedin} className="text-gray-400 hover:text-blue-600 transition-colors"><Linkedin className="w-5 h-5" /></a>
-                                    <a href={profile.socials.twitter} className="text-gray-400 hover:text-sky-500 transition-colors"><Twitter className="w-5 h-5" /></a>
-                                    <a href={profile.socials.website} className="text-gray-400 hover:text-indigo-500 transition-colors"><Globe className="w-5 h-5" /></a>
+                                    {profile.socials?.instagram && (
+                                        <a href={profile.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition-colors">
+                                            <Instagram className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                    {profile.socials?.linkedin && (
+                                        <a href={profile.socials.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors">
+                                            <Linkedin className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                    {profile.socials?.twitter && (
+                                        <a href={profile.socials.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-sky-500 transition-colors">
+                                            <Twitter className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                    {profile.socials?.website && (
+                                        <a href={profile.socials.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-indigo-500 transition-colors">
+                                            <Globe className="w-5 h-5" />
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -274,6 +444,7 @@ const BrandProfile = () => {
                         <TabButton active={activeTab === "details"} onClick={() => setActiveTab("details")}>Company Details</TabButton>
                         <TabButton active={activeTab === "posts"} onClick={() => setActiveTab("posts")}>Community Posts</TabButton>
                         <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")}>Past Campaigns</TabButton>
+                        <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>Settings</TabButton>
                     </div>
                 </div>
             </div>
@@ -298,7 +469,7 @@ const BrandProfile = () => {
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">About Us</h3>
                             </div>
                             <p className="text-gray-600 dark:text-slate-400 leading-relaxed text-lg mb-6">
-                                {profile.about}
+                                {profile.about || 'No description available.'}
                             </p>
                             <div className="p-6 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800/50">
                                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">Our Mission</h4>
@@ -310,10 +481,10 @@ const BrandProfile = () => {
 
                         {/* Metrics Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-                            <StatCard icon={Briefcase} label="Campaigns Launched" value={profile.stats.campaigns} colorClass="bg-blue-500" delay={0.1} />
-                            <StatCard icon={Calendar} label="Hiring Since" value={profile.stats.hiringSince} colorClass="bg-green-500" delay={0.2} />
-                            <StatCard icon={Star} label="Average Rating" value={profile.stats.rating} colorClass="bg-yellow-500" delay={0.3} />
-                            <StatCard icon={Users} label="Creator Engagements" value="1.2k+" colorClass="bg-purple-500" delay={0.4} />
+                            <StatCard icon={Briefcase} label="Campaigns Launched" value={profile.stats?.campaigns || 0} colorClass="bg-blue-500" delay={0.1} />
+                            <StatCard icon={Calendar} label="Hiring Since" value={profile.stats?.hiringSince || new Date().getFullYear()} colorClass="bg-green-500" delay={0.2} />
+                            <StatCard icon={Star} label="Average Rating" value={profile.stats?.rating || '4.8/5'} colorClass="bg-yellow-500" delay={0.3} />
+                            <StatCard icon={Users} label="Active Campaigns" value={profile.stats?.activeCampaigns || 0} colorClass="bg-purple-500" delay={0.4} />
                         </div>
                     </motion.div>
                 )}
@@ -358,28 +529,37 @@ const BrandProfile = () => {
                                             </div>
                                             <div>
                                                 <p className="text-sm text-gray-500 dark:text-slate-400">Email Support</p>
-                                                <p className="font-bold text-gray-900 dark:text-white">{profile.contact.email}</p>
+                                                <p className="font-bold text-gray-900 dark:text-white">{profile.contact?.email || profile.email}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
-                                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
-                                                <Phone className="w-5 h-5" />
+                                        {profile.contact?.phone && (
+                                            <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl">
+                                                <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600">
+                                                    <Phone className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 dark:text-slate-400">Phone Support</p>
+                                                    <p className="font-bold text-gray-900 dark:text-white">{profile.contact.phone}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 dark:text-slate-400">Phone Support</p>
-                                                <p className="font-bold text-gray-900 dark:text-white">{profile.contact.phone}</p>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Key Personnel</h3>
-                                    <div className="flex items-center gap-4">
-                                        <img src="https://i.pravatar.cc/150?u=ceo" alt="CEO" className="w-12 h-12 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-md" />
-                                        <div>
-                                            <p className="font-bold text-gray-900 dark:text-white">Sarah Miller</p>
-                                            <p className="text-sm text-gray-500 dark:text-slate-400">Chief Marketing Officer</p>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Company Info</h3>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-slate-400">Industry</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">{profile.industry || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-slate-400">Company Size</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">{profile.companySize || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500 dark:text-slate-400">Status</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">{profile.hiringStatus || 'Active'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -407,49 +587,65 @@ const BrandProfile = () => {
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {posts.map((post) => (
-                                <motion.div
-                                    key={post.id}
-                                    layout
-                                    className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
-                                >
-                                    <div className="flex items-start gap-4 mb-4">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                            {profile.name.charAt(0)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
-                                                    <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                        {posts.length === 0 ? (
+                            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800">
+                                <MessageCircle className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No posts yet</h4>
+                                <p className="text-gray-500 dark:text-slate-400">Share your first update with the community!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {posts.map((post) => (
+                                    <motion.div
+                                        key={post.id}
+                                        layout
+                                        className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
+                                    >
+                                        <div className="flex items-start gap-4 mb-4">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                                {profile.name?.charAt(0) || 'B'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
+                                                        <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                                                    </div>
+                                                    <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </div>
-                                                <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
+                                        <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
 
-                                    {post.mediaType && (
-                                        <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400">
-                                            {post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+                                        {post.mediaType && post.mediaType !== 'none' && (
+                                            <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400 overflow-hidden">
+                                                {post.mediaUrl ? (
+                                                    post.mediaType === 'image' ? (
+                                                        <img src={post.mediaUrl} alt="Post media" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Video className="w-8 h-8" />
+                                                    )
+                                                ) : (
+                                                    post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
+                                                <Heart className="w-4 h-4" /> {post.likes || 0}
+                                            </button>
+                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
+                                                <MessageCircle className="w-4 h-4" /> {post.comments || 0}
+                                            </button>
                                         </div>
-                                    )}
-
-                                    <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
-                                        <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
-                                            <Heart className="w-4 h-4" /> {post.likes}
-                                        </button>
-                                        <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
-                                            <MessageCircle className="w-4 h-4" /> {post.comments}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
                 )}
 
@@ -465,10 +661,53 @@ const BrandProfile = () => {
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Past Campaigns</h3>
                             <button className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">View All History</button>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {CAMPAIGNS_DATA.map((campaign) => (
-                                <CampaignCard key={campaign.id} campaign={campaign} />
-                            ))}
+                        {campaigns.length === 0 ? (
+                            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800">
+                                <Briefcase className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No campaigns yet</h4>
+                                <p className="text-gray-500 dark:text-slate-400">Create your first campaign to get started!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {campaigns.map((campaign) => (
+                                    <CampaignCard key={campaign.id} campaign={campaign} />
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {activeTab === "settings" && (
+                    <motion.div
+                        key="settings"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800"
+                    >
+                        <div className="max-w-2xl">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                <Settings className="w-5 h-5" />
+                                Account Settings
+                            </h3>
+
+                            <div className="mb-8 p-6 rounded-2xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+                                <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                                    <AlertCircle className="w-5 h-5" />
+                                    Danger Zone
+                                </h4>
+                                <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-6">
+                                    Once you delete your account, there is no going back. All your data including profile information, campaigns, and posts will be permanently removed.
+                                </p>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete Account
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -488,6 +727,7 @@ const BrandProfile = () => {
                         isOpen={isCreatePostOpen}
                         onClose={() => setIsCreatePostOpen(false)}
                         onPost={handleCreatePost}
+                        isSubmitting={isSubmittingPost}
                     />
                 )}
             </AnimatePresence>

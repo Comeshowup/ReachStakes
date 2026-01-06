@@ -84,15 +84,40 @@ const AuthPage = () => {
                 const response = await api.post("/auth/register", payload);
                 console.log("Registration Successful:", response.data);
 
-                // Optional: visual feedback
-                alert("Account created successfully! Please log in.");
-                setMode("login");
+                // Auto-login on signup
+                if (response.data.status === "success") {
+                    const { token, user } = response.data.data;
+                    localStorage.setItem("token", token);
+                    localStorage.setItem("userInfo", JSON.stringify(user));
+
+                    // Redirect based on role
+                    if (user.role === "creator") {
+                        navigate("/creator");
+                    } else {
+                        navigate("/dashboard");
+                    }
+                }
             } else {
-                // Login logic (placeholder until backend implements login)
-                console.log("Login submitted (not implemented yet)", formData);
-                // Example: const response = await api.post("/auth/login", { ... });
-                // If login successful:
-                // navigate("/dashboard");
+                // Login logic
+                const payload = {
+                    email: formData.email,
+                    password: formData.password
+                };
+
+                const response = await api.post("/auth/login", payload);
+
+                if (response.data.status === "success") {
+                    const { token, user } = response.data.data;
+                    localStorage.setItem("token", token);
+                    localStorage.setItem("userInfo", JSON.stringify(user));
+
+                    // Redirect based on role
+                    if (user.role === "creator") {
+                        navigate("/creator");
+                    } else {
+                        navigate("/dashboard");
+                    }
+                }
             }
         } catch (error) {
             console.error("API Error:", error);

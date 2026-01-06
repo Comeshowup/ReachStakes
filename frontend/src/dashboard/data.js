@@ -1,4 +1,4 @@
-import db from '../../jsoncrack (1).json';
+import db from '../../db.json';
 import { DollarSign, Briefcase, Video, Users, TrendingUp, Activity } from 'lucide-react';
 
 const iconMap = {
@@ -13,24 +13,32 @@ const iconMap = {
 // Extract data from the new JSON structure
 export const users = db.users || [];
 
-// Separate users by role
-export const brands = users.filter(u => u.role === 'brand').map(brand => ({
-    id: brand.profileId || brand.id,
-    ...brand,
-    stats: brand.stats || { campaigns: 0, hiringSince: '2023', rating: '0/5' },
-    contact: brand.contact || { email: brand.email, phone: '' },
-    socials: brand.socials || {},
-    skills: brand.skills || []
-}));
+// Separate users by role and merge with profile data
+export const brands = users.filter(u => u.role === 'brand').map(user => {
+    const profile = (db.brands || []).find(b => b.id === user.profileId) || {};
+    return {
+        id: user.profileId || user.id,
+        ...user,
+        ...profile, // Merge profile properties like name, logo
+        stats: profile.stats || user.stats || { campaigns: 0, hiringSince: '2023', rating: '0/5' },
+        contact: profile.contact || user.contact || { email: user.email, phone: '' },
+        socials: profile.socials || user.socials || {},
+        skills: profile.skills || user.skills || []
+    };
+});
 
-export const creators = users.filter(u => u.role === 'creator').map(creator => ({
-    id: creator.profileId || creator.id,
-    ...creator,
-    stats: creator.stats || { campaigns: 0, hiringSince: '2023', rating: '0/5' },
-    contact: creator.contact || { email: creator.email, phone: '' },
-    socials: creator.socials || {},
-    skills: creator.skills || []
-}));
+export const creators = users.filter(u => u.role === 'creator').map(user => {
+    const profile = (db.creators || []).find(c => c.id === user.profileId) || {};
+    return {
+        id: user.profileId || user.id,
+        ...user,
+        ...profile, // Merge profile properties like name, avatar, niche
+        stats: profile.stats || user.stats || { campaigns: 0, hiringSince: '2023', rating: '0/5' },
+        contact: profile.contact || user.contact || { email: user.email, phone: '' },
+        socials: profile.socials || user.socials || {},
+        skills: profile.skills || user.skills || []
+    };
+});
 
 // Extract campaigns from users who have them
 export const campaigns = users.flatMap(user =>
@@ -90,7 +98,13 @@ export const CAMPAIGNS_DATA = campaigns.map((c) => ({
     creators: c.creators || 0,
     roi: c.roi || '-',
     progress: c.progress || 0,
-    status: c.status || 'Active'
+    status: c.status || 'Active',
+    // Enterprise Extensions
+    rightsExpiration: c.rightsExpiration || '2026-12-31',
+    whitelistingStatus: c.whitelistingStatus || 'Active',
+    estimatedEmv: c.estimatedEmv || 14500.00,
+    deliverableVersion: c.deliverableVersion || 2,
+    contentUsageScope: c.contentUsageScope || ['Organic', 'Paid Social']
 }));
 
 export const AVAILABLE_CAMPAIGNS = CAMPAIGNS_DATA;
@@ -161,30 +175,27 @@ export const FEED_DATA = posts.map((post) => {
 });
 
 // Navigation Data
-import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link } from 'lucide-react';
+import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link, BarChart3 } from 'lucide-react';
 
 export const NAV_GROUPS = [
     {
         title: "Overview",
         items: [
             { label: "Dashboard", path: "/brand", icon: LayoutGrid },
-            { label: "Campaigns", path: "/brand/campaigns", icon: Target },
-            { label: "Discovery", path: "/brand/discovery", icon: Compass },
+            { label: "Active Campaigns", path: "/brand/campaigns", icon: Briefcase },
+            { label: "Approvals", path: "/brand/approvals", icon: CheckCircle, badge: "3" },
+            { label: "Escrow Vault", path: "/brand/financials", icon: CreditCard },
         ]
     },
     {
-        title: "Community",
+        title: "Support",
         items: [
-            { label: "Community Hub", path: "/brand/community", icon: UsersIcon },
-            { label: "Messages", path: "/brand/messages", icon: MessageSquare },
-            { label: "Book a Meeting", path: "/meetings", icon: Video },
+            { label: "Concierge", path: "/brand/messages", icon: MessageSquare },
         ]
     },
     {
-        title: "Management",
+        title: "Settings",
         items: [
-            { label: "Financials", path: "/brand/financials", icon: CreditCard },
-            { label: "Approvals", path: "/brand/approvals", icon: CheckCircle },
             { label: "Profile", path: "/brand/profile", icon: User },
         ]
     }
@@ -197,6 +208,8 @@ export const CREATOR_NAV_GROUPS = [
             { label: "Dashboard", path: "/creator", icon: Home },
             { label: "Find Campaigns", path: "/creator/explore", icon: Compass },
             { label: "My Work", path: "/creator/submissions", icon: FolderOpen },
+            { label: "Video Stats", path: "/creator/video-stats", icon: BarChart3 },
+            { label: "Documents", path: "/creator/documents", icon: FileText },
         ]
     },
     {
@@ -211,6 +224,7 @@ export const CREATOR_NAV_GROUPS = [
         title: "Management",
         items: [
             { label: "Earnings", path: "/creator/financials", icon: DollarIcon },
+            { label: "Invoices", path: "/creator/invoices", icon: FileText },
             { label: "Social Accounts", path: "/creator/social-accounts", icon: Link },
             { label: "Profile", path: "/creator/profile", icon: User },
         ]

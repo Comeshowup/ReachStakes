@@ -27,8 +27,11 @@ import {
     Award,
     Info,
     Link as LinkIcon,
-    MoreHorizontal
+    MoreHorizontal,
+    Settings,
+    AlertCircle
 } from "lucide-react";
+import { deleteAccount } from "../../api/userService";
 import { BRAND_PROFILE, CREATOR_PROFILE, BRAND_POSTS, CREATOR_POSTS, CAMPAIGNS_DATA } from "../data";
 import EditProfileModal from "../components/EditProfileModal";
 
@@ -212,6 +215,21 @@ const ProfilePage = ({ type: propType }) => {
     const [isFollowing, setIsFollowing] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+    // Handle account deletion
+    const handleDeleteAccount = async () => {
+        if (window.confirm("Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently removed.")) {
+            try {
+                await deleteAccount();
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                window.location.href = '/login';
+            } catch (err) {
+                console.error('Error deleting account:', err);
+                alert("Failed to delete account. Please try again.");
+            }
+        }
+    };
+
     // Data Loading (Mock)
     const [profile, setProfile] = useState(() => {
         const initialProfile = type === "brand" ? BRAND_PROFILE : CREATOR_PROFILE;
@@ -391,6 +409,9 @@ const ProfilePage = ({ type: propType }) => {
                             <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>Overview</TabButton>
                             <TabButton active={activeTab === "posts"} onClick={() => setActiveTab("posts")}>{type === "brand" ? "Updates" : "Posts"}</TabButton>
                             <TabButton active={activeTab === "portfolio"} onClick={() => setActiveTab("portfolio")}>{type === "brand" ? "Campaigns" : "Portfolio"}</TabButton>
+                            {isSelf && (
+                                <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>Settings</TabButton>
+                            )}
                         </div>
 
                         <AnimatePresence mode="wait">
@@ -457,6 +478,40 @@ const ProfilePage = ({ type: propType }) => {
                                     {CAMPAIGNS_DATA.map((campaign) => (
                                         <CampaignCard key={campaign.id} campaign={campaign} />
                                     ))}
+                                </motion.div>
+                            )}
+
+                            {activeTab === "settings" && isSelf && (
+                                <motion.div
+                                    key="settings"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm"
+                                >
+                                    <div className="max-w-2xl">
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                            <Settings className="w-5 h-5" />
+                                            Account Settings
+                                        </h3>
+
+                                        <div className="p-6 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+                                            <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                                                <AlertCircle className="w-5 h-5" />
+                                                Danger Zone
+                                            </h4>
+                                            <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-6">
+                                                Once you delete your account, there is no going back. All your data including profile information, campaigns, and posts will be permanently removed.
+                                            </p>
+                                            <button
+                                                onClick={handleDeleteAccount}
+                                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Delete Account
+                                            </button>
+                                        </div>
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

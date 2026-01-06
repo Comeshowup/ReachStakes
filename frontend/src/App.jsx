@@ -3,12 +3,13 @@ import { Routes, Route } from "react-router-dom";
 import NewLandingPage from "./NewLandingPage/NewLandingPage";
 import HomePage from "./Homepage/HomePage";
 import DashboardLayout from "./dashboard/layout/DashboardLayout";
-import DashboardHome from "./dashboard/pages/DashboardHome";
+import CMODashboard from "./dashboard/pages/CMODashboard";
 import CampaignManagement from "./dashboard/pages/CampaignManagement";
+
 import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
-import VideoApprovalPanel from "./dashboard/pages/VideoApprovalPanel";
-import FinancialManagementPanel from "./dashboard/pages/FinancialManagementPanel";
+import ApprovalQueue from "./dashboard/components/ApprovalQueue";
+import EscrowVault from "./dashboard/components/EscrowVault";
 import MessagingPanel from "./dashboard/pages/MessagingPanel";
 import CreatorLayout from "./dashboard/layout/CreatorLayout";
 import CreatorDashboardHome from "./dashboard/pages/creator/CreatorDashboardHome";
@@ -17,6 +18,9 @@ import CreatorFinancials from "./dashboard/pages/creator/CreatorFinancials";
 import DiscoveryHub from "./dashboard/pages/creator/DiscoveryHub";
 import MySubmissions from "./dashboard/pages/creator/MySubmissions";
 import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
+import InvoiceCenter from "./dashboard/pages/creator/InvoiceCenter";
+import VideoStatsPage from "./dashboard/pages/creator/VideoStatsPage";
+import DocumentsPage from "./dashboard/pages/creator/DocumentsPage";
 import ProfilePage from "./dashboard/pages/ProfilePage";
 import AdminLayout from "./dashboard/layout/AdminLayout";
 import AdminDashboardHome from "./dashboard/pages/admin/AdminDashboardHome";
@@ -26,6 +30,8 @@ import FinancialManagementAdmin from "./dashboard/pages/admin/FinancialManagemen
 import AuthPage from "./AuthPage/AuthPage";
 import MeetingPage from "./pages/MeetingPage/MeetingPage";
 import CampaignPage from "./pages/CampaignPage/CampaignPage";
+import PublicMediaKit from "./pages/PublicMediaKit";
+import BrandWorkspace from "./dashboard/pages/BrandWorkspace";
 import "./App.css";
 
 // Main App Component managing all application routes
@@ -38,18 +44,22 @@ function App() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/meetings" element={<MeetingPage />} />
       <Route path="/campaign/:id" element={<CampaignPage />} />
+      <Route path="/profile/@:handle" element={<PublicMediaKit />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/new-landing" element={<NewLandingPage />} />
 
-      {/* Brand Dashboard Routes - Protected Layout */}
+
+
+      {/* Brand Workspace - Standalone Layout */}
+      <Route path="/brand/workspace" element={<BrandWorkspace />} />
+      <Route path="/brand/workspace/:campaignId" element={<BrandWorkspace />} />
+
       <Route path="/brand" element={<DashboardLayout />}>
-        <Route index element={<DashboardHome />} />
+        <Route index element={<CMODashboard />} />
         <Route path="campaigns" element={<CampaignManagement />} />
-        <Route path="discovery" element={<CreatorDiscovery />} />
         <Route path="profile" element={<ProfilePage type="brand" />} />
-        <Route path="community" element={<CommunityHub />} />
-        <Route path="approvals" element={<VideoApprovalPanel />} />
-        <Route path="financials" element={<FinancialManagementPanel />} />
+        <Route path="approvals" element={<ApprovalQueue />} />
+        <Route path="financials" element={<EscrowVault />} />
         <Route path="messages" element={<MessagingPanel />} />
       </Route>
 
@@ -63,7 +73,10 @@ function App() {
         <Route path="community" element={<CommunityHub />} />
         <Route path="messages" element={<MessagingPanel />} />
         <Route path="financials" element={<CreatorFinancials />} />
+        <Route path="invoices" element={<InvoiceCenter />} />
         <Route path="social-accounts" element={<SocialAccounts />} />
+        <Route path="video-stats" element={<VideoStatsPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
       </Route>
 
       {/* Admin Dashboard Routes */}
