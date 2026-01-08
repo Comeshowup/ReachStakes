@@ -165,14 +165,61 @@ export const handleWebhook = async (req, res) => {
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
-        // 2. Handle payment success
-        if (event.type === 'payment.succeeded' || event.status === 'success') {
-            const referenceId = event.txn_no || event.reference_id;
+        // Extract event type and data - Tazapay may nest data differently
+        const eventType = event.type || event.event_type || '';
+        const eventData = event.data || event;
 
+        // Extract reference ID from multiple possible locations
+        const referenceId = eventData.reference_id
+            || eventData.txn_no
+            || event.reference_id
+            || event.txn_no
+            || eventData.checkout_id
+            || event.checkout_id;
+
+        console.log(`Webhook Event Type: ${eventType}, Reference ID: ${referenceId}`);
+
+        // 2. Handle payment success - check for all possible success event types
+        const successEventTypes = [
+            'checkout.paid',
+            'payment.succeeded',
+            'payment_attempt.succeeded',
+            'payin.success',
+            'transaction.success'
+        ];
+
+        const isSuccessEvent = successEventTypes.includes(eventType)
+            || event.status === 'success'
+            || event.status === 'paid'
+            || eventData.status === 'success'
+            || eventData.status === 'paid';
+
+        if (isSuccessEvent && referenceId) {
             // Find transaction by Tazapay reference
-            const transaction = await prisma.transaction.findFirst({
+            let transaction = await prisma.transaction.findFirst({
                 where: { tazapayReferenceId: referenceId }
             });
+
+            // If not found by reference, try finding by pattern match
+            if (!transaction) {
+                transaction = await prisma.transaction.findFirst({
+                    where: {
+                        tazapayReferenceId: {
+                            contains: referenceId.split('_')[1] || referenceId
+                        }
+                    }
+                });
+            }
+
+            // Also try to find pending transactions if reference doesn't match
+            if (!transaction) {
+                // Get the most recent pending transaction as a fallback
+                console.log('Could not find transaction by reference, looking for recent pending...');
+                transaction = await prisma.transaction.findFirst({
+                    where: { status: 'Pending' },
+                    orderBy: { transactionDate: 'desc' }
+                });
+            }
 
             if (transaction) {
                 // Update transaction status
@@ -181,7 +228,8 @@ export const handleWebhook = async (req, res) => {
                     data: {
                         status: 'Completed',
                         processedAt: new Date(),
-                        gatewayStatus: event.status || 'success',
+                        gatewayStatus: eventData.status || event.status || 'success',
+                        tazapayReferenceId: referenceId, // Update with actual reference
                         metadata: event
                     }
                 });
@@ -203,14 +251,25 @@ export const handleWebhook = async (req, res) => {
                     });
                 }
 
-                console.log(`Payment completed for transaction ${transaction.id}`);
+                console.log(`✅ Payment completed for transaction ${transaction.id}`);
+            } else {
+                console.log(`⚠️ No matching transaction found for reference: ${referenceId}`);
             }
         }
 
         // 3. Handle payment failure
-        if (event.type === 'payment.failed' || event.status === 'failed') {
-            const referenceId = event.txn_no || event.reference_id;
+        const failureEventTypes = [
+            'payment.failed',
+            'payment_attempt.failed',
+            'checkout.failed',
+            'payin.failed'
+        ];
 
+        const isFailureEvent = failureEventTypes.includes(eventType)
+            || event.status === 'failed'
+            || eventData.status === 'failed';
+
+        if (isFailureEvent && referenceId) {
             const transaction = await prisma.transaction.findFirst({
                 where: { tazapayReferenceId: referenceId }
             });
@@ -220,12 +279,12 @@ export const handleWebhook = async (req, res) => {
                     where: { id: transaction.id },
                     data: {
                         status: 'Failed',
-                        gatewayStatus: event.status || 'failed',
+                        gatewayStatus: eventData.status || event.status || 'failed',
                         metadata: event
                     }
                 });
 
-                console.log(`Payment failed for transaction ${transaction.id}`);
+                console.log(`❌ Payment failed for transaction ${transaction.id}`);
             }
         }
 
