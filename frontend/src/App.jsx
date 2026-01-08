@@ -10,6 +10,7 @@ import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
 import ApprovalQueue from "./dashboard/components/ApprovalQueue";
 import EscrowVault from "./dashboard/pages/EscrowVault";
+import PaymentStatus from "./dashboard/pages/PaymentStatus";
 import MessagingPanel from "./dashboard/pages/MessagingPanel";
 import CreatorLayout from "./dashboard/layout/CreatorLayout";
 import CreatorDashboardHome from "./dashboard/pages/creator/CreatorDashboardHome";
@@ -62,6 +63,7 @@ function App() {
         <Route path="approvals" element={<ApprovalQueue />} />
         <Route path="financials" element={<EscrowVault />} />
         <Route path="escrow" element={<EscrowVault />} />
+        <Route path="payment-status/:transactionId" element={<PaymentStatus />} />
         <Route path="contact" element={<ContactUsPage />} />
       </Route>
 

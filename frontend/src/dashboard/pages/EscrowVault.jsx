@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Wallet,
@@ -11,7 +11,12 @@ import {
     Check,
     Loader2,
     ChevronRight,
-    Info
+    Info,
+    History,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    ExternalLink
 } from 'lucide-react';
 import * as brandService from '../../api/brandService';
 import paymentService from '../../api/paymentService';
@@ -20,7 +25,7 @@ import paymentService from '../../api/paymentService';
 const PLATFORM_FEE_PERCENT = 5;
 const PROCESSING_FEE_PERCENT = 2.9;
 
-const FundingModal = ({ isOpen, onClose, campaign, onSuccess }) => {
+const FundingModal = ({ isOpen, onClose, campaign, onSuccess, navigate }) => {
     const [amount, setAmount] = useState('');
     const [isCalculating, setIsCalculating] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +67,16 @@ const FundingModal = ({ isOpen, onClose, campaign, onSuccess }) => {
         try {
             const response = await paymentService.initiateCampaignPayment(campaign.id, fees.amount);
             if (response.url) {
+                // Store transaction ID for status tracking
+                if (response.transactionId) {
+                    sessionStorage.setItem('pendingTransactionId', response.transactionId);
+                }
                 window.location.href = response.url;
+            } else if (response.transactionId) {
+                // No redirect URL, navigate to status page
+                navigate(`/brand/payment-status/${response.transactionId}`);
+                onSuccess?.(response.transactionId);
+                onClose();
             } else {
                 onSuccess?.();
                 onClose();
@@ -231,21 +245,28 @@ const EscrowVault = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await brandService.getBrandCampaigns();
-                if (response.status === 'success') {
-                    setCampaigns(response.data);
+                // Fetch campaigns and transactions in parallel
+                const [campaignsResponse, transactionsData] = await Promise.all([
+                    brandService.getBrandCampaigns(),
+                    paymentService.getTransactionHistory().catch(() => [])
+                ]);
+
+                if (campaignsResponse.status === 'success') {
+                    setCampaigns(campaignsResponse.data);
 
                     // If campaign ID is in URL, open funding modal for it
                     if (selectedCampaignId) {
-                        const campaign = response.data.find(c => c.id === parseInt(selectedCampaignId));
+                        const campaign = campaignsResponse.data.find(c => c.id === parseInt(selectedCampaignId));
                         if (campaign) {
                             setSelectedCampaign(campaign);
                             setIsFundingModalOpen(true);
                         }
                     }
                 }
+
+                setTransactions(transactionsData || []);
             } catch (error) {
-                console.error('Failed to fetch campaigns:', error);
+                console.error('Failed to fetch data:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -361,8 +382,8 @@ const EscrowVault = () => {
                                 <div className="mt-3 w-full max-w-sm bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all ${campaign.fundingProgress >= 100
-                                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
-                                                : 'bg-gradient-to-r from-indigo-400 to-indigo-600'
+                                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                                            : 'bg-gradient-to-r from-indigo-400 to-indigo-600'
                                             }`}
                                         style={{ width: `${Math.min(campaign.fundingProgress || 0, 100)}%` }}
                                     />
@@ -402,6 +423,78 @@ const EscrowVault = () => {
                 </div>
             </div>
 
+            {/* Transaction History */}
+            {transactions.length > 0 && (
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <History className="w-5 h-5 text-slate-400" />
+                            Recent Transactions
+                        </h2>
+                    </div>
+
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {transactions.slice(0, 10).map((txn, index) => {
+                            const statusConfig = {
+                                'Pending': { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+                                'Completed': { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                                'Failed': { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
+                                'Processing': { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-500/10' }
+                            };
+                            const config = statusConfig[txn.status] || statusConfig['Pending'];
+                            const StatusIcon = config.icon;
+
+                            return (
+                                <motion.div
+                                    key={txn.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.03 }}
+                                    className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl ${config.bg}`}>
+                                            <StatusIcon className={`w-5 h-5 ${config.color} ${txn.status === 'Processing' ? 'animate-spin' : ''}`} />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-900 dark:text-white">
+                                                {txn.campaign?.title || txn.description || 'Campaign Funding'}
+                                            </p>
+                                            <p className="text-sm text-slate-500">
+                                                {new Date(txn.transactionDate).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <p className="font-mono font-bold text-gray-900 dark:text-white">
+                                                ${parseFloat(txn.amount).toLocaleString()}
+                                            </p>
+                                            <p className={`text-xs font-bold ${config.color}`}>
+                                                {txn.status}
+                                            </p>
+                                        </div>
+                                        <Link
+                                            to={`/brand/payment-status/${txn.id}`}
+                                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                                            title="View Details"
+                                        >
+                                            <ExternalLink className="w-4 h-4 text-slate-400" />
+                                        </Link>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Funding Modal */}
             <FundingModal
                 isOpen={isFundingModalOpen}
@@ -414,6 +507,7 @@ const EscrowVault = () => {
                     }
                 }}
                 campaign={selectedCampaign}
+                navigate={navigate}
                 onSuccess={() => {
                     // Refresh data
                     window.location.reload();

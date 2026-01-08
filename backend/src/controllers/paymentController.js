@@ -264,3 +264,52 @@ export const getTransactionHistory = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch transactions' });
     }
 };
+
+// Get single transaction status
+export const getTransactionStatus = async (req, res) => {
+    try {
+        const { transactionId } = req.params;
+        const userId = req.user.id;
+
+        const transaction = await prisma.transaction.findFirst({
+            where: {
+                id: parseInt(transactionId),
+                userId: userId
+            },
+            include: {
+                campaign: {
+                    select: {
+                        id: true,
+                        title: true,
+                        escrowBalance: true,
+                        targetBudget: true
+                    }
+                }
+            }
+        });
+
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found' });
+        }
+
+        res.json({
+            id: transaction.id,
+            status: transaction.status,
+            amount: transaction.amount,
+            netAmount: transaction.netAmount,
+            platformFee: transaction.platformFee,
+            processingFee: transaction.processingFee,
+            type: transaction.type,
+            description: transaction.description,
+            tazapayReferenceId: transaction.tazapayReferenceId,
+            checkoutUrl: transaction.checkoutUrl,
+            gatewayStatus: transaction.gatewayStatus,
+            transactionDate: transaction.transactionDate,
+            processedAt: transaction.processedAt,
+            campaign: transaction.campaign
+        });
+    } catch (error) {
+        console.error('Get Transaction Status Error:', error);
+        res.status(500).json({ error: 'Failed to fetch transaction status' });
+    }
+};

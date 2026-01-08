@@ -86,6 +86,24 @@ const paymentService = {
             console.error('Get Transaction History Error:', error);
             throw error;
         }
+    },
+
+    /**
+     * Get single transaction status
+     * @param {number} transactionId
+     * @returns {Promise<Object>}
+     */
+    getTransactionStatus: async (transactionId) => {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/payments/status/${transactionId}`,
+                getAuthHeaders()
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Get Transaction Status Error:', error);
+            throw error;
+        }
     }
 };
 
