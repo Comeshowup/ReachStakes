@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     AreaChart,
@@ -9,6 +9,8 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
+import paymentService from '../../api/paymentService';
+import brandService from '../../api/brandService';
 import {
     TrendingUp,
     DollarSign,
@@ -20,6 +22,7 @@ import {
     ShieldCheck,
     Users
 } from 'lucide-react';
+
 
 // --- TECH-LUXE COMPONENT PRIMITIVES ---
 
@@ -83,13 +86,27 @@ const CHART_DATA = [
     { month: 'Jul', revenue: 128000, spend: 35000 },
 ];
 
-const CAMPAIGNS = [
-    { id: 1, name: "Summer Reveal", status: "Live", creators: 12, budget: "$50k", roi: "4.2x", nextAction: "Verify Content" },
-    { id: 2, name: "Back to School", status: "Scaling", creators: 8, budget: "$120k", roi: "3.8x", nextAction: "Approve Payouts" },
-    { id: 3, name: "Tech Reviewers", status: "Vetting", creators: 25, budget: "$25k", roi: "-", nextAction: "Shortlist" },
-];
-
 const CMODashboard = () => {
+    const [campaigns, setCampaigns] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCampaigns = async () => {
+            try {
+                const response = await brandService.getBrandCampaigns();
+                if (response.status === 'success') {
+                    setCampaigns(response.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch campaigns:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCampaigns();
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#09090B] text-slate-200 font-sans selection:bg-indigo-500/30 p-8 lg:p-12">
 
@@ -232,33 +249,58 @@ const CMODashboard = () => {
                     <div className="mb-6 flex items-center justify-between">
                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
                             <Zap className="w-5 h-5 text-amber-400" />
-                            Active Ops
+                            Campaigns
                         </h3>
-                        <span className="text-xs font-mono text-slate-500">3 LIVE</span>
+                        <span className="text-xs font-mono text-slate-500">{campaigns.length} TOTAL</span>
                     </div>
 
 
-                    <div className="space-y-4 flex-1">
-                        {CAMPAIGNS.map((campaign, idx) => (
+                    <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                        {isLoading ? (
+                            <div className="text-center text-slate-500 py-10">Loading campaigns...</div>
+                        ) : campaigns.length === 0 ? (
+                            <div className="text-center text-slate-500 py-10">No campaigns found.</div>
+                        ) : campaigns.map((campaign, idx) => (
                             <div key={campaign.id} className="group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all cursor-pointer">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div>
+                                    <div onClick={() => window.location.href = `/brand/workspace/${campaign.id}`}>
                                         <h4 className="font-bold text-white text-base mb-1 group-hover:text-indigo-400 transition-colors">{campaign.name}</h4>
                                         <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                                             <span>{campaign.creators} Creators</span>
                                             <span className="w-1 h-1 rounded-full bg-slate-700" />
-                                            <span>{campaign.budget}</span>
+                                            <span>{campaign.budget ? `$${campaign.budget.min || 0} - $${campaign.budget.max || 0}` : '$0'}</span>
                                         </div>
                                     </div>
-                                    <div className={`w-2 h-2 rounded-full ${campaign.status === 'Live' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-indigo-500'}`} />
+                                    <div className={`w-2 h-2 rounded-full ${campaign.status === 'Active' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-indigo-500'}`} />
                                 </div>
 
                                 <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Next Action</span>
-                                    <span className="text-xs font-bold text-white flex items-center gap-1">
-                                        {campaign.nextAction}
-                                        <ArrowUpRight className="w-3 h-3 text-slate-600 group-hover:text-white transition-colors" />
+                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold ${campaign.status === 'Active' ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 bg-slate-800'}`}>
+                                        {campaign.status}
                                     </span>
+
+                                    {['Draft', 'Pending Payment', 'Active'].includes(campaign.status) ? (
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    const { url } = await paymentService.initiateCampaignPayment(campaign.id);
+                                                    if (url) window.location.href = url;
+                                                } catch (err) {
+                                                    alert("Funding failed to initialize");
+                                                }
+                                            }}
+                                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20"
+                                        >
+                                            Fund Escrow
+                                            <ArrowUpRight className="w-3 h-3" />
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs font-bold text-white flex items-center gap-1">
+                                            View Details
+                                            <ArrowUpRight className="w-3 h-3 text-slate-600 group-hover:text-white transition-colors" />
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -273,5 +315,6 @@ const CMODashboard = () => {
         </div>
     );
 };
+
 
 export default CMODashboard;

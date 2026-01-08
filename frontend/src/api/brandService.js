@@ -74,17 +74,6 @@ export const getBrandCampaigns = async () => {
     return response.data;
 };
 
-export default {
-    getBrandProfile,
-    updateBrandProfile,
-    getBrandPosts,
-    createBrandPost,
-    deleteBrandPost,
-    deleteBrandPost,
-    getBrandCampaigns,
-    deleteAccount
-};
-
 /**
  * Delete the signed-in user's account
  */
@@ -93,4 +82,14 @@ export const deleteAccount = async () => {
         headers: getAuthHeaders()
     });
     return response.data;
+};
+
+export default {
+    getBrandProfile,
+    updateBrandProfile,
+    getBrandPosts,
+    createBrandPost,
+    deleteBrandPost,
+    getBrandCampaigns,
+    deleteAccount
 };

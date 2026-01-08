@@ -9,7 +9,7 @@ import CampaignManagement from "./dashboard/pages/CampaignManagement";
 import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
 import ApprovalQueue from "./dashboard/components/ApprovalQueue";
-import EscrowVault from "./dashboard/components/EscrowVault";
+import EscrowVault from "./dashboard/pages/EscrowVault";
 import MessagingPanel from "./dashboard/pages/MessagingPanel";
 import CreatorLayout from "./dashboard/layout/CreatorLayout";
 import CreatorDashboardHome from "./dashboard/pages/creator/CreatorDashboardHome";
@@ -32,6 +32,7 @@ import MeetingPage from "./pages/MeetingPage/MeetingPage";
 import CampaignPage from "./pages/CampaignPage/CampaignPage";
 import PublicMediaKit from "./pages/PublicMediaKit";
 import BrandWorkspace from "./dashboard/pages/BrandWorkspace";
+import ContactUsPage from "./dashboard/pages/ContactUsPage";
 import "./App.css";
 
 // Main App Component managing all application routes
@@ -60,23 +61,22 @@ function App() {
         <Route path="profile" element={<ProfilePage type="brand" />} />
         <Route path="approvals" element={<ApprovalQueue />} />
         <Route path="financials" element={<EscrowVault />} />
-        <Route path="messages" element={<MessagingPanel />} />
+        <Route path="escrow" element={<EscrowVault />} />
+        <Route path="contact" element={<ContactUsPage />} />
       </Route>
 
       {/* Creator Dashboard Routes - Protected Layout */}
       <Route path="/creator" element={<CreatorLayout />}>
         <Route index element={<CreatorDashboardHome />} />
         <Route path="explore" element={<ExploreCampaigns />} />
-        <Route path="discovery" element={<DiscoveryHub />} />
         <Route path="submissions" element={<MySubmissions />} />
         <Route path="profile" element={<ProfilePage type="creator" />} />
-        <Route path="community" element={<CommunityHub />} />
-        <Route path="messages" element={<MessagingPanel />} />
         <Route path="financials" element={<CreatorFinancials />} />
         <Route path="invoices" element={<InvoiceCenter />} />
         <Route path="social-accounts" element={<SocialAccounts />} />
         <Route path="video-stats" element={<VideoStatsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
+        <Route path="contact" element={<ContactUsPage />} />
       </Route>
 
       {/* Admin Dashboard Routes */}

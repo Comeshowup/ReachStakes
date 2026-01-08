@@ -250,11 +250,13 @@ export const deleteBrandPost = async (req, res) => {
 export const getBrandCampaigns = async (req, res) => {
     try {
         const userId = req.user.id;
+        console.log(`[DEBUG] getBrandCampaigns - UserID: ${userId}`);
 
         const campaigns = await prisma.campaign.findMany({
             where: { brandId: userId },
             include: {
                 collaborations: {
+
                     select: {
                         id: true,
                         status: true,
@@ -289,10 +291,13 @@ export const getBrandCampaigns = async (req, res) => {
                 status: campaign.status,
                 platform: campaign.platformRequired,
                 type: campaign.campaignType,
-                budget: {
-                    min: campaign.budgetMin,
-                    max: campaign.budgetMax
-                },
+                targetBudget: parseFloat(campaign.targetBudget) || 0,
+                escrowBalance: parseFloat(campaign.escrowBalance) || 0,
+                totalFunded: parseFloat(campaign.totalFunded) || 0,
+                totalReleased: parseFloat(campaign.totalReleased) || 0,
+                fundingProgress: campaign.targetBudget > 0
+                    ? Math.round((parseFloat(campaign.escrowBalance) / parseFloat(campaign.targetBudget)) * 100)
+                    : 0,
                 deadline: campaign.deadline,
                 creators: creatorCount,
                 roi: roi,

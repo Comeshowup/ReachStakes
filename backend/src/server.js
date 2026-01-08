@@ -12,6 +12,11 @@ import brandRoutes from './routes/brandRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import mediaKitRoutes from './routes/mediaKitRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+
+// ... other imports
+
+
 import cron from 'node-cron';
 import { fetchVideoStats } from './utils/videoStats.js';
 
@@ -70,6 +75,7 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/invoices', invoiceRoutes); // Phase 1: Automated Invoicing
 app.use('/api/media-kit', mediaKitRoutes); // Phase 2: Live Media Kit
 app.use('/api/documents', documentRoutes); // Creator Documents Hub
+app.use('/api/payments', paymentRoutes); // Tazapay Payments
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

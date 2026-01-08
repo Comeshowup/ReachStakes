@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import CollaborationsKanban from "./CollaborationsKanban";
 import ContractStatus from "./ContractStatus";
+
 import PerformanceDeepDive from "./PerformanceDeepDive";
+import paymentService from "../../api/paymentService";
 
 // --- Tab Navigation Component ---
 const TabButton = ({ active, icon: Icon, label, onClick }) => (
@@ -110,6 +112,24 @@ const CampaignWorkspace = ({ campaign }) => {
                         </div>
                     </div>
 
+
+
+                    {/* Funding Button */}
+                    <button
+                        onClick={async () => {
+                            try {
+                                const { url } = await paymentService.initiateCampaignPayment(campaign.id);
+                                if (url) window.location.href = url;
+                            } catch (e) {
+                                alert('Funding initialization failed');
+                            }
+                        }}
+                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+                    >
+                        <Briefcase size={16} />
+                        Fund Escrow
+                    </button>
+
                     {/* KPI Quick View */}
                     <div className="flex items-center gap-3">
                         <StatBadge icon={Users} value="2.4M" label="Total Reach" color="indigo" />
@@ -165,10 +185,10 @@ const CampaignWorkspace = ({ campaign }) => {
                         </button>
                     </div>
                 </div>
-            </header>
+            </header >
 
             {/* --- Main Content Area --- */}
-            <main className="flex-1 overflow-hidden relative bg-[#09090B]">
+            < main className="flex-1 overflow-hidden relative bg-[#09090B]" >
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeTab}
@@ -188,8 +208,8 @@ const CampaignWorkspace = ({ campaign }) => {
                         {activeTab === 'performance' && <PerformanceDeepDive />}
                     </motion.div>
                 </AnimatePresence>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 };
 

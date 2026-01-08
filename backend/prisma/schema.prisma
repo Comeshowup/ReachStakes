@@ -143,8 +143,7 @@ model Campaign {
   platformRequired String?         @map("platform_required") @db.VarChar(50)
   campaignType     String?         @map("campaign_type") @db.VarChar(50)
   status           CampaignStatus? @default(Draft)
-  budgetMin        Decimal?        @map("budget_min") @db.Decimal(10, 2)
-  budgetMax        Decimal?        @map("budget_max") @db.Decimal(10, 2)
+  targetBudget     Decimal?        @map("target_budget") @db.Decimal(10, 2) // Single budget amount
   deadline         DateTime?       @db.Date
 
   // Contractual Details (New)
@@ -157,7 +156,8 @@ model Campaign {
 
   // Escrow / Vault
   escrowBalance   Decimal?      @default(0.00) @map("escrow_balance") @db.Decimal(10, 2)
-  totalBudget     Decimal?      @map("total_budget") @db.Decimal(10, 2)
+  totalFunded     Decimal?      @default(0.00) @map("total_funded") @db.Decimal(10, 2) // Sum of all funding transactions
+  totalReleased   Decimal?      @default(0.00) @map("total_released") @db.Decimal(10, 2) // Sum of creator payouts
   escrowStatus    EscrowStatus? @default(Locked) @map("escrow_status")
   payoutSpeed     PayoutSpeed?  @default(Standard) @map("payout_speed")
   escrowFundedAt  DateTime?     @map("escrow_funded_at")
@@ -238,6 +238,19 @@ model Transaction {
   status          TransactionStatus? @default(Pending)
   description     String?            @db.VarChar(255)
   transactionDate DateTime           @default(now()) @map("transaction_date")
+
+  // Tazapay Integration
+  tazapayReferenceId String?   @map("tazapay_reference_id") @db.VarChar(100)
+  checkoutUrl        String?   @map("checkout_url") @db.VarChar(500)
+  gatewayStatus      String?   @map("gateway_status") @db.VarChar(50)
+  processedAt        DateTime? @map("processed_at")
+
+  // Fee Breakdown (stored for receipts)
+  platformFee   Decimal? @map("platform_fee") @db.Decimal(10, 2)
+  processingFee Decimal? @map("processing_fee") @db.Decimal(10, 2)
+  netAmount     Decimal? @map("net_amount") @db.Decimal(10, 2)
+
+  metadata Json? // webhook payload storage
 
   user     User      @relation(fields: [userId], references: [id])
   campaign Campaign? @relation(fields: [campaignId], references: [id])
