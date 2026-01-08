@@ -250,6 +250,10 @@ model Transaction {
   processingFee Decimal? @map("processing_fee") @db.Decimal(10, 2)
   netAmount     Decimal? @map("net_amount") @db.Decimal(10, 2)
 
+  // Actual Received Amount (from payment gateway - may differ due to currency conversion)
+  receivedAmount   Decimal? @map("received_amount") @db.Decimal(10, 2)
+  receivedCurrency String?  @map("received_currency") @db.VarChar(10)
+
   metadata Json? // webhook payload storage
 
   user     User      @relation(fields: [userId], references: [id])

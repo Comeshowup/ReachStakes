@@ -222,6 +222,21 @@ export const handleWebhook = async (req, res) => {
             }
 
             if (transaction) {
+                // Extract received amount from webhook data (Tazapay sends amount in cents)
+                // Check various possible locations for the paid/received amount
+                const paidAmountCents = eventData.amount_paid
+                    || eventData.paid_amount
+                    || eventData.amount
+                    || event.amount_paid
+                    || event.paid_amount
+                    || event.amount;
+
+                // Convert from cents to dollars if we have a value
+                const receivedAmount = paidAmountCents ? parseFloat(paidAmountCents) / 100 : null;
+                const receivedCurrency = eventData.currency || event.currency || eventData.invoice_currency || 'USD';
+
+                console.log(`Received Amount: ${receivedAmount} ${receivedCurrency}`);
+
                 // Update transaction status
                 await prisma.transaction.update({
                     where: { id: transaction.id },
@@ -230,6 +245,8 @@ export const handleWebhook = async (req, res) => {
                         processedAt: new Date(),
                         gatewayStatus: eventData.status || event.status || 'success',
                         tazapayReferenceId: referenceId, // Update with actual reference
+                        receivedAmount: receivedAmount,
+                        receivedCurrency: receivedCurrency,
                         metadata: event
                     }
                 });
@@ -358,6 +375,8 @@ export const getTransactionStatus = async (req, res) => {
             netAmount: transaction.netAmount,
             platformFee: transaction.platformFee,
             processingFee: transaction.processingFee,
+            receivedAmount: transaction.receivedAmount,
+            receivedCurrency: transaction.receivedCurrency,
             type: transaction.type,
             description: transaction.description,
             tazapayReferenceId: transaction.tazapayReferenceId,

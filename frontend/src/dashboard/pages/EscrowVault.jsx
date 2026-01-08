@@ -473,8 +473,13 @@ const EscrowVault = () => {
 
                                     <div className="flex items-center gap-4">
                                         <div className="text-right">
-                                            <p className="font-mono font-bold text-gray-900 dark:text-white">
+                                            <p className="font-mono font-bold text-gray-900 dark:text-white group relative">
                                                 ${parseFloat(txn.amount).toLocaleString()}
+                                                {txn.receivedAmount && Math.abs(parseFloat(txn.amount) - parseFloat(txn.receivedAmount)) > 1 && (
+                                                    <span className="absolute -left-6 top-1/2 -translate-y-1/2 text-amber-500" title={`Received different amount: $${parseFloat(txn.receivedAmount).toLocaleString()}`}>
+                                                        <AlertCircle className="w-4 h-4" />
+                                                    </span>
+                                                )}
                                             </p>
                                             <p className={`text-xs font-bold ${config.color}`}>
                                                 {txn.status}

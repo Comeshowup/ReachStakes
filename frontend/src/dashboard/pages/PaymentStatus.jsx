@@ -315,6 +315,26 @@ const PaymentStatus = () => {
                                     ${parseFloat(transaction.amount).toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* Actual Received Amount (if available) */}
+                            {transaction.receivedAmount && (
+                                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="flex justify-between items-center bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
+                                        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                                            Received by Reachstakes
+                                        </span>
+                                        <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                                            {parseFloat(transaction.receivedAmount).toLocaleString()} {transaction.receivedCurrency}
+                                        </span>
+                                    </div>
+                                    {Math.abs(parseFloat(transaction.amount) - parseFloat(transaction.receivedAmount)) > 1 && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            Amount differs from invoice (likely due to currency conversion)
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
