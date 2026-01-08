@@ -32,9 +32,13 @@ export const tazapayService = {
             // Based on docs, standard checkout can handle escrow if configured or if "protection" is enabled
 
             // For escrow payments, we need distinct buyer (brand) and seller (platform) details
+            // IMPORTANT: Tazapay expects amount in MINOR UNITS (cents for USD)
+            // So $10.79 should be sent as 1079, $1079.00 should be sent as 107900
+            const amountInCents = Math.round(parseFloat(amount) * 100);
+
             const payload = {
                 invoice_currency: invoice_currency, // Required: ISO 4217 alpha-3 currency code
-                amount: parseFloat(amount), // Tazapay uses major units (dollars, not cents)
+                amount: amountInCents, // Amount in cents (minor units)
                 reference_id: `txn_${Date.now()}`,
                 transaction_description: txn_description || 'Reachstakes Campaign Funding', // Required field
 
