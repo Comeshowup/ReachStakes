@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:3000/api';
+import api from './axios';
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -17,8 +15,8 @@ const paymentService = {
      */
     calculateFees: async (amount) => {
         try {
-            const response = await axios.post(
-                `${API_BASE_URL}/payments/calculate-fees`,
+            const response = await api.post(
+                '/payments/calculate-fees',
                 { amount },
                 getAuthHeaders()
             );
@@ -36,8 +34,8 @@ const paymentService = {
      */
     getEscrowDetails: async (campaignId) => {
         try {
-            const response = await axios.get(
-                `${API_BASE_URL}/payments/escrow/${campaignId}`,
+            const response = await api.get(
+                `/payments/escrow/${campaignId}`,
                 getAuthHeaders()
             );
             return response.data;
@@ -55,8 +53,8 @@ const paymentService = {
      */
     initiateCampaignPayment: async (campaignId, amount) => {
         try {
-            const response = await axios.post(
-                `${API_BASE_URL}/payments/checkout`,
+            const response = await api.post(
+                '/payments/checkout',
                 { campaignId, amount },
                 getAuthHeaders()
             );
@@ -77,8 +75,8 @@ const paymentService = {
             const params = new URLSearchParams();
             if (filters.campaignId) params.append('campaignId', filters.campaignId);
 
-            const response = await axios.get(
-                `${API_BASE_URL}/payments/history?${params.toString()}`,
+            const response = await api.get(
+                `/payments/history?${params.toString()}`,
                 getAuthHeaders()
             );
             return response.data;
@@ -95,8 +93,8 @@ const paymentService = {
      */
     getTransactionStatus: async (transactionId) => {
         try {
-            const response = await axios.get(
-                `${API_BASE_URL}/payments/status/${transactionId}`,
+            const response = await api.get(
+                `/payments/status/${transactionId}`,
                 getAuthHeaders()
             );
             return response.data;
