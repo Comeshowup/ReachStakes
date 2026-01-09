@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Video, HelpCircle } from 'lucide-react';
 import SupportChat from '../components/SupportChat';
@@ -6,6 +7,14 @@ import MeetingScheduler from '../components/MeetingScheduler';
 
 const ContactUsPage = () => {
     const [activeTab, setActiveTab] = useState('chat');
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab === 'meeting' || tab === 'chat') {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
 
     return (
         <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -22,8 +31,8 @@ const ContactUsPage = () => {
                 <button
                     onClick={() => setActiveTab('chat')}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'chat'
-                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
                         }`}
                 >
                     <MessageSquare className="w-4 h-4" />
@@ -32,8 +41,8 @@ const ContactUsPage = () => {
                 <button
                     onClick={() => setActiveTab('meeting')}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'meeting'
-                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
                         }`}
                 >
                     <Video className="w-4 h-4" />

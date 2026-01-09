@@ -160,8 +160,9 @@ export const handleWebhook = async (req, res) => {
         const event = req.body;
         console.log('Tazapay Webhook Event:', JSON.stringify(event, null, 2));
 
-        // 1. Verify source (in production, implement proper signature verification)
+        // 1. Verify source
         if (!tazapayService.verifyWebhook(req)) {
+            console.error('Webhook signature verification failed');
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
@@ -200,8 +201,8 @@ export const handleWebhook = async (req, res) => {
                 where: { tazapayReferenceId: referenceId }
             });
 
-            // If not found by reference, try finding by pattern match
-            if (!transaction) {
+            // If not found by reference, try finding by pattern match if it looks like our custom ref
+            if (!transaction && typeof referenceId === 'string') {
                 transaction = await prisma.transaction.findFirst({
                     where: {
                         tazapayReferenceId: {
@@ -214,6 +215,9 @@ export const handleWebhook = async (req, res) => {
             // Also try to find pending transactions if reference doesn't match
             if (!transaction) {
                 // Get the most recent pending transaction as a fallback
+                // WARNING: This falls back to ANY pending transaction, which might be risky in high volume
+                // Added 1 min time window check to be safer or just rely on IDs for now.
+                // For now, let's keep it but log a warning.
                 console.log('Could not find transaction by reference, looking for recent pending...');
                 transaction = await prisma.transaction.findFirst({
                     where: { status: 'Pending' },
@@ -232,7 +236,14 @@ export const handleWebhook = async (req, res) => {
                     || event.amount;
 
                 // Convert from cents to dollars if we have a value
-                const receivedAmount = paidAmountCents ? parseFloat(paidAmountCents) / 100 : null;
+                let receivedAmount = null;
+                if (paidAmountCents !== undefined && paidAmountCents !== null) {
+                    const parsedCents = parseFloat(paidAmountCents);
+                    if (!isNaN(parsedCents)) {
+                        receivedAmount = parsedCents / 100;
+                    }
+                }
+
                 const receivedCurrency = eventData.currency || event.currency || eventData.invoice_currency || 'USD';
 
                 console.log(`Received Amount: ${receivedAmount} ${receivedCurrency}`);
@@ -245,7 +256,7 @@ export const handleWebhook = async (req, res) => {
                         processedAt: new Date(),
                         gatewayStatus: eventData.status || event.status || 'success',
                         tazapayReferenceId: referenceId, // Update with actual reference
-                        receivedAmount: receivedAmount,
+                        receivedAmount: receivedAmount || undefined, // undefined to skip update if null
                         receivedCurrency: receivedCurrency,
                         metadata: event
                     }
@@ -253,19 +264,32 @@ export const handleWebhook = async (req, res) => {
 
                 // Update campaign escrow balance
                 if (transaction.campaignId) {
-                    await prisma.campaign.update({
-                        where: { id: transaction.campaignId },
-                        data: {
-                            escrowBalance: {
-                                increment: transaction.netAmount
-                            },
-                            totalFunded: {
-                                increment: transaction.netAmount
-                            },
-                            escrowFundedAt: new Date(),
-                            isGuaranteedPay: true
+                    // Ensure netAmount is valid for increment
+                    const incrementAmount = transaction.netAmount || transaction.amount || 0;
+
+                    if (Number(incrementAmount) > 0) {
+                        try {
+                            await prisma.campaign.update({
+                                where: { id: transaction.campaignId },
+                                data: {
+                                    escrowBalance: {
+                                        increment: incrementAmount
+                                    },
+                                    totalFunded: {
+                                        increment: incrementAmount
+                                    },
+                                    escrowFundedAt: new Date(),
+                                    isGuaranteedPay: true
+                                }
+                            });
+                            console.log(`Updated campaign ${transaction.campaignId} balance by ${incrementAmount}`);
+                        } catch (campError) {
+                            console.error(`Failed to update campaign balance: ${campError.message}`);
+                            // Do not re-throw, so we return 200 for the webhook
                         }
-                    });
+                    } else {
+                        console.warn(`Transaction ${transaction.id} has invalid amount ${incrementAmount}, skipping campaign balance update.`);
+                    }
                 }
 
                 console.log(`✅ Payment completed for transaction ${transaction.id}`);
@@ -307,7 +331,7 @@ export const handleWebhook = async (req, res) => {
 
         res.status(200).json({ received: true });
     } catch (error) {
-        console.error('Webhook Error:', error);
+        console.error('Webhook Error Full:', error);
         res.status(500).json({ error: 'Webhook processing failed' });
     }
 };

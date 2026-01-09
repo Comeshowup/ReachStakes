@@ -17,20 +17,58 @@ import {
     Loader2
 } from 'lucide-react';
 
-const RequestCampaignModal = ({ isOpen, onClose }) => {
+const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
+    const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        platformRequired: 'Instagram',
+        campaignType: 'UGC',
+        targetBudget: '',
+        deadline: '',
+        usageRights: '30 Days',
+        isWhitelistingRequired: false
+    });
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                platformRequired: formData.platformRequired,
+                campaignType: formData.campaignType,
+                budgetMin: formData.targetBudget, // Mapping target to min for now, or unified budget
+                budgetMax: formData.targetBudget,
+                deadline: formData.deadline,
+                usageRights: formData.usageRights,
+                isWhitelistingRequired: formData.isWhitelistingRequired
+            };
+
+            const response = await brandService.createCampaign(payload);
+            if (response.status === 'success') {
+                // Redirect to meeting scheduler
+                onClose();
+                navigate('/brand/contact?tab=meeting');
+            }
+        } catch (error) {
+            console.error("Failed to create campaign:", error);
+            alert("Failed to create campaign. Please try again.");
+        } finally {
             setIsSubmitting(false);
-            onClose();
-            alert("Campaign Request Sent! A dedicated strategist will follow up within 24 hours.");
-        }, 1500);
+        }
     };
 
     return (
@@ -47,12 +85,12 @@ const RequestCampaignModal = ({ isOpen, onClose }) => {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-lg w-full shadow-2xl border border-white/5"
+                    className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-white/5 max-h-[90vh] overflow-y-auto"
                 >
                     <div className="flex justify-between items-start mb-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Request New Campaign</h2>
-                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Brief our team on your next initiative.</p>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Campaign</h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Launch your next influencer initiative.</p>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-500">
                             <X className="w-5 h-5" />
@@ -60,34 +98,123 @@ const RequestCampaignModal = ({ isOpen, onClose }) => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Title */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Goal</label>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Title</label>
+                            <input
+                                name="title"
+                                value={formData.title}
+                                onChange={handleChange}
+                                placeholder="e.g. Summer Collection Launch 2026"
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                required
+                            />
+                        </div>
+
+                        {/* Goal/Description */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Goal & Description</label>
                             <textarea
-                                placeholder="E.g., Launch our new summer collection, Drive app installs..."
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
+                                placeholder="Describe your campaign goals, requirements, and deliverables..."
                                 className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none"
                                 required
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Platform & Type */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Platform</label>
+                                <select
+                                    name="platformRequired"
+                                    value={formData.platformRequired}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="Instagram">Instagram</option>
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="YouTube">YouTube</option>
+                                    <option value="UGC">Multi-Platform / UGC</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Type</label>
+                                <select
+                                    name="campaignType"
+                                    value={formData.campaignType}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="UGC">UGC (Content Only)</option>
+                                    <option value="Influencer">Influencer Post</option>
+                                    <option value="Affiliate">Affiliate / Performance</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Budget & Date */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Target Budget</label>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                                     <input
                                         type="number"
-                                        placeholder="5,000"
+                                        name="targetBudget"
+                                        value={formData.targetBudget}
+                                        onChange={handleChange}
+                                        placeholder="5000"
                                         className="w-full pl-8 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                        required
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Launch Timing</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Launch Deadline</label>
                                 <input
-                                    type="text"
-                                    placeholder="Q1 2026 / March"
+                                    type="date"
+                                    name="deadline"
+                                    value={formData.deadline}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                    required
                                 />
+                            </div>
+                        </div>
+
+                        {/* Usage & Rights */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Usage Rights</label>
+                                <select
+                                    name="usageRights"
+                                    value={formData.usageRights}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="30 Days">30 Days</option>
+                                    <option value="90 Days">90 Days</option>
+                                    <option value="Perpetual">Perpetual (Forever)</option>
+                                    <option value="Organic Only">Organic Repost Only</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center h-full pt-6">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            name="isWhitelistingRequired"
+                                            checked={formData.isWhitelistingRequired}
+                                            onChange={handleChange}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Require Whitelisting / Ad Access</span>
+                                </label>
                             </div>
                         </div>
 
@@ -97,9 +224,9 @@ const RequestCampaignModal = ({ isOpen, onClose }) => {
                                 disabled={isSubmitting}
                                 className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-70 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all"
                             >
-                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Submit Request"}
+                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Launch Campaign"}
                             </button>
-                            <p className="text-center text-xs text-gray-400 mt-4">Average response time: &lt; 2 hours</p>
+                            <p className="text-center text-xs text-gray-400 mt-4">Campaign will be created as "Active" immediately.</p>
                         </div>
                     </form>
                 </motion.div>
@@ -114,20 +241,21 @@ const CampaignManagement = () => {
     const [campaigns, setCampaigns] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchCampaigns = async () => {
-            try {
-                const response = await brandService.getBrandCampaigns();
-                if (response.status === 'success') {
-                    setCampaigns(response.data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch campaigns:", error);
-            } finally {
-                setIsLoading(false);
+    const fetchCampaigns = async () => {
+        try {
+            setIsLoading(true);
+            const response = await brandService.getBrandCampaigns();
+            if (response.status === 'success') {
+                setCampaigns(response.data);
             }
-        };
+        } catch (error) {
+            console.error("Failed to fetch campaigns:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchCampaigns();
     }, []);
 
@@ -258,8 +386,8 @@ const CampaignManagement = () => {
                                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-500 ${campaign.fundingProgress >= 100
-                                                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
-                                                : 'bg-gradient-to-r from-indigo-400 to-indigo-600'
+                                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                                            : 'bg-gradient-to-r from-indigo-400 to-indigo-600'
                                             }`}
                                         style={{ width: `${Math.min(campaign.fundingProgress || 0, 100)}%` }}
                                     />
@@ -295,7 +423,8 @@ const CampaignManagement = () => {
                 </div>
             )}
 
-            <RequestCampaignModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+            <RequestCampaignModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchCampaigns} />
         </div>
     );
 };

@@ -84,6 +84,18 @@ export const deleteAccount = async () => {
     return response.data;
 };
 
+
+/**
+ * Create a new campaign
+ * @param {Object} campaignData - Campaign data
+ */
+export const createCampaign = async (campaignData) => {
+    const response = await api.post('/campaigns', campaignData, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
 export default {
     getBrandProfile,
     updateBrandProfile,
@@ -91,5 +103,6 @@ export default {
     createBrandPost,
     deleteBrandPost,
     getBrandCampaigns,
-    deleteAccount
+    deleteAccount,
+    createCampaign
 };

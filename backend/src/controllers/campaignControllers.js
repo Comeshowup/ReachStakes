@@ -34,7 +34,7 @@ export const createCampaign = async (req, res) => {
                 budgetMin: budgetMin ? parseFloat(budgetMin) : null,
                 budgetMax: budgetMax ? parseFloat(budgetMax) : null,
                 deadline: deadline ? new Date(deadline) : null,
-                status: 'Active',
+                status: 'Draft', // Default to Draft for new requests
                 // New Contractual Fields
                 usageRights,
                 usageCategory,
