@@ -50,8 +50,7 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
                 description: formData.description,
                 platformRequired: formData.platformRequired,
                 campaignType: formData.campaignType,
-                budgetMin: formData.targetBudget, // Mapping target to min for now, or unified budget
-                budgetMax: formData.targetBudget,
+                targetBudget: formData.targetBudget,
                 deadline: formData.deadline,
                 usageRights: formData.usageRights,
                 isWhitelistingRequired: formData.isWhitelistingRequired

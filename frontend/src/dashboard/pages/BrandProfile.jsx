@@ -36,7 +36,6 @@ import {
     getBrandPosts,
     createBrandPost,
     deleteBrandPost,
-    deleteBrandPost,
     getBrandCampaigns,
     deleteAccount
 } from "../../api/brandService";
@@ -471,19 +470,14 @@ const BrandProfile = () => {
                             <p className="text-gray-600 dark:text-slate-400 leading-relaxed text-lg mb-6">
                                 {profile.about || 'No description available.'}
                             </p>
-                            <div className="p-6 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800/50">
-                                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Our Mission</h4>
-                                <p className="text-gray-500 dark:text-slate-400 italic">
-                                    "To empower creators and brands to build authentic connections that drive real value and inspire communities worldwide."
-                                </p>
-                            </div>
+
                         </div>
 
                         {/* Metrics Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                             <StatCard icon={Briefcase} label="Campaigns Launched" value={profile.stats?.campaigns || 0} colorClass="bg-blue-500" delay={0.1} />
                             <StatCard icon={Calendar} label="Hiring Since" value={profile.stats?.hiringSince || new Date().getFullYear()} colorClass="bg-green-500" delay={0.2} />
-                            <StatCard icon={Star} label="Average Rating" value={profile.stats?.rating || '4.8/5'} colorClass="bg-yellow-500" delay={0.3} />
+                            <StatCard icon={Star} label="Average Rating" value={profile.stats?.rating || 'N/A'} colorClass="bg-yellow-500" delay={0.3} />
                             <StatCard icon={Users} label="Active Campaigns" value={profile.stats?.activeCampaigns || 0} colorClass="bg-purple-500" delay={0.4} />
                         </div>
                     </motion.div>
@@ -503,19 +497,11 @@ const BrandProfile = () => {
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Company Profile</h3>
                                     <p className="text-gray-600 dark:text-slate-400 leading-relaxed">
-                                        {profile.about} We believe in transparency, sustainability, and community-driven growth. Our headquarters are designed to foster creativity and collaboration.
+                                        {profile.about || 'No description available.'}
                                     </p>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Our Values</h3>
-                                    <ul className="space-y-3">
-                                        {['Innovation First', 'Community Driven', 'Sustainable Practices', 'Transparent Partnerships'].map((value, i) => (
-                                            <li key={i} className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
-                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                                {value}
-                                            </li>
-                                        ))}
-                                    </ul>
+
                                 </div>
                             </div>
 

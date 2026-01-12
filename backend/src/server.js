@@ -13,6 +13,8 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 import mediaKitRoutes from './routes/mediaKitRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import meetingRoutes from './routes/meetingRoutes.js';
+import payoutRoutes from './routes/payoutRoutes.js';
 
 // ... other imports
 
@@ -50,7 +52,8 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Add Headers for COOP/COEP to fix Google OAuth Popups
 app.use((req, res, next) => {
@@ -76,6 +79,8 @@ app.use('/api/invoices', invoiceRoutes); // Phase 1: Automated Invoicing
 app.use('/api/media-kit', mediaKitRoutes); // Phase 2: Live Media Kit
 app.use('/api/documents', documentRoutes); // Creator Documents Hub
 app.use('/api/payments', paymentRoutes); // Tazapay Payments
+app.use('/api/meetings', meetingRoutes);
+app.use('/api/payouts', payoutRoutes); // Creator Payouts
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

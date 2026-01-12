@@ -38,6 +38,7 @@ model User {
   invoices         Invoice[]
   contentFeedbacks ContentFeedback[]
   documents        Document[]
+  meetings         Meeting[]
 
   @@index([email])
   @@index([role])
@@ -52,7 +53,8 @@ model BrandProfile {
   industry     String?       @db.VarChar(50)
   location     String?       @db.VarChar(100)
   about        String?       @db.Text
-  logoUrl      String?       @map("logo_url") @db.VarChar(255)
+  logoUrl      String?       @map("logo_url") @db.LongText
+  bannerUrl    String?       @map("banner_url") @db.LongText
   companySize  CompanySize?  @default(Startup) @map("company_size")
   hiringStatus HiringStatus? @default(Active) @map("hiring_status")
   hiringSince  Int?          @map("hiring_since")
@@ -71,7 +73,7 @@ model CreatorProfile {
   fullName          String    @map("full_name") @db.VarChar(100)
   handle            String    @db.VarChar(50)
   tagline           String?   @db.VarChar(255)
-  avatarUrl         String?   @map("avatar_url") @db.VarChar(255)
+  avatarUrl         String?   @map("avatar_url") @db.LongText
   primaryPlatform   Platform? @map("primary_platform")
   location          String?   @db.VarChar(100)
   about             String?   @db.Text
@@ -95,11 +97,25 @@ model CreatorProfile {
   onTimeDeliveryRate Decimal?          @map("on_time_delivery_rate") @db.Decimal(5, 2)
   brandSafetyScore   Int?              @default(100) @map("brand_safety_score")
 
+  // Payout Integration (Tazapay)
+  tazapayBeneficiaryId String?           @map("tazapay_beneficiary_id") @db.VarChar(100)
+  tazapayEntityId      String?           @map("tazapay_entity_id") @db.VarChar(100)
+  onboardingStatus     OnboardingStatus? @default(NotStarted) @map("onboarding_status")
+  onboardingLinkUrl    String?           @map("onboarding_link_url") @db.VarChar(500)
+  onboardingExpiresAt  DateTime?         @map("onboarding_expires_at")
+  payoutStatus         PayoutStatus?     @default(Inactive) @map("payout_status")
+  bankCountry          String?           @map("bank_country") @db.VarChar(5)
+  bankCurrency         String?           @map("bank_currency") @db.VarChar(5)
+  bankName             String?           @map("bank_name") @db.VarChar(100)
+  bankLastFour         String?           @map("bank_last_four") @db.VarChar(4)
+  bankingSetupAt       DateTime?         @map("banking_setup_at")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Relations
   demographics CreatorDemographics?
   services     CreatorService[]
+  payouts      CreatorPayout[]
 
   @@index([handle])
   @@index([userId], map: "idx_niche")
@@ -507,4 +523,77 @@ enum DocumentStatus {
   Signed
   Expired
   Voided
+}
+
+// 13. Meetings (Strategy Calls)
+model Meeting {
+  id        Int           @id @default(autoincrement())
+  userId    Int?          @map("user_id") // Optional, if user is logged in
+  name      String        @db.VarChar(100)
+  email     String        @db.VarChar(255)
+  role      String?       @db.VarChar(50) // brand/creator
+  date      DateTime      @db.Date
+  timeSlot  String        @map("time_slot") @db.VarChar(50)
+  agenda    String?       @db.Text
+  status    MeetingStatus @default(Scheduled)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([email])
+  @@index([date])
+  @@map("meetings")
+}
+
+enum MeetingStatus {
+  Scheduled
+  Completed
+  Cancelled
+  Rescheduled
+}
+
+// === PAYOUT INTEGRATION ===
+
+enum PayoutStatus {
+  Inactive // Not set up
+  Pending // Awaiting verification
+  Active // Ready for payouts
+  Suspended // Temporarily disabled
+}
+
+enum OnboardingStatus {
+  NotStarted // Haven't started onboarding
+  LinkGenerated // Onboarding link created, awaiting user
+  InProgress // User is on Tazapay's hosted form
+  PendingApproval // Submitted, awaiting Tazapay review
+  Approved // Approved, ready for payouts
+  Rejected // Rejected by Tazapay
+}
+
+enum PayoutTxStatus {
+  Pending
+  Processing
+  Completed
+  Failed
+}
+
+// 14. Creator Payouts (Payout History)
+model CreatorPayout {
+  id              Int            @id @default(autoincrement())
+  creatorId       Int            @map("creator_id")
+  collaborationId Int?           @map("collaboration_id")
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("USD") @db.VarChar(5)
+  status          PayoutTxStatus @default(Pending)
+  tazapayPayoutId String?        @map("tazapay_payout_id") @db.VarChar(100)
+  payoutType      String?        @map("payout_type") @db.VarChar(20) // 'local' or 'wire'
+  failureReason   String?        @map("failure_reason") @db.VarChar(255)
+  initiatedAt     DateTime       @default(now()) @map("initiated_at")
+  completedAt     DateTime?      @map("completed_at")
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [userId])
+
+  @@index([creatorId, status])
+  @@map("creator_payouts")
 }

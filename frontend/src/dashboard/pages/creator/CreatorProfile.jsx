@@ -34,28 +34,15 @@ import {
     AlertCircle,
     Loader2
 } from "lucide-react";
-import { deleteAccount } from "../../../api/userService";
+import { deleteAccount, getMyPosts, createPost, deletePost } from "../../../api/userService";
 import { calculateSuggestedRate, getPriceRange } from "../../../utils/rateUtils";
-import { CREATOR_POSTS, CAMPAIGNS_DATA } from "../../data";
+// Mock data removed
 import EditProfileModal from "../../components/EditProfileModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-// --- Mock Data for New Features ---
-const CREATOR_SERVICES = [
-    { id: 1, title: "Instagram Reel", price: 1500, time: "3 Days", description: "60-second vertical video, high-quality edit, includes 1 revision." },
-    { id: 2, title: "TikTok Video", price: 1200, time: "2 Days", description: "Engaging, trend-focused short content." },
-    { id: 3, title: "YouTube Integration", price: 3000, time: "5 Days", description: "30-60s integrated ad spot within a long-form video." },
-    { id: 4, title: "User Generated Content", price: 800, time: "3 Days", description: "Raw video files for your brand's use (no posting on my channel)." },
-];
-
-const DEMOGRAPHICS = {
-    gender: { Male: 45, Female: 50, NonBinary: 5 },
-    age: { "18-24": 30, "25-34": 45, "35-44": 15, "45+": 10 },
-    countries: { "USA": 60, "UK": 15, "Canada": 10, "Australia": 5, "Other": 10 }
-};
-
-// --- Components ---
+// --- Mock Data removed ---
+// ...(TabButton, StatCard, CampaignCard, Modal, CreatePostModal components remain unchanged)...
 
 const TabButton = ({ active, onClick, children }) => (
     <button
@@ -104,7 +91,7 @@ const CampaignCard = ({ campaign }) => (
     >
         <div className="h-40 bg-gray-100 dark:bg-slate-800 relative overflow-hidden">
             <img
-                src={`https://source.unsplash.com/random/800x600?${campaign.name.split(' ')[0]}`}
+                src={`https://source.unsplash.com/random/800x600?${campaign.name?.split(' ')[0] || 'campaign'}`}
                 alt={campaign.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
@@ -240,11 +227,14 @@ const CreatorProfile = () => {
         banner: null,
         socials: { instagram: "", linkedin: "", twitter: "", website: "" },
         stats: { campaigns: 0, hiringSince: "2024", rating: 5.0 },
-        contact: { email: "", phone: "" }
+        contact: { email: "", phone: "" },
+        followersCount: 0,
+        engagementRate: 0
     });
 
-    // Use mock posts/campaigns for now, or fetch if available
-    const [posts, setPosts] = useState(CREATOR_POSTS);
+    // Use empty array for new users
+    const [posts, setPosts] = useState([]);
+    const [campaigns, setCampaigns] = useState([]);
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
@@ -252,12 +242,15 @@ const CreatorProfile = () => {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const response = await axios.get(`${API_BASE_URL}/users/me/profile`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const [profileRes, postsRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/users/me/profile`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    getMyPosts()
+                ]);
 
-                if (response.data.status === "success") {
-                    const data = response.data.data;
+                if (profileRes.data.status === "success") {
+                    const data = profileRes.data.data;
 
                     // Transform backend data to frontend structure if necessary
                     // Assuming socialAccounts is an array from backend, we might map it to the object structure
@@ -272,6 +265,7 @@ const CreatorProfile = () => {
 
                     setProfile({
                         ...data,
+                        logo: data.avatarUrl || null,
                         socials: data.socialLinks || socialMap, // Use existing socialLinks or mapped accounts
                         stats: {
                             campaigns: data.completedCampaigns || 0,
@@ -281,17 +275,24 @@ const CreatorProfile = () => {
                         contact: {
                             email: data.email,
                             phone: data.phone || ""
-                        }
+                        },
+                        followersCount: data.followersCount || 0,
+                        engagementRate: data.engagementRate || 0
                     });
                 }
+
+                if (postsRes && postsRes.status === "success") {
+                    setPosts(postsRes.data);
+                }
+
             } catch (err) {
                 console.error("Failed to fetch profile:", err);
                 if (err.response && err.response.status === 401) {
                     localStorage.removeItem("token");
                     localStorage.removeItem("userInfo");
-                    setError("Session expired. Please log in again.");
+                    window.location.href = "/login";
                 } else {
-                    setError("Failed to load profile data");
+                    setError("Failed to load profile data. Please try again later.");
                 }
             } finally {
                 setLoading(false);
@@ -306,12 +307,31 @@ const CreatorProfile = () => {
         // Here you would also send a PUT request to update the backend
     };
 
-    const handleCreatePost = (newPost) => {
-        setPosts([newPost, ...posts]);
+    const handleCreatePost = async (newPostData) => {
+        try {
+            const res = await createPost({
+                content: newPostData.content,
+                mediaType: newPostData.mediaType,
+                mediaUrl: null // Add upload logic later
+            });
+            if (res.status === "success") {
+                setPosts([res.data, ...posts]);
+            }
+        } catch (err) {
+            console.error("Failed to create post:", err);
+            alert("Failed to create post");
+        }
     };
 
-    const handleDeletePost = (id) => {
-        setPosts(posts.filter(post => post.id !== id));
+    const handleDeletePost = async (id) => {
+        if (!window.confirm("Delete this post?")) return;
+        try {
+            await deletePost(id);
+            setPosts(posts.filter(post => post.id !== id));
+        } catch (err) {
+            console.error("Failed to delete post:", err);
+            alert("Failed to delete post");
+        }
     };
 
     const handleDeleteAccount = async () => {
@@ -465,12 +485,7 @@ const CreatorProfile = () => {
                             <p className="text-gray-600 dark:text-slate-400 leading-relaxed text-lg mb-6">
                                 {profile.about}
                             </p>
-                            <div className="p-6 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-800/50">
-                                <h4 className="font-bold text-gray-900 dark:text-white mb-2">My Mission</h4>
-                                <p className="text-gray-500 dark:text-slate-400 italic">
-                                    "To empower my audience with knowledge and honest reviews, helping them navigate the tech world with confidence."
-                                </p>
-                            </div>
+
                         </div>
 
                         {/* Metrics Grid */}
@@ -478,7 +493,7 @@ const CreatorProfile = () => {
                             <StatCard icon={Briefcase} label="Campaigns Completed" value={profile.stats.campaigns} colorClass="bg-blue-500" delay={0.1} />
                             <StatCard icon={Calendar} label="Creating Since" value={profile.stats.hiringSince} colorClass="bg-green-500" delay={0.2} />
                             <StatCard icon={Star} label="Average Rating" value={profile.stats.rating} colorClass="bg-yellow-500" delay={0.3} />
-                            <StatCard icon={Users} label="Total Reach" value="1.5M+" colorClass="bg-purple-500" delay={0.4} />
+                            <StatCard icon={Users} label="Total Reach" value={(profile.followersCount || 0).toLocaleString()} colorClass="bg-purple-500" delay={0.4} />
                         </div>
                     </motion.div>
                 )}
@@ -498,20 +513,10 @@ const CreatorProfile = () => {
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Creator Profile</h3>
                                         <p className="text-gray-600 dark:text-slate-400 leading-relaxed">
-                                            {profile.about} I specialize in high-quality video production and in-depth written reviews.
+                                            {profile.about || 'No description available.'}
                                         </p>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Content Values</h3>
-                                        <ul className="space-y-3">
-                                            {['Authenticity', 'Quality First', 'Audience Engagement', 'Transparency'].map((value, i) => (
-                                                <li key={i} className="flex items-center gap-3 text-gray-600 dark:text-slate-400">
-                                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                                    {value}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+
                                 </div>
 
                                 <div className="space-y-8">
@@ -540,44 +545,22 @@ const CreatorProfile = () => {
                                     </div>
 
                                     {/* New Audience Demographics Section */}
-                                    <div>
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                                            <PieChart className="w-5 h-5 text-indigo-500" />
-                                            Audience Insights
-                                        </h3>
-                                        <div className="space-y-6">
-                                            {/* Gender Split */}
-                                            <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl">
-                                                <h4 className="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">Gender Split</h4>
-                                                <div className="flex h-4 rounded-full overflow-hidden">
-                                                    <div style={{ width: `${DEMOGRAPHICS.gender.Male}%` }} className="bg-blue-500" title="Male" />
-                                                    <div style={{ width: `${DEMOGRAPHICS.gender.Female}%` }} className="bg-pink-500" title="Female" />
-                                                    <div style={{ width: `${DEMOGRAPHICS.gender.NonBinary}%` }} className="bg-purple-500" title="Non-Binary" />
-                                                </div>
-                                                <div className="flex justify-between mt-2 text-xs text-gray-500">
-                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> Male {DEMOGRAPHICS.gender.Male}%</div>
-                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-pink-500" /> Female {DEMOGRAPHICS.gender.Female}%</div>
-                                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500" /> Other {DEMOGRAPHICS.gender.NonBinary}%</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Top Age Ranges */}
-                                            <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl">
-                                                <h4 className="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">Top Age Ranges</h4>
-                                                <div className="space-y-2">
-                                                    {Object.entries(DEMOGRAPHICS.age).map(([range, percent]) => (
-                                                        <div key={range} className="flex items-center gap-3">
-                                                            <span className="text-xs font-medium w-10 text-gray-500">{range}</span>
-                                                            <div className="flex-1 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                                <div style={{ width: `${percent}%` }} className="h-full bg-indigo-500 rounded-full" />
-                                                            </div>
-                                                            <span className="text-xs font-bold w-8 text-right">{percent}%</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                    {/* Audience Demographics - Placeholder for now until backend supports it */}
+                                    {profile.demographics ? (
+                                        <div>
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                                <PieChart className="w-5 h-5 text-indigo-500" />
+                                                Audience Insights
+                                            </h3>
+                                            {/* Render demographics here if available */}
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="p-8 bg-gray-50 dark:bg-slate-800/50 rounded-2xl text-center border border-dashed border-gray-200 dark:border-slate-700">
+                                            <PieChart className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                            <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Audience Insights</h4>
+                                            <p className="text-gray-500 dark:text-slate-400">Demographics data will appear here once you connect your social accounts.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -594,29 +577,38 @@ const CreatorProfile = () => {
                             transition={{ duration: 0.2 }}
                             className="grid grid-cols-1 md:grid-cols-2 gap-6"
                         >
-                            {CREATOR_SERVICES.map((service) => (
-                                <div key={service.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                                            <DollarSign className="w-6 h-6" />
+                            {/* Services List - synced with real data or empty */}
+                            {(profile.services && profile.services.length > 0) ? (
+                                profile.services.map((service) => (
+                                    <div key={service.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                                                <DollarSign className="w-6 h-6" />
+                                            </div>
+                                            <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-bold rounded-full">
+                                                ${service.price}
+                                            </span>
                                         </div>
-                                        <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-bold rounded-full">
-                                            ${service.price}
-                                        </span>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{service.title}</h3>
+                                        <p className="text-gray-500 dark:text-slate-400 mb-4 text-sm leading-relaxed">
+                                            {service.description}
+                                        </p>
+                                        <div className="flex items-center justify-between text-sm pt-4 border-t border-gray-50 dark:border-slate-800/50">
+                                            <span className="flex items-center gap-1.5 text-gray-500">
+                                                <Clock className="w-4 h-4" />
+                                                {service.time} turnaround
+                                            </span>
+                                            <button className="font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">Edit</button>
+                                        </div>
                                     </div>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{service.title}</h3>
-                                    <p className="text-gray-500 dark:text-slate-400 mb-4 text-sm leading-relaxed">
-                                        {service.description}
-                                    </p>
-                                    <div className="flex items-center justify-between text-sm pt-4 border-t border-gray-50 dark:border-slate-800/50">
-                                        <span className="flex items-center gap-1.5 text-gray-500">
-                                            <Clock className="w-4 h-4" />
-                                            {service.time} turnaround
-                                        </span>
-                                        <button className="font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">Edit</button>
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-1 md:col-span-2 text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800">
+                                    <Briefcase className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No services listed yet</h4>
+                                    <p className="text-gray-500 dark:text-slate-400">Add services to start accepting offers!</p>
                                 </div>
-                            ))}
+                            )}
                             <button className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-3xl hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all gap-3 group">
                                 <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-full group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
                                     <Plus className="w-6 h-6 text-gray-400 group-hover:text-indigo-600" />
@@ -637,10 +629,10 @@ const CreatorProfile = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                         <div className="space-y-4">
                                             <p className="text-indigo-100/80 leading-relaxed">
-                                                Based on your current <span className="text-white font-bold">1.2M followers</span> and <span className="text-white font-bold">4.8% engagement rate</span>, your recommended market rate for a primary integration is:
+                                                Based on your current <span className="text-white font-bold">{(profile.followersCount || 0).toLocaleString()} followers</span> and <span className="text-white font-bold">{(profile.engagementRate || 0)}% engagement rate</span>, your recommended market rate for a primary integration is:
                                             </p>
                                             <div className="text-5xl font-black">
-                                                ${calculateSuggestedRate(1200000, 4.8).toLocaleString()}
+                                                ${calculateSuggestedRate(profile.followersCount || 0, profile.engagementRate || 0).toLocaleString()}
                                             </div>
                                             <div className="text-sm font-medium text-indigo-100/60 uppercase tracking-widest">
                                                 Market Fair Value
@@ -653,14 +645,14 @@ const CreatorProfile = () => {
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span>Minimum</span>
-                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(1200000, 4.8)).min.toLocaleString()}</span>
+                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(profile.followersCount || 0, profile.engagementRate || 0)).min.toLocaleString()}</span>
                                                 </div>
                                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                                     <div className="h-full bg-indigo-300 w-2/3 mx-auto"></div>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span>Premium</span>
-                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(1200000, 4.8)).max.toLocaleString()}</span>
+                                                    <span className="font-bold">${getPriceRange(calculateSuggestedRate(profile.followersCount || 0, profile.engagementRate || 0)).max.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                             <p className="text-[10px] text-indigo-200/50 italic py-2">
@@ -694,49 +686,57 @@ const CreatorProfile = () => {
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {posts.map((post) => (
-                                    <motion.div
-                                        key={post.id}
-                                        layout
-                                        className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
-                                    >
-                                        <div className="flex items-start gap-4 mb-4">
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                                {profile.name.charAt(0)}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
-                                                        <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                            {posts.length === 0 ? (
+                                <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800">
+                                    <MessageCircle className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No posts yet</h4>
+                                    <p className="text-gray-500 dark:text-slate-400">Time to share something with your community!</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {posts.map((post) => (
+                                        <motion.div
+                                            key={post.id}
+                                            layout
+                                            className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 group hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors"
+                                        >
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                                    {profile.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900 dark:text-white">{profile.name}</h4>
+                                                            <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
+                                                        </div>
+                                                        <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
                                                     </div>
-                                                    <button onClick={() => handleDeletePost(post.id)} className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
+                                            <p className="text-gray-700 dark:text-slate-300 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
 
-                                        {post.mediaType && (
-                                            <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400">
-                                                {post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+                                            {post.mediaType && (
+                                                <div className="mb-4 h-48 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-400">
+                                                    {post.mediaType === 'image' ? <ImageIcon className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
+                                                <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
+                                                    <Heart className="w-4 h-4" /> {post.likes}
+                                                </button>
+                                                <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
+                                                    <MessageCircle className="w-4 h-4" /> {post.comments}
+                                                </button>
                                             </div>
-                                        )}
-
-                                        <div className="flex items-center gap-6 pt-4 border-t border-gray-50 dark:border-slate-800/50">
-                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
-                                                <Heart className="w-4 h-4" /> {post.likes}
-                                            </button>
-                                            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
-                                                <MessageCircle className="w-4 h-4" /> {post.comments}
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
                         </motion.div>
                     )
                 }
@@ -755,9 +755,17 @@ const CreatorProfile = () => {
                                 <button className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">View Full Portfolio</button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {CAMPAIGNS_DATA.map((campaign) => (
-                                    <CampaignCard key={campaign.id} campaign={campaign} />
-                                ))}
+                                {campaigns.length === 0 ? (
+                                    <div className="col-span-1 lg:col-span-3 text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800">
+                                        <Briefcase className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No campaigns yet</h4>
+                                        <p className="text-gray-500 dark:text-slate-400">Join a campaign to build your portfolio!</p>
+                                    </div>
+                                ) : (
+                                    campaigns.map((campaign) => (
+                                        <CampaignCard key={campaign.id} campaign={campaign} />
+                                    ))
+                                )}
                             </div>
                         </motion.div>
                     )

@@ -49,7 +49,7 @@ const CampaignPage = () => {
                     logo: c.brand?.brandProfile?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.brand?.companyName || 'Brand')}&background=random`,
                     platform: c.platformRequired || "Any",
                     type: c.campaignType || "General",
-                    budget: c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable"),
+                    budget: c.targetBudget ? `$${parseFloat(c.targetBudget).toLocaleString()}` : (c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable")),
                     deadline: c.deadline ? new Date(c.deadline).toLocaleDateString() : "Open",
                     rawDeadline: c.deadline,
                     // New fields

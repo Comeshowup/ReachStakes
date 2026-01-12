@@ -70,14 +70,344 @@ export const tazapayService = {
     },
 
     /**
-     * Verify Webhook Signature (Placeholder - implement actual logic based on Tazapay docs)
+     * Verify Webhook Signature
      * @param {Object} req 
      * @returns {Boolean}
      */
     verifyWebhook: (req) => {
-        // Implement signature verification here
-        // const signature = req.headers['x-tazapay-signature'];
-        // ... verify logic
-        return true; // trusting for now in dev
+        // In production, implement proper signature verification:
+        // 1. Get the 'webhook-signature' header
+        // 2. Extract timestamp and signature from header
+        // 3. Compute expected signature using HMAC-SHA256 with webhook secret
+        // 4. Compare signatures and validate timestamp
+        // For now, trusting in dev - TODO: implement for production
+        const signature = req.headers['webhook-signature'];
+        if (!signature) {
+            console.warn('Webhook received without signature - allowing in dev mode');
+        }
+        return true;
+    },
+
+    // ============================================
+    // ENTITY API METHODS (Secure Hosted Onboarding)
+    // ============================================
+
+    /**
+     * Create a Tazapay Entity for secure hosted onboarding
+     * The response includes a hosted URL where the creator can complete KYC/bank setup
+     * @param {Object} entityDetails - Basic creator info (name, email, referenceId)
+     * @returns {Object} Entity data with onboarding link
+     */
+    createEntity: async ({ name, email, referenceId }) => {
+        try {
+            const payload = {
+                type: 'individual',
+                name,
+                email,
+                reference_id: referenceId,
+                // submit: false - don't auto-submit, let them complete via hosted form
+            };
+
+            console.log('Creating Tazapay Entity (minimal info only):', { name, email, referenceId });
+
+            const response = await axios.post(`${TAZAPAY_API_BASE_URL}/v3/entity`, payload, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // Response should include `link_to_onboarding_package_for_the_entity`
+            console.log('Entity created successfully, Entity ID:', response.data?.data?.id);
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Create Entity Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'Failed to create Tazapay entity');
+        }
+    },
+
+    /**
+     * Get Entity status and details
+     * @param {string} entityId - Tazapay entity ID
+     * @returns {Object} Entity details including approval status
+     */
+    getEntityStatus: async (entityId) => {
+        try {
+            const response = await axios.get(`${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}`, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Get Entity Status Error:', error.response?.data || error.message);
+            throw new Error('Failed to get entity status');
+        }
+    },
+
+    /**
+     * Generate a new onboarding link for an existing entity
+     * Use this if the original link expired
+     * @param {string} entityId - Tazapay entity ID
+     * @returns {Object} New onboarding link
+     */
+    regenerateOnboardingLink: async (entityId) => {
+        try {
+            const response = await axios.post(
+                `${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}/onboarding-link`,
+                {},
+                {
+                    headers: {
+                        'Authorization': getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Regenerate Onboarding Link Error:', error.response?.data || error.message);
+            throw new Error('Failed to regenerate onboarding link');
+        }
+    },
+
+    // ============================================
+    // PAYOUT / BENEFICIARY METHODS
+    // ============================================
+
+    /**
+     * Get required bank fields for a country/currency
+     * @param {string} country - ISO 2-letter country code
+     * @param {string} currency - ISO 3-letter currency code
+     * @returns {Object} { fields: string[], bankCodeType: string }
+     */
+    getBankFieldsForCountry: (country, currency) => {
+        const fieldConfigs = {
+            'US': {
+                fields: ['account_number', 'bank_name'],
+                bankCodeType: 'aba_code',
+                bankCodeLabel: 'Routing Number (ABA)',
+                accountLabel: 'Account Number'
+            },
+            'GB': {
+                fields: ['account_number', 'bank_name'],
+                bankCodeType: 'sort_code',
+                bankCodeLabel: 'Sort Code',
+                accountLabel: 'Account Number'
+            },
+            'IN': {
+                fields: ['account_number', 'bank_name'],
+                bankCodeType: 'ifsc_code',
+                bankCodeLabel: 'IFSC Code',
+                accountLabel: 'Account Number'
+            },
+            'AU': {
+                fields: ['account_number', 'bank_name'],
+                bankCodeType: 'bsb_code',
+                bankCodeLabel: 'BSB Code',
+                accountLabel: 'Account Number'
+            },
+            'CA': {
+                fields: ['account_number', 'bank_name', 'branch_code'],
+                bankCodeType: 'bank_code',
+                bankCodeLabel: 'Institution Number',
+                accountLabel: 'Account Number'
+            },
+            'BR': {
+                fields: ['pix_key'],
+                bankCodeType: 'pix_brl',
+                bankCodeLabel: 'PIX Key (Email/Phone/CPF)',
+                accountLabel: 'PIX Key',
+                isPix: true
+            },
+            // EEA Countries use IBAN + SWIFT
+            'DE': { fields: ['iban'], bankCodeType: 'swift_code', bankCodeLabel: 'BIC/SWIFT', accountLabel: 'IBAN', useIban: true },
+            'FR': { fields: ['iban'], bankCodeType: 'swift_code', bankCodeLabel: 'BIC/SWIFT', accountLabel: 'IBAN', useIban: true },
+            'NL': { fields: ['iban'], bankCodeType: 'swift_code', bankCodeLabel: 'BIC/SWIFT', accountLabel: 'IBAN', useIban: true },
+            'ES': { fields: ['iban'], bankCodeType: 'swift_code', bankCodeLabel: 'BIC/SWIFT', accountLabel: 'IBAN', useIban: true },
+            'IT': { fields: ['iban'], bankCodeType: 'swift_code', bankCodeLabel: 'BIC/SWIFT', accountLabel: 'IBAN', useIban: true },
+            'SG': { fields: ['account_number', 'bank_name'], bankCodeType: 'swift_code', bankCodeLabel: 'SWIFT/BIC', accountLabel: 'Account Number' },
+            'PH': { fields: ['account_number', 'bank_name'], bankCodeType: 'bank_code', bankCodeLabel: 'Bank Code', accountLabel: 'Account Number' },
+            'ID': { fields: ['account_number', 'bank_name'], bankCodeType: 'bank_code', bankCodeLabel: 'Bank Code', accountLabel: 'Account Number' },
+            'TH': { fields: ['account_number', 'bank_name'], bankCodeType: 'bank_code', bankCodeLabel: 'Bank Code', accountLabel: 'Account Number' },
+            'MY': { fields: ['account_number', 'bank_name'], bankCodeType: 'bank_code', bankCodeLabel: 'Bank Code', accountLabel: 'Account Number' },
+            'VN': { fields: ['account_number', 'bank_name'], bankCodeType: 'bank_code', bankCodeLabel: 'Bank Code', accountLabel: 'Account Number' },
+        };
+
+        // Default for unlisted countries (SWIFT transfer)
+        return fieldConfigs[country] || {
+            fields: ['account_number', 'bank_name'],
+            bankCodeType: 'swift_code',
+            bankCodeLabel: 'SWIFT/BIC Code',
+            accountLabel: 'Account Number'
+        };
+    },
+
+    /**
+     * Create a beneficiary for payouts
+     * @param {Object} beneficiaryDetails
+     * @returns {Object} Tazapay beneficiary response
+     */
+    createBeneficiary: async ({
+        name,
+        email,
+        type = 'individual', // 'individual' or 'business'
+        country,
+        currency,
+        accountNumber,
+        bankName,
+        bankCode,
+        bankCodeType, // 'swift_code', 'aba_code', 'ifsc_code', etc.
+        iban,
+        pixKey
+    }) => {
+        try {
+            // Build bank_codes object dynamically
+            const bank_codes = {};
+            if (bankCode && bankCodeType) {
+                bank_codes[bankCodeType] = bankCode;
+            }
+
+            // Build destination_details based on whether it's PIX or bank
+            let destinationDetails;
+
+            if (pixKey) {
+                // PIX payment (Brazil)
+                destinationDetails = {
+                    type: 'pix_brl',
+                    pix_brl: {
+                        key: pixKey
+                    }
+                };
+            } else {
+                // Standard bank transfer
+                destinationDetails = {
+                    type: 'bank',
+                    bank: {
+                        country,
+                        currency,
+                        bank_name: bankName,
+                        bank_codes,
+                        firc_required: false
+                    }
+                };
+
+                // Use IBAN or account_number
+                if (iban) {
+                    destinationDetails.bank.iban = iban;
+                } else {
+                    destinationDetails.bank.account_number = accountNumber;
+                }
+            }
+
+            const payload = {
+                type,
+                name,
+                email,
+                destination_details: destinationDetails
+            };
+
+            console.log('Creating Tazapay beneficiary:', JSON.stringify(payload, null, 2));
+
+            const response = await axios.post(`${TAZAPAY_API_BASE_URL}/v3/beneficiary`, payload, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Create Beneficiary Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'Failed to create Tazapay beneficiary');
+        }
+    },
+
+    /**
+     * Initiate a payout to a beneficiary
+     * @param {Object} payoutDetails
+     * @returns {Object} Tazapay payout response
+     */
+    createPayout: async ({
+        beneficiaryId,
+        amount,
+        currency = 'USD',
+        holdingCurrency = 'USD', // Currency from your Tazapay balance
+        payoutType = 'local', // 'local' or 'wire'
+        reason = 'Creator payout',
+        referenceId
+    }) => {
+        try {
+            // Amount in minor units (cents)
+            const amountInCents = Math.round(parseFloat(amount) * 100);
+
+            const payload = {
+                beneficiary_id: beneficiaryId,
+                amount: amountInCents,
+                currency,
+                holding_currency: holdingCurrency,
+                payout_type: payoutType,
+                reason,
+                reference_id: referenceId || `payout_${Date.now()}`
+            };
+
+            console.log('Creating Tazapay payout:', JSON.stringify(payload, null, 2));
+
+            const response = await axios.post(`${TAZAPAY_API_BASE_URL}/v3/payout`, payload, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Create Payout Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'Failed to create payout');
+        }
+    },
+
+    /**
+     * Get payout status
+     * @param {string} payoutId - Tazapay payout ID
+     * @returns {Object} Payout status details
+     */
+    getPayoutStatus: async (payoutId) => {
+        try {
+            const response = await axios.get(`${TAZAPAY_API_BASE_URL}/v3/payout/${payoutId}`, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Get Payout Status Error:', error.response?.data || error.message);
+            throw new Error('Failed to get payout status');
+        }
+    },
+
+    /**
+     * Get beneficiary details
+     * @param {string} beneficiaryId - Tazapay beneficiary ID
+     * @returns {Object} Beneficiary details
+     */
+    getBeneficiaryStatus: async (beneficiaryId) => {
+        try {
+            const response = await axios.get(`${TAZAPAY_API_BASE_URL}/v3/beneficiary/${beneficiaryId}`, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Get Beneficiary Error:', error.response?.data || error.message);
+            throw new Error('Failed to get beneficiary status');
+        }
     }
 };

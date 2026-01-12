@@ -53,14 +53,73 @@ const EditProfileModal = ({ isOpen, onClose, profile, onSave }) => {
         }
     };
 
-    const handleFileChange = (e, field) => {
+    // Compress and resize image before storing
+    const compressImage = (file, maxWidth, maxHeight, quality = 0.8) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Calculate new dimensions maintaining aspect ratio
+                    let { width, height } = img;
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+                    if (height > maxHeight) {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+
+                    // Create canvas and draw resized image
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    // Enable image smoothing for better quality
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to compressed JPEG/WebP
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                    // Log compression stats
+                    const originalSize = (file.size / 1024).toFixed(1);
+                    const compressedSize = (compressedDataUrl.length * 0.75 / 1024).toFixed(1);
+                    console.log(`Image compressed: ${originalSize}KB → ${compressedSize}KB (${Math.round((1 - compressedSize / originalSize) * 100)}% reduction)`);
+
+                    resolve(compressedDataUrl);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleFileChange = async (e, field) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, [field]: reader.result }));
-            };
-            reader.readAsDataURL(file);
+            try {
+                // Different sizes for different fields
+                const maxWidth = field === 'banner' ? 1600 : 800;
+                const maxHeight = field === 'banner' ? 400 : 800;
+                const quality = 0.8; // 80% quality - good balance of size/quality
+
+                const compressedImage = await compressImage(file, maxWidth, maxHeight, quality);
+                setFormData(prev => ({ ...prev, [field]: compressedImage }));
+            } catch (error) {
+                console.error('Error compressing image:', error);
+                // Fallback to original if compression fails
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData(prev => ({ ...prev, [field]: reader.result }));
+                };
+                reader.readAsDataURL(file);
+            }
         }
     };
 

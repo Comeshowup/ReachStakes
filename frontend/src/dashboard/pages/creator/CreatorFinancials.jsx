@@ -12,6 +12,7 @@ import {
     ChevronDown,
     CreditCard,
     Building,
+    Building2,
     MoreHorizontal,
     Calendar,
     AlertCircle,
@@ -19,8 +20,11 @@ import {
     Filter,
     Rocket,
     X,
-    Loader2
+    Loader2,
+    Plus
 } from "lucide-react";
+import payoutService from "../../../api/payoutService";
+import SecureOnboardingModal from "../../components/SecureOnboardingModal";
 import {
     AreaChart,
     Area,
@@ -77,6 +81,10 @@ const CreatorFinancials = () => {
     const [payoutHistory, setPayoutHistory] = useState([]);
     const [campaignEarnings, setCampaignEarnings] = useState([]);
 
+    // Payout bank connection status
+    const [payoutStatus, setPayoutStatus] = useState(null);
+    const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+
     useEffect(() => {
         const fetchEarnings = async () => {
             try {
@@ -117,7 +125,42 @@ const CreatorFinancials = () => {
         };
 
         fetchEarnings();
+        fetchPayoutStatus();
     }, []);
+
+    const fetchPayoutStatus = async () => {
+        try {
+            const response = await payoutService.getPayoutStatus();
+            if (response.success) {
+                setPayoutStatus(response.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch payout status:", err);
+        }
+    };
+
+    const handleBankConnected = (data) => {
+        setPayoutStatus({
+            isConnected: true,
+            status: 'Active',
+            bankName: data.bankName,
+            bankLastFour: data.bankLastFour,
+            bankCountry: data.country,
+            bankCurrency: data.currency
+        });
+    };
+
+    const handleDisconnectBank = async () => {
+        if (!confirm('Are you sure you want to disconnect your bank account?')) return;
+        try {
+            const response = await payoutService.disconnectBank();
+            if (response.success) {
+                setPayoutStatus({ isConnected: false, status: 'Inactive' });
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to disconnect bank');
+        }
+    };
 
     const toggleCampaign = (id) => {
         if (expandedCampaign === id) {
@@ -267,31 +310,52 @@ const CreatorFinancials = () => {
                 {/* Right Sidebar */}
                 <div className="space-y-6">
                     {/* ... (Keep existing sidebar code) ... */}
-                    {/* Payout Settings */}
+                    {/* Payout Settings - Real Data */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 }}
                         className="bg-[#0B0E14] rounded-3xl p-6 border border-slate-800 shadow-lg"
                     >
-                        <h3 className="text-sm font-medium text-slate-300 mb-4">Payout Settings</h3>
-                        <div className="bg-[#131823] rounded-2xl p-4 border border-slate-800 mb-4">
-                            <div className="flex justify-between items-start mb-3">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PRIMARY METHOD:</span>
-                                <Wallet className="w-4 h-4 text-slate-400" />
-                            </div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="font-bold text-white italic">PayPal</span>
-                                <span className="text-slate-400 text-sm">Connected</span>
-                            </div>
-                            <p className="text-xs text-slate-500 truncate">alex.rivera@example.com</p>
-                        </div>
-                        <button
-                            onClick={() => setIsPaymentModalOpen(true)}
-                            className="w-full py-2.5 border border-slate-700 hover:border-slate-500 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all"
-                        >
-                            Change Method
-                        </button>
+                        <h3 className="text-sm font-medium text-slate-300 mb-4">Payout Method</h3>
+
+                        {payoutStatus?.isConnected ? (
+                            <>
+                                <div className="bg-[#131823] rounded-2xl p-4 border border-emerald-500/20 mb-4">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" /> CONNECTED
+                                        </span>
+                                        <Building2 className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white">{payoutStatus.bankName || 'Bank Account'}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-400">•••• {payoutStatus.bankLastFour}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{payoutStatus.bankCountry} • {payoutStatus.bankCurrency}</p>
+                                </div>
+                                <button
+                                    onClick={handleDisconnectBank}
+                                    className="w-full py-2.5 border border-red-500/30 hover:border-red-500/50 bg-red-500/5 hover:bg-red-500/10 rounded-xl text-xs font-bold text-red-400 hover:text-red-300 transition-all"
+                                >
+                                    Disconnect Bank
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="bg-[#131823] rounded-2xl p-4 border border-dashed border-slate-700 mb-4 text-center">
+                                    <Building2 className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                                    <p className="text-sm text-slate-400 mb-1">No bank connected</p>
+                                    <p className="text-xs text-slate-500">Connect your bank to receive payouts</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsBankModalOpen(true)}
+                                    className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-xl text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> Connect Bank Account
+                                </button>
+                            </>
+                        )}
                     </motion.div>
 
                     {/* Creator Status */}
@@ -500,6 +564,13 @@ const CreatorFinancials = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Secure Onboarding Modal (Hosted by Tazapay) */}
+            <SecureOnboardingModal
+                isOpen={isBankModalOpen}
+                onClose={() => setIsBankModalOpen(false)}
+                onSuccess={handleBankConnected}
+            />
         </div>
     );
 };

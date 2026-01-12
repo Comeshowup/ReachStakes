@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, User, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Building2, User, Mail, Lock, Eye, EyeOff, Loader2, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import FormInput from "./FormInput";
@@ -47,17 +47,31 @@ const AuthForm = ({
                                 isBrand={isBrand}
                             />
                         ) : (
-                            <FormInput
-                                id="fullName"
-                                name="fullName"
-                                label="Full Name"
-                                placeholder="John Doe"
-                                value={formData.fullName}
-                                onChange={handleInputChange}
-                                error={errors.fullName}
-                                icon={User}
-                                isBrand={isBrand}
-                            />
+                            <>
+                                <FormInput
+                                    id="fullName"
+                                    name="fullName"
+                                    label="Full Name"
+                                    placeholder="John Doe"
+                                    value={formData.fullName}
+                                    onChange={handleInputChange}
+                                    error={errors.fullName}
+                                    icon={User}
+                                    isBrand={isBrand}
+                                />
+                                <FormInput
+                                    id="handle"
+                                    name="handle"
+                                    label="Handle"
+                                    placeholder="yourhandle"
+                                    value={formData.handle}
+                                    onChange={handleInputChange}
+                                    error={errors.handle}
+                                    icon={AtSign}
+                                    isBrand={isBrand}
+                                    startAdornment={<span className="text-gray-400 pl-3">@</span>}
+                                />
+                            </>
                         )}
                     </motion.div>
                 )}

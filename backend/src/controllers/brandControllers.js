@@ -40,7 +40,7 @@ export const getBrandProfile = async (req, res) => {
             location: user.brandProfile.location || '',
             about: user.brandProfile.about || '',
             logo: user.brandProfile.logoUrl || null,
-            banner: null, // Can be extended in schema if needed
+            banner: user.brandProfile.bannerUrl || null,
             companySize: user.brandProfile.companySize || 'Startup',
             hiringStatus: user.brandProfile.hiringStatus || 'Active',
             websiteUrl: user.brandProfile.websiteUrl || '',
@@ -53,7 +53,7 @@ export const getBrandProfile = async (req, res) => {
                 campaigns: totalCampaigns,
                 activeCampaigns: activeCampaigns,
                 hiringSince: user.brandProfile.hiringSince || new Date().getFullYear(),
-                rating: '4.8/5' // Can be calculated from collaborations
+                rating: 'N/A' // Default to N/A until collaborations exist
             }
         };
 
@@ -76,6 +76,7 @@ export const updateBrandProfile = async (req, res) => {
             location,
             about,
             logo,
+            banner,
             companySize,
             hiringStatus,
             websiteUrl,
@@ -104,6 +105,7 @@ export const updateBrandProfile = async (req, res) => {
                 location: location || undefined,
                 about: about || undefined,
                 logoUrl: logo || undefined,
+                bannerUrl: banner || undefined,
                 companySize: companySize || undefined,
                 hiringStatus: hiringStatus || undefined,
                 websiteUrl: websiteUrl || undefined,

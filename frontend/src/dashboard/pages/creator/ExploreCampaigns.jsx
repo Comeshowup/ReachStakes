@@ -138,12 +138,12 @@ const ExploreCampaigns = () => {
                     logo: c.brand?.brandProfile?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.brand?.brandProfile?.companyName || 'Brand')}&background=random`,
                     platform: c.platformRequired || "Any",
                     type: c.campaignType || "General",
-                    budget: c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : (c.budgetMin ? `$${c.budgetMin}+` : "Negotiable"),
+                    budget: c.targetBudget ? `$${parseFloat(c.targetBudget).toLocaleString()}` : (c.budgetMin && c.budgetMax ? `$${c.budgetMin} - $${c.budgetMax}` : "Negotiable"),
                     deadline: c.deadline ? new Date(c.deadline).toLocaleDateString() : "Open",
                     brandColor: ["#6366f1", "#ec4899", "#ef4444", "#f59e0b", "#10b981", "#06b6d4"][index % 6],
                     // Phase 1: Financial Security - Escrow data
                     escrowBalance: parseFloat(c.escrowBalance) || 0,
-                    budgetMax: parseFloat(c.budgetMax) || 0
+                    budgetMax: parseFloat(c.targetBudget || c.budgetMax) || 0
                 }));
 
                 setCampaigns(formattedCampaigns);

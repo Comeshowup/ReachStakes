@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, User, Mail, Briefcase, CheckCircle, ChevronLeft, ChevronRight, Video } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Briefcase, CheckCircle, ChevronLeft, ChevronRight, Video, AlertCircle, Loader } from 'lucide-react';
+import api from '../../api/axios';
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -139,11 +140,14 @@ const TimeSlotPicker = ({ selectedDate, selectedSlot, onSelectSlot }) => {
     );
 };
 
-const BookingForm = ({ onSubmit, onBack, initialData }) => {
-    const [formData, setFormData] = useState(initialData || {
-        name: '',
-        email: '',
-        role: 'brand',
+const BookingForm = ({ onSubmit, onBack, initialData, loading, error }) => {
+    // If initialData has name/email (from login), we'll use that and show a simplified view
+    const isPreFilled = initialData && initialData.name && initialData.email;
+
+    const [formData, setFormData] = useState({
+        name: initialData?.name || '',
+        email: initialData?.email || '',
+        role: initialData?.role || 'brand',
         agenda: ''
     });
 
@@ -159,61 +163,84 @@ const BookingForm = ({ onSubmit, onBack, initialData }) => {
             onSubmit={handleSubmit}
             className="space-y-6"
         >
+            {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-center gap-3 text-sm">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    {error}
+                </div>
+            )}
             <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                        Role
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                        {['brand', 'creator'].map(role => (
-                            <button
-                                key={role}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, role })}
-                                className={`
-                                    py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border capitalize
-                                    ${formData.role === role
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                                        : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400'
-                                    }
-                                `}
-                            >
-                                <Briefcase className="w-4 h-4" />
-                                {role}
-                            </button>
-                        ))}
+                {isPreFilled ? (
+                    // Simplified View for Logged-in Users
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start gap-4">
+                        <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg text-indigo-600 dark:text-indigo-400">
+                            <User className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Booking as {formData.name}</h4>
+                            <p className="text-sm text-gray-500 dark:text-slate-400">{formData.email}</p>
+                            <p className="text-xs text-indigo-500 mt-1 capitalize font-medium">{formData.role} Account</p>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    // Full Form for Guests
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                                Role
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {['brand', 'creator'].map(role => (
+                                    <button
+                                        key={role}
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, role })}
+                                        className={`
+                                            py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border capitalize
+                                            ${formData.role === role
+                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                                : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400'
+                                            }
+                                        `}
+                                    >
+                                        <Briefcase className="w-4 h-4" />
+                                        {role}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Full Name</label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            required
-                            type="text"
-                            value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                            placeholder="Enter your name"
-                        />
-                    </div>
-                </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Full Name</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    required
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="Enter your name"
+                                />
+                            </div>
+                        </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            required
-                            type="email"
-                            value={formData.email}
-                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                            placeholder="you@company.com"
-                        />
-                    </div>
-                </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    required
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="you@company.com"
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Meeting Agenda (Optional)</label>
@@ -237,9 +264,11 @@ const BookingForm = ({ onSubmit, onBack, initialData }) => {
                 </button>
                 <button
                     type="submit"
-                    className="flex-1 px-6 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all transform active:scale-95"
+                    disabled={loading}
+                    className="flex-1 px-6 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                    Confirm Booking
+                    {loading && <Loader className="w-4 h-4 animate-spin" />}
+                    {loading ? 'Confirming...' : 'Confirm Booking'}
                 </button>
             </div>
         </motion.form>
@@ -282,12 +311,11 @@ const SuccessView = ({ data, date, slot }) => (
     </motion.div>
 );
 
-const MeetingScheduler = () => {
+const MeetingScheduler = ({ userData }) => {
     const [step, setStep] = useState(1); // 1: Select Date/Slot, 2: Details, 3: Success
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [bookingData, setBookingData] = useState(null);
-    const initialUserData = null; // Can be connected to auth context
 
     const handleDateSelect = (date) => {
         setSelectedDate(date);
@@ -300,11 +328,29 @@ const MeetingScheduler = () => {
         }
     };
 
-    const handleBookingSubmit = (data) => {
-        // Here we would perform the API call
-        console.log("Submitting booking:", { date: selectedDate, slot: selectedSlot, ...data });
-        setBookingData(data);
-        setTimeout(() => setStep(3), 1000); // Simulate API latency
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleBookingSubmit = async (data) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const payload = {
+                ...data,
+                date: selectedDate,
+                timeSlot: selectedSlot,
+                userId: userData?.id // Optional: if logged in
+            };
+
+            await api.post('/meetings', payload);
+            setBookingData({ ...data, email: data.email }); // Ensure email is passed for success view
+            setStep(3);
+        } catch (err) {
+            console.error("Booking error:", err);
+            setError(err.response?.data?.message || "Failed to schedule meeting. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -361,9 +407,11 @@ const MeetingScheduler = () => {
                             </p>
                         </div>
                         <BookingForm
-                            initialData={initialUserData}
+                            initialData={userData}
                             onBack={() => setStep(1)}
                             onSubmit={handleBookingSubmit}
+                            loading={loading}
+                            error={error}
                         />
                     </motion.div>
                 )}

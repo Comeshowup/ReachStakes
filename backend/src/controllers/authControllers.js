@@ -7,7 +7,8 @@ import axios from "axios";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const register = async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { email, password, role, handle } = req.body;
+    const name = req.body.name || req.body.companyName || req.body.fullName;
 
     //check if user exists
     const userExists = await prisma.user.findUnique({
@@ -27,26 +28,65 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    //create user
-    const user = await prisma.user.create({
-        data: {
-            name: name,
-            email: email,
-            passwordHash: hashedPassword,
-            role: role
-        }
-    });
+    try {
+        // Use transaction to ensure both user and profile are created or neither
+        const result = await prisma.$transaction(async (prisma) => {
+            // 1. Create User
+            const user = await prisma.user.create({
+                data: {
+                    name: name, // This acts as "Full Name" for creators or "Contact Name" for brands initially
+                    email: email,
+                    passwordHash: hashedPassword,
+                    role: role
+                }
+            });
 
-    //generate token
-    const token = generateToken(user.id, res);
+            // 2. Create Profile based on role
+            if (role === 'brand') {
+                await prisma.brandProfile.create({
+                    data: {
+                        userId: user.id,
+                        companyName: name, // Using the provided name as Company Name initially
+                        contactEmail: email
+                    }
+                });
+            } else if (role === 'creator') {
+                if (!handle) {
+                    throw new Error("Handle is required for creators");
+                }
+                await prisma.creatorProfile.create({
+                    data: {
+                        userId: user.id,
+                        fullName: name,
+                        handle: handle,
+                        // Defaults
+                        mediaKitEnabled: true,
+                        verificationTier: 'None'
+                    }
+                });
+            }
 
-    res.status(201).json({
-        status: "success",
-        data: {
-            user,
-            token: generateToken(user.id)
-        }
-    });
+            return user;
+        });
+
+        //generate token
+        const token = generateToken(result.id, res);
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                user: result,
+                token: generateToken(result.id)
+            }
+        });
+
+    } catch (error) {
+        console.error("Registration Error:", error);
+        res.status(400).json({
+            status: "error",
+            message: error.message || "Registration failed"
+        });
+    }
 }
 
 const login = async (req, res) => {

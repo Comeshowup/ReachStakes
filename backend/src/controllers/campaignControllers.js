@@ -10,7 +10,8 @@ export const createCampaign = async (req, res) => {
             description,
             platformRequired,
             campaignType,
-            budgetMin,
+            targetBudget, // Added targetBudget
+            budgetMin, // Keeping for backward compatibility if needed
             budgetMax,
             deadline,
             // New Contractual Fields
@@ -31,8 +32,8 @@ export const createCampaign = async (req, res) => {
                 description,
                 platformRequired,
                 campaignType,
-                budgetMin: budgetMin ? parseFloat(budgetMin) : null,
-                budgetMax: budgetMax ? parseFloat(budgetMax) : null,
+                campaignType,
+                targetBudget: budgetMin ? parseFloat(budgetMin) : (targetBudget ? parseFloat(targetBudget) : null), // Handle legacy or new
                 deadline: deadline ? new Date(deadline) : null,
                 status: 'Draft', // Default to Draft for new requests
                 // New Contractual Fields

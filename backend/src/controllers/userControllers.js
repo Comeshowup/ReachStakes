@@ -274,3 +274,84 @@ export const getMyEarnings = async (req, res) => {
         res.status(500).json({ status: "error", message: "Failed to fetch earnings" });
     }
 };
+
+// GET /api/users/me/posts
+export const getMyPosts = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const posts = await prisma.communityPost.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Format
+        const formatted = posts.map(p => ({
+            id: p.id,
+            content: p.contentText,
+            date: new Date(p.createdAt).toLocaleDateString(), // or relative time
+            mediaType: p.mediaType !== 'none' ? p.mediaType : null,
+            mediaUrl: p.mediaUrl,
+            likes: 0,
+            comments: 0
+        }));
+
+        res.json({ status: "success", data: formatted });
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        res.status(500).json({ status: "error", message: "Failed to fetch posts" });
+    }
+};
+
+// POST /api/users/me/posts
+export const createPost = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { content, mediaType, mediaUrl } = req.body;
+
+        if (!content) return res.status(400).json({ status: "error", message: "Content required" });
+
+        const post = await prisma.communityPost.create({
+            data: {
+                userId,
+                contentText: content,
+                mediaType: mediaType || 'none',
+                mediaUrl: mediaUrl || null,
+                type: 'General'
+            }
+        });
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                id: post.id,
+                content: post.contentText,
+                date: "Just now",
+                mediaType: post.mediaType !== 'none' ? post.mediaType : null,
+                mediaUrl: post.mediaUrl,
+                likes: 0,
+                comments: 0
+            }
+        });
+    } catch (error) {
+        console.error("Error creating post:", error);
+        res.status(500).json({ status: "error", message: "Failed to create post" });
+    }
+};
+
+// DELETE /api/users/me/posts/:id
+export const deletePost = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const postId = parseInt(req.params.id);
+
+        const post = await prisma.communityPost.findUnique({ where: { id: postId } });
+        if (!post) return res.status(404).json({ status: "error", message: "Post not found" });
+        if (post.userId !== userId) return res.status(403).json({ status: "error", message: "Unauthorized" });
+
+        await prisma.communityPost.delete({ where: { id: postId } });
+        res.json({ status: "success", message: "Post deleted" });
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        res.status(500).json({ status: "error", message: "Failed to delete post" });
+    }
+};

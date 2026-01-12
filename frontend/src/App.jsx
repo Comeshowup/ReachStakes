@@ -22,6 +22,9 @@ import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
 import InvoiceCenter from "./dashboard/pages/creator/InvoiceCenter";
 import VideoStatsPage from "./dashboard/pages/creator/VideoStatsPage";
 import DocumentsPage from "./dashboard/pages/creator/DocumentsPage";
+import OnboardingStatusPage from "./dashboard/pages/creator/OnboardingStatusPage";
+import BrandProfile from "./dashboard/pages/BrandProfile";
+import CreatorProfile from "./dashboard/pages/creator/CreatorProfile";
 import ProfilePage from "./dashboard/pages/ProfilePage";
 import AdminLayout from "./dashboard/layout/AdminLayout";
 import AdminDashboardHome from "./dashboard/pages/admin/AdminDashboardHome";
@@ -59,7 +62,7 @@ function App() {
       <Route path="/brand" element={<DashboardLayout />}>
         <Route index element={<CMODashboard />} />
         <Route path="campaigns" element={<CampaignManagement />} />
-        <Route path="profile" element={<ProfilePage type="brand" />} />
+        <Route path="profile" element={<BrandProfile />} />
         <Route path="approvals" element={<ApprovalQueue />} />
         <Route path="financials" element={<EscrowVault />} />
         <Route path="escrow" element={<EscrowVault />} />
@@ -72,13 +75,14 @@ function App() {
         <Route index element={<CreatorDashboardHome />} />
         <Route path="explore" element={<ExploreCampaigns />} />
         <Route path="submissions" element={<MySubmissions />} />
-        <Route path="profile" element={<ProfilePage type="creator" />} />
+        <Route path="profile" element={<CreatorProfile />} />
         <Route path="financials" element={<CreatorFinancials />} />
         <Route path="invoices" element={<InvoiceCenter />} />
         <Route path="social-accounts" element={<SocialAccounts />} />
         <Route path="video-stats" element={<VideoStatsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="contact" element={<ContactUsPage />} />
+        <Route path="onboarding-status" element={<OnboardingStatusPage />} />
       </Route>
 
       {/* Admin Dashboard Routes */}

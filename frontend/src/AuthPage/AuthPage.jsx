@@ -28,6 +28,7 @@ const AuthPage = () => {
         companyName: "",
         fullName: "",
         username: "",
+        handle: "",
     });
 
     // Validation State
@@ -58,7 +59,7 @@ const AuthPage = () => {
             if (role === "brand" && !formData.companyName) newErrors.companyName = "Company Name is required";
             if (role === "creator") {
                 if (!formData.fullName) newErrors.fullName = "Full Name is required";
-                // if (!formData.username) newErrors.username = "Username is required"; // Uncomment if username is added to form
+                if (!formData.handle) newErrors.handle = "Handle is required";
             }
         }
         setErrors(newErrors);
@@ -79,6 +80,7 @@ const AuthPage = () => {
                     email: formData.email,
                     password: formData.password,
                     role: role,
+                    handle: formData.handle,
                 };
 
                 const response = await api.post("/auth/register", payload);
@@ -94,7 +96,7 @@ const AuthPage = () => {
                     if (user.role === "creator") {
                         navigate("/creator");
                     } else {
-                        navigate("/dashboard");
+                        navigate("/brand");
                     }
                 }
             } else {
@@ -115,7 +117,7 @@ const AuthPage = () => {
                     if (user.role === "creator") {
                         navigate("/creator");
                     } else {
-                        navigate("/dashboard");
+                        navigate("/brand");
                     }
                 }
             }

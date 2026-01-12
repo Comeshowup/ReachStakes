@@ -8,6 +8,18 @@ import MeetingScheduler from '../components/MeetingScheduler';
 const ContactUsPage = () => {
     const [activeTab, setActiveTab] = useState('chat');
     const [searchParams] = useSearchParams();
+    const [userData, setUserData] = useState(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('userInfo');
+        if (storedUser) {
+            try {
+                setUserData(JSON.parse(storedUser));
+            } catch (e) {
+                console.error("Failed to parse user info", e);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -94,7 +106,7 @@ const ContactUsPage = () => {
                                     </p>
                                 </div>
                             </div>
-                            <MeetingScheduler />
+                            <MeetingScheduler userData={userData} />
                         </motion.div>
                     )}
                 </AnimatePresence>
