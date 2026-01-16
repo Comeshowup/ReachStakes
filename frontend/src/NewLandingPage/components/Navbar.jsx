@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
     return (
@@ -33,31 +34,33 @@ const Navbar = () => {
                 </span>
             </div>
 
-            {/* Links (Hidden on small screens) */}
             <div className="hidden md:flex items-center gap-6 mr-8">
                 <a
-                    href="#"
+                    href="#features"
                     className="text-xs font-medium text-white/50 hover:text-white transition-colors"
                 >
-                    Manifesto
+                    Features
                 </a>
                 <a
-                    href="#"
+                    href="#case-studies"
                     className="text-xs font-medium text-white/50 hover:text-white transition-colors"
                 >
-                    Network
+                    Case Studies
                 </a>
-                <a
-                    href="#"
+                <Link
+                    to="/pricing"
                     className="text-xs font-medium text-white/50 hover:text-white transition-colors"
                 >
                     Pricing
-                </a>
+                </Link>
             </div>
 
             {/* Action Button */}
-            <button className="flex gap-2 hover:bg-brand-sky transition-colors group text-xs font-semibold text-black bg-white rounded-full pt-2 pr-4 pb-2 pl-4 gap-x-2 gap-y-2 items-center flex-none">
-                Start Engine
+            <Link
+                to="/meetings"
+                className="flex gap-2 hover:bg-brand-sky transition-colors group text-xs font-semibold text-black bg-white rounded-full pt-2 pr-4 pb-2 pl-4 gap-x-2 gap-y-2 items-center flex-none"
+            >
+                Book a Demo
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     aria-hidden="true"
@@ -72,7 +75,7 @@ const Navbar = () => {
                         d="M13.25 12.75V18a.75.75 0 0 0 1.28.53l6-6a.75.75 0 0 0 0-1.06l-6-6a.75.75 0 0 0-1.28.53z"
                     ></path>
                 </svg>
-            </button>
+            </Link>
         </nav>
     );
 };

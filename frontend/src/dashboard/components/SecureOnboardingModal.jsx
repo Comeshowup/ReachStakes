@@ -20,9 +20,10 @@ import payoutService from "../../api/payoutService";
  * - Generates a secure redirect URL to Tazapay's hosted onboarding
  * - User enters bank/KYC info directly on Tazapay's secure servers
  * - Only receives status updates via webhooks
+ * - Falls back to manual entry if hosted onboarding is unavailable
  */
-const SecureOnboardingModal = ({ isOpen, onClose, onSuccess }) => {
-    const [step, setStep] = useState(1); // 1: Info, 2: Redirecting, 3: Error
+const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry }) => {
+    const [step, setStep] = useState(1); // 1: Info, 2: Redirecting, 3: Error, 4: Manual Entry Fallback
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [onboardingUrl, setOnboardingUrl] = useState(null);
@@ -35,13 +36,25 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess }) => {
             const response = await payoutService.initiateOnboarding();
 
             if (response.success) {
-                setOnboardingUrl(response.data.onboardingUrl);
-                setStep(2);
+                // Check if we need to use manual entry fallback
+                if (response.data.useManualEntry) {
+                    console.log('Tazapay hosted onboarding unavailable, showing manual entry option');
+                    setStep(4); // Show fallback step
+                    return;
+                }
 
-                // Redirect to Tazapay after a brief delay to show the user what's happening
-                setTimeout(() => {
-                    window.location.href = response.data.onboardingUrl;
-                }, 1500);
+                if (response.data.onboardingUrl) {
+                    setOnboardingUrl(response.data.onboardingUrl);
+                    setStep(2);
+
+                    // Redirect to Tazapay after a brief delay to show the user what's happening
+                    setTimeout(() => {
+                        window.location.href = response.data.onboardingUrl;
+                    }, 1500);
+                } else {
+                    // No URL but success - show manual entry fallback
+                    setStep(4);
+                }
             } else {
                 setError(response.message || 'Failed to initiate onboarding');
                 setStep(3);
@@ -256,6 +269,47 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess }) => {
                                         }}
                                     >
                                         Try Again
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Step 4: Manual Entry Fallback */}
+                        {step === 4 && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-8"
+                            >
+                                <div
+                                    className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+                                    style={{ background: 'rgba(251, 191, 36, 0.1)' }}
+                                >
+                                    <AlertCircle size={36} className="text-amber-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Hosted Onboarding Unavailable</h3>
+                                <p className="text-white/60 mb-6">
+                                    Tazapay's secure portal is currently not available. You can connect your bank account using manual entry instead.
+                                </p>
+                                <div className="flex gap-3 justify-center">
+                                    <button
+                                        onClick={handleClose}
+                                        className="px-6 py-3 rounded-xl font-medium bg-white/10 text-white hover:bg-white/20 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleClose();
+                                            if (onUseManualEntry) onUseManualEntry();
+                                        }}
+                                        className="px-6 py-3 rounded-xl font-medium transition-colors"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #00FF88, #00CC6A)',
+                                            color: '#000'
+                                        }}
+                                    >
+                                        Use Manual Entry
                                     </button>
                                 </div>
                             </motion.div>

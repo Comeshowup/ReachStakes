@@ -20,6 +20,7 @@ import {
     Check,
     Loader2
 } from 'lucide-react';
+import GuaranteedPayBadge from '../../dashboard/components/GuaranteedPayBadge';
 
 const CampaignPage = () => {
     const { id } = useParams();
@@ -186,8 +187,9 @@ const CampaignPage = () => {
                                             Active Campaign
                                         </div>
                                     </div>
-                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
+                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-[1.1] flex flex-wrap items-center gap-4">
                                         {campaign.title}
+                                        <GuaranteedPayBadge status={campaign.isGuaranteedPay ? "Guaranteed" : "None"} variant="guaranteed" size="lg" />
                                     </h1>
                                     <div className="flex flex-wrap gap-3 pt-2">
                                         {/* Stylized Tags */}
@@ -372,6 +374,11 @@ const CampaignPage = () => {
 
                                     <p className="text-xs text-center text-zinc-500">
                                         By applying, you agree to the campaign terms.
+                                        {campaign.isGuaranteedPay && (
+                                            <span className="block mt-2 text-emerald-500 font-medium">
+                                                💰 Payment guaranteed within 7 days of approval
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                             </div>

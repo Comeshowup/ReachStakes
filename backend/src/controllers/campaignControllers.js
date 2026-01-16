@@ -229,6 +229,148 @@ export const getAllCampaigns = async (req, res) => {
     }
 };
 
+// @desc    Discover campaigns with smart filtering (Phase 2: Gamification)
+// @route   GET /api/campaigns/discover
+// @access  Private/Creator
+// @query   tab: 'foryou' | 'new' | 'guaranteed' | 'expiring'
+export const discoverCampaigns = async (req, res) => {
+    try {
+        const { tab = 'new' } = req.query;
+        const userId = req.user?.id;
+
+        // Get creator's niche tags for matching
+        let creatorNicheTags = [];
+        if (userId) {
+            const creatorProfile = await prisma.creatorProfile.findUnique({
+                where: { userId },
+                select: { nicheTags: true }
+            });
+            if (creatorProfile?.nicheTags) {
+                creatorNicheTags = Array.isArray(creatorProfile.nicheTags)
+                    ? creatorProfile.nicheTags
+                    : [];
+            }
+        }
+
+        // Base query - only active campaigns
+        const baseWhere = {
+            OR: [
+                { status: 'Active' },
+                { status: 'Draft' } // Include drafts for now until status is strictly managed
+            ]
+        };
+
+        const baseInclude = {
+            brand: {
+                select: {
+                    brandProfile: {
+                        select: {
+                            companyName: true,
+                            logoUrl: true,
+                            industry: true
+                        }
+                    }
+                }
+            }
+        };
+
+        let campaigns = [];
+        const now = new Date();
+        const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+        switch (tab) {
+            case 'guaranteed':
+                // Only campaigns with escrow funded
+                campaigns = await prisma.campaign.findMany({
+                    where: { ...baseWhere, isGuaranteedPay: true },
+                    orderBy: { createdAt: 'desc' },
+                    include: baseInclude
+                });
+                break;
+
+            case 'expiring':
+                // Campaigns ending within 3 days
+                campaigns = await prisma.campaign.findMany({
+                    where: {
+                        ...baseWhere,
+                        deadline: {
+                            not: null,
+                            lte: threeDaysFromNow,
+                            gte: now
+                        }
+                    },
+                    orderBy: { deadline: 'asc' },
+                    include: baseInclude
+                });
+                break;
+
+            case 'foryou':
+                // Smart matching: Match campaign tags with creator niche tags
+                const allCampaigns = await prisma.campaign.findMany({
+                    where: baseWhere,
+                    orderBy: { createdAt: 'desc' },
+                    include: baseInclude
+                });
+
+                // Score and sort by relevance
+                campaigns = allCampaigns
+                    .map(campaign => {
+                        let score = 0;
+                        const campaignTags = Array.isArray(campaign.tags) ? campaign.tags : [];
+                        const brandIndustry = campaign.brand?.brandProfile?.industry;
+
+                        // Match campaign tags with creator niche
+                        creatorNicheTags.forEach(niche => {
+                            if (campaignTags.some(tag =>
+                                tag.toLowerCase().includes(niche.toLowerCase()) ||
+                                niche.toLowerCase().includes(tag.toLowerCase())
+                            )) {
+                                score += 10;
+                            }
+                            // Match brand industry
+                            if (brandIndustry && brandIndustry.toLowerCase().includes(niche.toLowerCase())) {
+                                score += 5;
+                            }
+                        });
+
+                        // Bonus for guaranteed pay
+                        if (campaign.isGuaranteedPay) score += 3;
+
+                        return { ...campaign, _matchScore: score };
+                    })
+                    .sort((a, b) => b._matchScore - a._matchScore);
+                break;
+
+            case 'new':
+            default:
+                // Latest campaigns (last 7 days prioritized)
+                const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                campaigns = await prisma.campaign.findMany({
+                    where: baseWhere,
+                    orderBy: { createdAt: 'desc' },
+                    include: baseInclude
+                });
+                break;
+        }
+
+        res.json({
+            status: 'success',
+            data: campaigns,
+            meta: {
+                tab,
+                count: campaigns.length,
+                creatorNicheTags: tab === 'foryou' ? creatorNicheTags : undefined
+            }
+        });
+    } catch (error) {
+        console.error("Error discovering campaigns:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to discover campaigns'
+        });
+    }
+};
+
 // @desc    Get single campaign by ID
 // @route   GET /api/campaigns/:id
 // @access  Public (or Private)

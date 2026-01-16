@@ -54,6 +54,12 @@ export const getBrandProfile = async (req, res) => {
                 activeCampaigns: activeCampaigns,
                 hiringSince: user.brandProfile.hiringSince || new Date().getFullYear(),
                 rating: 'N/A' // Default to N/A until collaborations exist
+            },
+            onboarding: {
+                primaryGoal: user.brandProfile.primaryGoal || '',
+                budgetRange: user.brandProfile.budgetRange || '',
+                launchTimeline: user.brandProfile.launchTimeline || '',
+                teamEmails: user.brandProfile.teamEmails || []
             }
         };
 
@@ -110,7 +116,12 @@ export const updateBrandProfile = async (req, res) => {
                 hiringStatus: hiringStatus || undefined,
                 websiteUrl: websiteUrl || undefined,
                 socialLinks: socials || undefined,
-                contactEmail: contact?.email || undefined
+                contactEmail: contact?.email || undefined,
+                onboardingCompleted: req.body.onboardingCompleted !== undefined ? req.body.onboardingCompleted : undefined,
+                primaryGoal: req.body.primaryGoal || undefined,
+                budgetRange: req.body.budgetRange || undefined,
+                launchTimeline: req.body.launchTimeline || undefined,
+                teamEmails: req.body.teamEmails || undefined
             }
         });
 

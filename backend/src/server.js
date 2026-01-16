@@ -15,6 +15,8 @@ import documentRoutes from './routes/documentRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import meetingRoutes from './routes/meetingRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
+import creatorRoutes from './routes/creatorRoutes.js';
+import referralRoutes from './routes/referralRoutes.js';
 
 // ... other imports
 
@@ -81,6 +83,8 @@ app.use('/api/documents', documentRoutes); // Creator Documents Hub
 app.use('/api/payments', paymentRoutes); // Tazapay Payments
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/payouts', payoutRoutes); // Creator Payouts
+app.use('/api/creators', creatorRoutes); // Creator specific routes
+app.use('/api/referrals', referralRoutes); // Phase 3: Referral System
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

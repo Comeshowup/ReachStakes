@@ -19,6 +19,9 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
   name         String   @db.VarChar(100)
 
+  // Phase 3: Referral Tracking
+  referredBy Int? @map("referred_by") // UserId of referrer
+
   // Relations
   brandProfile   BrandProfile?
   // Revised Creator Profile
@@ -61,6 +64,14 @@ model BrandProfile {
   websiteUrl   String?       @map("website_url") @db.VarChar(255)
   socialLinks  Json?         @map("social_links")
   contactEmail String?       @map("contact_email") @db.VarChar(255)
+
+  // Onboarding Data
+  primaryGoal    String? @map("primary_goal") @db.VarChar(50)
+  budgetRange    String? @map("budget_range") @db.VarChar(50)
+  launchTimeline String? @map("launch_timeline") @db.VarChar(50)
+  teamEmails     Json?   @map("team_emails") // List of invited emails
+
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -110,6 +121,22 @@ model CreatorProfile {
   bankLastFour         String?           @map("bank_last_four") @db.VarChar(4)
   bankingSetupAt       DateTime?         @map("banking_setup_at")
 
+  // Creator Onboarding Wizard (Phase 1 Activation)
+  creatorOnboardingStep        Int       @default(0) @map("creator_onboarding_step") // 0-4 steps
+  creatorOnboardingCompletedAt DateTime? @map("creator_onboarding_completed_at")
+  quickWinTasks                Json?     @map("quick_win_tasks") // {"profileComplete": bool, "socialLinked": bool, "firstApplied": bool}
+
+  // Phase 2: Gamification - Streak Tracking
+  lastLoginAt   DateTime? @map("last_login_at")
+  currentStreak Int       @default(0) @map("current_streak")
+  longestStreak Int       @default(0) @map("longest_streak")
+
+  // Phase 3: Referral System
+  referralCode     String? @unique @map("referral_code") @db.VarChar(20)
+  referredByUserId Int?    @map("referred_by_user_id")
+  referralCount    Int     @default(0) @map("referral_count")
+  referralEarnings Decimal @default(0) @map("referral_earnings") @db.Decimal(10, 2)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Relations
@@ -156,6 +183,7 @@ model Campaign {
   brandId          Int             @map("brand_id")
   title            String          @db.VarChar(255)
   description      String?         @db.Text
+  tags             Json?           @map("tags") // Phase 2: ["Beauty", "Tech", "DTC"] for smart matching
   platformRequired String?         @map("platform_required") @db.VarChar(50)
   campaignType     String?         @map("campaign_type") @db.VarChar(50)
   status           CampaignStatus? @default(Draft)
@@ -414,8 +442,11 @@ enum Role {
 
 enum CompanySize {
   Startup
-  Mid_Market @map("Mid-Market")
+  Small
+  Medium
+  Large
   Enterprise
+  Mid_Market @map("Mid-Market") // Keep for legacy if needed
 }
 
 enum HiringStatus {

@@ -1,4 +1,5 @@
 import { tazapayService } from '../services/tazapayService.js';
+import { applyReferralBonus } from './referralController.js';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -64,6 +65,15 @@ export const initiateOnboarding = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Creator profile not found' });
         }
 
+        // Validate email format before sending to Tazapay
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!user.email || !emailRegex.test(user.email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address. Please update your email in your profile settings before connecting a bank account.'
+            });
+        }
+
         // Check if already has active bank connection
         if (user.creatorProfile.tazapayBeneficiaryId && user.creatorProfile.payoutStatus === 'Active') {
             return res.status(400).json({
@@ -101,13 +111,56 @@ export const initiateOnboarding = async (req, res) => {
 
         const entityData = entityResult.data;
         const entityId = entityData.id;
-        const onboardingUrl = entityData.link_to_onboarding_package_for_the_entity ||
+
+        // Try to get onboarding URL from entity response first
+        let onboardingUrl = entityData.onboarding_package_url ||
+            entityData.link_to_onboarding_package_for_the_entity ||
             entityData.onboarding_link ||
             entityData.hosted_onboarding_url;
 
+        // If not returned in entity response, generate it via separate API call
         if (!onboardingUrl) {
-            console.error('Entity response missing onboarding URL:', entityData);
-            throw new Error('Onboarding URL not returned from Tazapay');
+            console.log('Onboarding URL not in entity response, generating via API...');
+            try {
+                const linkResult = await tazapayService.regenerateOnboardingLink(entityId);
+                console.log('Link generation response:', JSON.stringify(linkResult, null, 2));
+                onboardingUrl = linkResult.data?.onboarding_package_url ||
+                    linkResult.data?.link_to_onboarding_package_for_the_entity ||
+                    linkResult.data?.onboarding_link ||
+                    linkResult.data?.url ||
+                    linkResult.onboarding_package_url ||
+                    linkResult.url;
+                console.log('Generated onboarding link:', onboardingUrl);
+            } catch (linkError) {
+                console.error('Failed to generate onboarding link:', linkError.message);
+                // We will fall back to manual entry below
+            }
+        }
+
+
+        if (!onboardingUrl) {
+            console.log('Tazapay hosted onboarding URL not available, saving entity for manual entry fallback');
+
+            // Save the entity ID and enable manual bank entry fallback
+            await prisma.creatorProfile.update({
+                where: { userId },
+                data: {
+                    tazapayEntityId: entityId,
+                    onboardingStatus: 'InProgress'
+                }
+            });
+
+            // Return a response that tells the frontend to use manual bank entry
+            return res.json({
+                success: true,
+                message: 'Entity created. Tazapay hosted onboarding is not available - please use manual bank entry.',
+                data: {
+                    entityId,
+                    onboardingUrl: null,
+                    useManualEntry: true,
+                    note: 'Tazapay sandbox may not provide hosted onboarding. Use the Connect Bank form instead.'
+                }
+            });
         }
 
         // Calculate expiration (7 days from now)
@@ -333,6 +386,15 @@ export const connectBank = async (req, res) => {
 
         if (!user.creatorProfile) {
             return res.status(400).json({ success: false, message: 'Creator profile not found' });
+        }
+
+        // Validate email format before sending to Tazapay
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!user.email || !emailRegex.test(user.email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address. Please update your email in your profile settings before connecting a bank account.'
+            });
         }
 
         // If already has a beneficiary, return error (should disconnect first)
@@ -794,7 +856,7 @@ export const handlePayoutWebhook = async (req, res) => {
             if (referenceId && referenceId.startsWith('payout_')) {
                 const payoutId = parseInt(referenceId.replace('payout_', ''));
 
-                await prisma.creatorPayout.update({
+                const completedPayout = await prisma.creatorPayout.update({
                     where: { id: payoutId },
                     data: {
                         status: 'Completed',
@@ -803,6 +865,31 @@ export const handlePayoutWebhook = async (req, res) => {
                 });
 
                 console.log(`Payout ${payoutId} completed`);
+
+                // Phase 3: Apply Referral Bonus on FIRST payout
+                try {
+                    const completedCount = await prisma.creatorPayout.count({
+                        where: {
+                            creatorId: completedPayout.creatorId,
+                            status: 'Completed'
+                        }
+                    });
+
+                    if (completedCount === 1) {
+                        console.log(`First payout for creator ${completedPayout.creatorId} - applying referral bonus`);
+                        const creatorUser = await prisma.user.findUnique({
+                            where: { id: completedPayout.creatorId }, // creatorId in payout table is user.id
+                            select: { id: true } // verify exists
+                        });
+
+                        if (creatorUser) {
+                            await applyReferralBonus(creatorUser.id, completedPayout.amount);
+                        }
+                    }
+                } catch (bonusError) {
+                    console.error("Failed to apply referral bonus:", bonusError);
+                    // Don't block the webhook response
+                }
             }
         } else if (event === 'payout.failed') {
             const referenceId = data.reference_id;

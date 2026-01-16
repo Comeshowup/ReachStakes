@@ -339,7 +339,7 @@ const BrandProfile = () => {
                 await deleteAccount();
                 localStorage.removeItem('token');
                 localStorage.removeItem('userInfo');
-                window.location.href = '/login';
+                window.location.href = '/auth';
             } catch (err) {
                 console.error('Error deleting account:', err);
                 alert("Failed to delete account. Please try again.");

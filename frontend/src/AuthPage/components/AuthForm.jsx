@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, User, Mail, Lock, Eye, EyeOff, Loader2, AtSign } from "lucide-react";
+import { Building2, User, Mail, Lock, Eye, EyeOff, Loader2, AtSign, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import FormInput from "./FormInput";
@@ -12,7 +12,8 @@ const AuthForm = ({
     formData,
     handleInputChange,
     handleSubmit,
-    errors
+    errors,
+    hasReferralFromUrl = false
 }) => {
     const [showPassword, setShowPassword] = useState(false);
     const isBrand = role === "brand";
@@ -71,6 +72,26 @@ const AuthForm = ({
                                     isBrand={isBrand}
                                     startAdornment={<span className="text-gray-400 pl-3">@</span>}
                                 />
+                                {/* Referral Code Field */}
+                                <div className="space-y-1">
+                                    <FormInput
+                                        id="referralCode"
+                                        name="referralCode"
+                                        label="Referral Code (Optional)"
+                                        placeholder="REACH-XXXXXX"
+                                        value={formData.referralCode}
+                                        onChange={handleInputChange}
+                                        error={errors.referralCode}
+                                        icon={Gift}
+                                        isBrand={isBrand}
+                                    />
+                                    {hasReferralFromUrl && formData.referralCode && (
+                                        <p className="text-xs text-emerald-400 flex items-center gap-1 pl-1">
+                                            <Gift className="w-3 h-3" />
+                                            Referral applied! You'll get Fast-Track Verification.
+                                        </p>
+                                    )}
+                                </div>
                             </>
                         )}
                     </motion.div>

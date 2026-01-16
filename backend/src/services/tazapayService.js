@@ -105,7 +105,10 @@ export const tazapayService = {
                 name,
                 email,
                 reference_id: referenceId,
-                // submit: false - don't auto-submit, let them complete via hosted form
+                purpose_of_use: ['payout'], // Required for payout onboarding
+                relationship: 'vendor', // Creator is a vendor receiving payouts
+                // submit: false - Tazapay requires KYC data (address, documents) to submit
+                // The hosted onboarding portal should collect this, but if unavailable, use manual entry
             };
 
             console.log('Creating Tazapay Entity (minimal info only):', { name, email, referenceId });
@@ -148,15 +151,18 @@ export const tazapayService = {
     },
 
     /**
-     * Generate a new onboarding link for an existing entity
-     * Use this if the original link expired
+     * Submit Entity for approval - this returns the onboarding_package_url
+     * The Create Entity endpoint only creates the entity, but Submit Entity
+     * is required to get the hosted onboarding link for KYC/bank setup
      * @param {string} entityId - Tazapay entity ID
-     * @returns {Object} New onboarding link
+     * @returns {Object} Entity data with onboarding_package_url
      */
-    regenerateOnboardingLink: async (entityId) => {
+    submitEntity: async (entityId) => {
         try {
+            console.log('Submitting entity for approval:', entityId);
+
             const response = await axios.post(
-                `${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}/onboarding-link`,
+                `${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}/submit`,
                 {},
                 {
                     headers: {
@@ -166,10 +172,60 @@ export const tazapayService = {
                 }
             );
 
+            console.log('Submit Entity response:', JSON.stringify(response.data, null, 2));
             return response.data;
         } catch (error) {
-            console.error('Tazapay Regenerate Onboarding Link Error:', error.response?.data || error.message);
-            throw new Error('Failed to regenerate onboarding link');
+            console.error('Tazapay Submit Entity Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'Failed to submit entity for approval');
+        }
+    },
+
+    /**
+     * Get or refresh the onboarding link for an existing entity
+     * Fetches entity details which should include the onboarding URL
+     * @param {string} entityId - Tazapay entity ID
+     * @returns {Object} Entity data with onboarding link
+     */
+    regenerateOnboardingLink: async (entityId) => {
+        try {
+            // First try to get the entity - the onboarding_package_url may be populated
+            const getResponse = await axios.get(
+                `${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}`,
+                {
+                    headers: {
+                        'Authorization': getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            const entityData = getResponse.data?.data || getResponse.data;
+
+            // Check if onboarding URL is now available
+            if (entityData?.onboarding_package_url) {
+                return { data: entityData };
+            }
+
+            // If still no URL, try to update/submit the entity to trigger link generation
+            console.log('No onboarding URL found, attempting to update entity...');
+            const updateResponse = await axios.put(
+                `${TAZAPAY_API_BASE_URL}/v3/entity/${entityId}`,
+                {
+                    // Minimal update to potentially trigger onboarding package generation
+                    purpose_of_use: ['payout']
+                },
+                {
+                    headers: {
+                        'Authorization': getAuthHeader(),
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            return updateResponse.data;
+        } catch (error) {
+            console.error('Tazapay Get/Generate Onboarding Link Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'Failed to get onboarding link');
         }
     },
 

@@ -37,6 +37,10 @@ import CampaignPage from "./pages/CampaignPage/CampaignPage";
 import PublicMediaKit from "./pages/PublicMediaKit";
 import BrandWorkspace from "./dashboard/pages/BrandWorkspace";
 import ContactUsPage from "./dashboard/pages/ContactUsPage";
+import BrandOnboardingWizard from "./pages/BrandOnboardingWizard";
+import CreatorOnboardingWizard from "./pages/CreatorOnboardingWizard";
+import Pricing from "./pages/Pricing";
+import ContentHub from "./dashboard/pages/ContentHub";
 import "./App.css";
 
 // Main App Component managing all application routes
@@ -49,11 +53,16 @@ function App() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/meetings" element={<MeetingPage />} />
       <Route path="/campaign/:id" element={<CampaignPage />} />
-      <Route path="/profile/@:handle" element={<PublicMediaKit />} />
+      <Route path="/profile/:handle" element={<PublicMediaKit />} />
       <Route path="/" element={<HomePage />} />
       <Route path="/new-landing" element={<NewLandingPage />} />
+      <Route path="/pricing" element={<Pricing />} />
 
+      {/* Brand Onboarding Wizard */}
+      <Route path="/brand/onboarding" element={<BrandOnboardingWizard />} />
 
+      {/* Creator Onboarding Wizard */}
+      <Route path="/creator/onboarding" element={<CreatorOnboardingWizard />} />
 
       {/* Brand Workspace - Standalone Layout */}
       <Route path="/brand/workspace" element={<BrandWorkspace />} />
@@ -68,6 +77,7 @@ function App() {
         <Route path="escrow" element={<EscrowVault />} />
         <Route path="payment-status/:transactionId" element={<PaymentStatus />} />
         <Route path="contact" element={<ContactUsPage />} />
+        <Route path="content-hub" element={<ContentHub />} />
       </Route>
 
       {/* Creator Dashboard Routes - Protected Layout */}

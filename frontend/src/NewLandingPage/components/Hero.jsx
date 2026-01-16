@@ -10,25 +10,47 @@ const Hero = () => {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-sky opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-sky"></span>
                     </span>
-                    Collaboration Engine
+                    The New Standard in Influencer Marketing
                 </h4>
 
-                <h1 className="lg:text-7xl leading-[1.1] text-brand-sky text-glow text-5xl italic tracking-tight font-serif mb-6">
-                    The Infrastructure <br />
-                    <span className="text-white opacity-90">of Influence.</span>
+                <h1 className="lg:text-7xl leading-[1.1] text-brand-sky text-glow text-5xl tracking-tight font-serif mb-6">
+                    Turn $1 Into $20. <br />
+                    <span className="text-white opacity-90">Guaranteed.</span>
                 </h1>
 
-                <p className="font-sans text-xl lg:text-2xl font-light text-white/70 leading-relaxed tracking-tight max-w-xl mb-12">
-                    A unified operating system for high-impact brand collaborations. Scale campaigns, automate payouts, and track ROI with institutional precision.
+                <p className="font-sans text-xl lg:text-2xl font-light text-white/70 leading-relaxed tracking-tight max-w-xl mb-8">
+                    We run your influencer campaigns end-to-end. You fund the escrow, we deliver the revenue. No more agency black boxes or DIY tool fatigue.
                 </p>
 
+                {/* Trust micro-copy */}
+                <div className="flex items-center gap-4 mb-10 text-sm text-white/50">
+                    <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        No retainers
+                    </span>
+                    <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Pay for results
+                    </span>
+                    <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Live ROI tracking
+                    </span>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-6 gap-x-6 gap-y-6 items-start sm:items-center">
-                    {/* Animated Shiny CTA Button */}
+                    {/* Primary CTA - Book Strategy Call */}
                     <button className="shiny-cta focus:outline-none">
-                        <span>Start Campaign</span>
+                        <span>Book Your Strategy Call</span>
                     </button>
 
-                    {/* Gradient Pill Button with Icon (Dark Gray) */}
+                    {/* Secondary CTA - Watch Demo */}
                     <button
                         className="hover:bg-white/10 hover:text-white transition-all flex text-sm font-medium text-slate-300 bg-white/5 rounded-full pt-3 pr-6 pb-3 pl-6 gap-x-2 gap-y-2 items-center group"
                         style={{
@@ -39,22 +61,17 @@ const Hero = () => {
                             '--border-radius-before': '9999px',
                         }}
                     >
-                        <span className="text-sm font-medium tracking-tight">Join as Creator</span>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
                             height="16"
                             viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                            fill="currentColor"
+                            className="opacity-70 group-hover:opacity-100 transition-all"
                         >
-                            <path d="M5 12h14"></path>
-                            <path d="m12 5 7 7-7 7"></path>
+                            <path d="M8 5v14l11-7z" />
                         </svg>
+                        <span className="text-sm font-medium tracking-tight">Watch 2-Min Demo</span>
                     </button>
                 </div>
             </div>

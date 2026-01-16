@@ -27,7 +27,26 @@ const SocialLogin = ({ role, mode }) => {
                 localStorage.setItem("user", JSON.stringify(response.data.data.user));
 
                 const userRole = response.data.data.user.role; // brand, creator, or admin
-                navigate(`/${userRole}`);
+
+                if (userRole === 'creator') {
+                    navigate('/creator');
+                } else if (userRole === 'brand') {
+                    // Check if brand has completed onboarding via backend first
+                    const backendOnboardingStatus = response.data.data.user.brandProfile?.onboardingCompleted;
+                    const onboardingComplete = localStorage.getItem('onboardingComplete');
+                    const onboardingSkipped = localStorage.getItem('onboardingSkipped');
+
+                    if (backendOnboardingStatus === false) {
+                        navigate('/brand/onboarding');
+                    } else if (backendOnboardingStatus === true || onboardingComplete || onboardingSkipped) {
+                        navigate('/brand');
+                    } else {
+                        // First time login or onboarding not done
+                        navigate('/brand/onboarding');
+                    }
+                } else {
+                    navigate(`/${userRole}`);
+                }
 
             } catch (error) {
                 console.error("Google Auth Backend Error:", error);

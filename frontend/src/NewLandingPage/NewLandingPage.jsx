@@ -2,6 +2,10 @@ import React from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Marquee from './components/Marquee';
+import TrustBar from './components/TrustBar';
+import SocialProof from './components/SocialProof';
+import CaseStudies from './components/CaseStudies';
+import ROICalculator from './components/ROICalculator';
 import Features from './components/Features';
 import Footer from './components/Footer';
 
@@ -113,6 +117,14 @@ const NewLandingPage = () => {
                 <Hero />
                 <Marquee />
             </div>
+
+            {/* NEW: Trust signals immediately after hero */}
+            <TrustBar />
+            <SocialProof />
+
+            {/* Phase 2: Self-Serve Qualification Content */}
+            <CaseStudies />
+            <ROICalculator />
 
             <Features />
             <Footer />

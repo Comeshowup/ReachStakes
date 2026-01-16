@@ -20,8 +20,15 @@ import {
     ArrowDownRight,
     Zap,
     ShieldCheck,
-    Users
+    Users,
+    Clock,
+    AlertTriangle,
+    Gauge,
+    Bell,
+    X,
+    Sparkles
 } from 'lucide-react';
+import AICampaignBuilder from '../components/AICampaignBuilder';
 
 
 // --- TECH-LUXE COMPONENT PRIMITIVES ---
@@ -75,6 +82,203 @@ const KPICard = ({ title, value, change, trend, icon: Icon, color, delay }) => {
     );
 };
 
+// 2. Live ROI Widget - Real-time spend vs revenue tracker
+const LiveROIWidget = ({ todaySpend = 2840, todayRevenue = 8520 }) => {
+    const roi = ((todayRevenue - todaySpend) / todaySpend * 100).toFixed(0);
+    const isPositive = todayRevenue > todaySpend;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.02] p-5 overflow-hidden relative"
+        >
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Today
+                </span>
+                <Activity className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <p className="text-xs text-white/40 mb-1">Spend</p>
+                    <p className="text-xl font-bold text-rose-400">${todaySpend.toLocaleString()}</p>
+                </div>
+                <div>
+                    <p className="text-xs text-white/40 mb-1">Revenue</p>
+                    <p className="text-xl font-bold text-emerald-400">${todayRevenue.toLocaleString()}</p>
+                </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                <span className="text-xs text-white/40">ROI Today</span>
+                <span className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isPositive ? '+' : ''}{roi}%
+                </span>
+            </div>
+            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-emerald-500 rounded-full blur-[60px] opacity-20" />
+        </motion.div>
+    );
+};
+
+// 3. Health Score Gauge - Campaign health indicator
+const HealthScoreGauge = ({ score = 78 }) => {
+    const getColor = (s) => s >= 80 ? 'emerald' : s >= 50 ? 'amber' : 'rose';
+    const color = getColor(score);
+    const circumference = 2 * Math.PI * 40;
+    const strokeDashoffset = circumference - (score / 100) * circumference;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className={`rounded-2xl border border-${color}-500/10 bg-${color}-500/[0.02] p-5 flex flex-col items-center justify-center relative overflow-hidden`}
+        >
+            <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 mb-3 flex items-center gap-2">
+                <Gauge className="w-3 h-3" /> Health Score
+            </span>
+            <div className="relative w-24 h-24">
+                <svg className="w-24 h-24 transform -rotate-90">
+                    <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
+                    <motion.circle
+                        cx="48" cy="48" r="40"
+                        stroke={color === 'emerald' ? '#10b981' : color === 'amber' ? '#f59e0b' : '#f43f5e'}
+                        strokeWidth="8" fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        initial={{ strokeDashoffset: circumference }}
+                        animate={{ strokeDashoffset }}
+                        transition={{ duration: 1, ease: 'easeOut' }}
+                    />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-2xl font-bold text-${color}-400`}>{score}</span>
+                </div>
+            </div>
+            <p className={`text-xs mt-2 text-${color}-400`}>
+                {score >= 80 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Attention'}
+            </p>
+        </motion.div>
+    );
+};
+
+// 4. Time-to-Launch Tracker
+const TimeToLaunchTracker = ({ campaigns = [] }) => {
+    const activeCampaigns = campaigns.filter(c => c.status === 'Active' || c.status === 'Pending');
+    const nextLaunch = activeCampaigns[0];
+    const daysRemaining = nextLaunch ? Math.ceil((new Date(nextLaunch.deadline || Date.now() + 5 * 24 * 60 * 60 * 1000) - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="rounded-2xl border border-violet-500/10 bg-violet-500/[0.02] p-5 relative overflow-hidden"
+        >
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 flex items-center gap-2">
+                    <Clock className="w-3 h-3" /> Next Launch
+                </span>
+            </div>
+            {nextLaunch ? (
+                <>
+                    <p className="text-sm text-white/70 mb-2 truncate">{nextLaunch.name}</p>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold text-violet-400">{daysRemaining}</span>
+                        <span className="text-sm text-white/40">days</span>
+                    </div>
+                    <div className="mt-3 h-2 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.max(10, 100 - daysRemaining * 10)}%` }}
+                            className="h-full bg-gradient-to-r from-violet-500 to-brand-sky rounded-full"
+                        />
+                    </div>
+                </>
+            ) : (
+                <p className="text-sm text-white/40">No upcoming launches</p>
+            )}
+            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-violet-500 rounded-full blur-[60px] opacity-20" />
+        </motion.div>
+    );
+};
+
+// 5. Smart Alerts Toast System
+const SmartAlerts = ({ campaigns = [] }) => {
+    const [alerts, setAlerts] = useState([]);
+    const [dismissed, setDismissed] = useState([]);
+
+    useEffect(() => {
+        // Generate alerts based on campaign status
+        const newAlerts = [];
+        campaigns.forEach(campaign => {
+            if (campaign.budgetUsed && campaign.budgetUsed > 80 && !dismissed.includes(`budget-${campaign.id}`)) {
+                newAlerts.push({
+                    id: `budget-${campaign.id}`,
+                    type: 'warning',
+                    message: `"${campaign.name}" budget 80% spent`,
+                    action: 'Top up'
+                });
+            }
+            if (campaign.roas && campaign.roas > 5 && !dismissed.includes(`success-${campaign.id}`)) {
+                newAlerts.push({
+                    id: `success-${campaign.id}`,
+                    type: 'success',
+                    message: `"${campaign.name}" performing ${campaign.roas}x above target!`,
+                    action: null
+                });
+            }
+        });
+        setAlerts(newAlerts.slice(0, 3)); // Max 3 alerts
+    }, [campaigns, dismissed]);
+
+    const dismissAlert = (id) => {
+        setDismissed(prev => [...prev, id]);
+        setAlerts(prev => prev.filter(a => a.id !== id));
+    };
+
+    if (alerts.length === 0) return null;
+
+    return (
+        <div className="fixed bottom-6 right-6 z-50 space-y-3">
+            {alerts.map((alert, i) => (
+                <motion.div
+                    key={alert.id}
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 100 }}
+                    transition={{ delay: i * 0.1 }}
+                    className={`flex items-center gap-3 p-4 rounded-xl backdrop-blur-xl border shadow-xl ${alert.type === 'warning'
+                        ? 'bg-amber-500/10 border-amber-500/20'
+                        : 'bg-emerald-500/10 border-emerald-500/20'
+                        }`}
+                >
+                    {alert.type === 'warning' ? (
+                        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                    ) : (
+                        <Bell className="w-5 h-5 text-emerald-400 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">{alert.message}</p>
+                    </div>
+                    {alert.action && (
+                        <button className="text-xs font-bold text-amber-400 hover:text-amber-300 whitespace-nowrap">
+                            {alert.action}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => dismissAlert(alert.id)}
+                        className="text-white/40 hover:text-white/70"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </motion.div>
+            ))}
+        </div>
+    );
+};
+
 // Mock Data
 const CHART_DATA = [
     { month: 'Jan', revenue: 45000, spend: 12000 },
@@ -89,6 +293,7 @@ const CHART_DATA = [
 const CMODashboard = () => {
     const [campaigns, setCampaigns] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showAIBuilder, setShowAIBuilder] = useState(false);
 
     useEffect(() => {
         const fetchCampaigns = async () => {
@@ -125,6 +330,13 @@ const CMODashboard = () => {
                 <div className="flex items-center gap-4">
                     <button className="h-10 px-6 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium text-white transition-all">
                         Export Data
+                    </button>
+                    <button
+                        onClick={() => setShowAIBuilder(true)}
+                        className="h-10 px-6 rounded-full bg-gradient-to-r from-brand-sky to-violet-500 hover:opacity-90 text-sm font-bold text-black shadow-[0_0_20px_-5px_rgba(56,189,248,0.5)] transition-all flex items-center gap-2"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        AI Campaign Builder
                     </button>
                     <button className="h-10 px-6 rounded-full bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white shadow-[0_0_20px_-5px_rgba(79,70,229,0.5)] transition-all">
                         + New Campaign
@@ -170,6 +382,13 @@ const CMODashboard = () => {
                     color="rose"
                     delay={0.4}
                 />
+            </div>
+
+            {/* 2b. NEW Phase 2 Widgets Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <LiveROIWidget />
+                <HealthScoreGauge score={78} />
+                <TimeToLaunchTracker campaigns={campaigns} />
             </div>
 
             {/* 3. Main Split View: Chart & Active Ops */}
@@ -312,6 +531,12 @@ const CMODashboard = () => {
                     </button>
                 </motion.div>
             </div>
+
+            {/* Smart Alerts Toast System */}
+            <SmartAlerts campaigns={campaigns.map(c => ({ ...c, budgetUsed: 85, roas: 6 }))} />
+
+            {/* AI Campaign Builder Modal */}
+            <AICampaignBuilder isOpen={showAIBuilder} onClose={() => setShowAIBuilder(false)} />
         </div>
     );
 };

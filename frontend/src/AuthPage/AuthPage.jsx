@@ -16,6 +16,7 @@ const AuthPage = () => {
     // Initialize state from URL query parameters or defaults
     const initialRole = searchParams.get("role") === "creator" ? "creator" : "brand";
     const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+    const initialReferralCode = searchParams.get("ref") || "";
 
     const [role, setRole] = useState(initialRole); // "brand" | "creator"
     const [mode, setMode] = useState(initialMode); // "login" | "signup"
@@ -29,6 +30,7 @@ const AuthPage = () => {
         fullName: "",
         username: "",
         handle: "",
+        referralCode: initialReferralCode,
     });
 
     // Validation State
@@ -81,6 +83,7 @@ const AuthPage = () => {
                     password: formData.password,
                     role: role,
                     handle: formData.handle,
+                    ...(role === "creator" && formData.referralCode && { referralCode: formData.referralCode }),
                 };
 
                 const response = await api.post("/auth/register", payload);
@@ -93,10 +96,12 @@ const AuthPage = () => {
                     localStorage.setItem("userInfo", JSON.stringify(user));
 
                     // Redirect based on role
+                    // New signups go to onboarding wizard first
                     if (user.role === "creator") {
-                        navigate("/creator");
+                        navigate("/creator/onboarding");
                     } else {
-                        navigate("/brand");
+                        // Brand users go to onboarding wizard on first signup
+                        navigate("/brand/onboarding");
                     }
                 }
             } else {
@@ -114,10 +119,20 @@ const AuthPage = () => {
                     localStorage.setItem("userInfo", JSON.stringify(user));
 
                     // Redirect based on role
+                    // For login, check if onboarding was completed/skipped
                     if (user.role === "creator") {
                         navigate("/creator");
                     } else {
-                        navigate("/brand");
+                        // Check if brand has completed onboarding
+                        const onboardingComplete = localStorage.getItem('onboardingComplete');
+                        const onboardingSkipped = localStorage.getItem('onboardingSkipped');
+
+                        if (onboardingComplete || onboardingSkipped) {
+                            navigate("/brand");
+                        } else {
+                            // First time login or onboarding not done
+                            navigate("/brand/onboarding");
+                        }
                     }
                 }
             }
@@ -174,6 +189,26 @@ const AuthPage = () => {
 
                         {/* HEADER */}
                         <div className="text-center space-y-2 mb-8">
+                            {/* Progress indicator for signup */}
+                            {mode === "signup" && (
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-medium">1</div>
+                                        <span className="text-xs text-white/50">Account</span>
+                                    </div>
+                                    <div className="w-8 h-px bg-white/20"></div>
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-6 h-6 rounded-full bg-white/10 text-white/40 text-xs flex items-center justify-center font-medium">2</div>
+                                        <span className="text-xs text-white/30">Setup</span>
+                                    </div>
+                                    <div className="w-8 h-px bg-white/20"></div>
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-6 h-6 rounded-full bg-white/10 text-white/40 text-xs flex items-center justify-center font-medium">3</div>
+                                        <span className="text-xs text-white/30">Launch</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <h2 className="text-3xl font-bold tracking-tight text-white">
                                 {mode === "login" ? "Welcome back" : `Join as a ${role}`}
                             </h2>
@@ -182,6 +217,25 @@ const AuthPage = () => {
                                     ? "Enter your credentials to access your dashboard"
                                     : "Fill in the details below to create your account"}
                             </p>
+
+                            {/* Trust micro-copy for signup */}
+                            {mode === "signup" && (
+                                <div className="flex items-center justify-center gap-4 pt-2">
+                                    <span className="flex items-center gap-1.5 text-xs text-white/40">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Takes 2 minutes
+                                    </span>
+                                    <span className="text-white/20">•</span>
+                                    <span className="flex items-center gap-1.5 text-xs text-white/40">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        Your data is encrypted
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         <ModeToggle mode={mode} setMode={setMode} isBrand={isBrand} />
@@ -195,6 +249,7 @@ const AuthPage = () => {
                                 handleInputChange={handleInputChange}
                                 handleSubmit={handleSubmit}
                                 errors={errors}
+                                hasReferralFromUrl={!!initialReferralCode}
                             />
 
                             <SocialLogin role={role} mode={mode} />

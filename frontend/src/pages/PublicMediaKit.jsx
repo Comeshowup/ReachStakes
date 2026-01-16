@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import {
@@ -16,7 +16,11 @@ import {
     BarChart3,
     ArrowRight,
     Loader2,
-    Lock
+    Lock,
+    Copy,
+    Check,
+    Share2,
+    Linkedin
 } from "lucide-react";
 import ReachVerifiedBadge from "../dashboard/components/ReachVerifiedBadge";
 
@@ -24,9 +28,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
 const PublicMediaKit = () => {
     const { handle } = useParams();
+    const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [copied, setCopied] = useState(false);
+    const [showShareMenu, setShowShareMenu] = useState(false);
+
+    // Check if user is logged in
+    const isLoggedIn = !!localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const isBrand = currentUser?.role === 'brand';
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -64,6 +76,38 @@ const PublicMediaKit = () => {
         fetchProfile();
     }, [handle]);
 
+    // Phase 3: Share functionality
+    const shareUrl = window.location.href;
+
+    const handleCopyLink = async () => {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const shareOnTwitter = () => {
+        const text = `Check out ${profile.fullName}'s creator profile on ReachStakes!`;
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+    };
+
+    const shareOnLinkedIn = () => {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+    };
+
+    // Phase 3: Book Me CTA
+    const handleBookMe = () => {
+        if (isBrand) {
+            // If logged in as brand, redirect to campaign creation
+            navigate(`/dashboard/campaigns/create?creator=${handle}`);
+        } else if (isLoggedIn) {
+            // If logged in as creator, show message
+            alert('Sign in as a brand to book this creator!');
+        } else {
+            // Not logged in - redirect to signup as brand
+            navigate(`/register?role=brand&creator=${handle}`);
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
             <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
@@ -86,8 +130,55 @@ const PublicMediaKit = () => {
                     <Link to="/" className="text-xl font-black tracking-tighter text-white">
                         REACHSTAKES<span className="text-indigo-500">.</span>
                     </Link>
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase tracking-widest">
-                        Live Media Kit
+                    <div className="flex items-center gap-3">
+                        {/* Share Button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowShareMenu(!showShareMenu)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-sm font-medium hover:bg-white/10 transition-colors"
+                            >
+                                <Share2 className="w-4 h-4" />
+                                Share
+                            </button>
+
+                            {/* Share Dropdown */}
+                            <AnimatePresence>
+                                {showShareMenu && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute right-0 mt-2 w-48 py-2 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-50"
+                                    >
+                                        <button
+                                            onClick={handleCopyLink}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors"
+                                        >
+                                            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                                            {copied ? 'Copied!' : 'Copy Link'}
+                                        </button>
+                                        <button
+                                            onClick={shareOnTwitter}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors"
+                                        >
+                                            <Twitter className="w-4 h-4" />
+                                            Share on Twitter
+                                        </button>
+                                        <button
+                                            onClick={shareOnLinkedIn}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors"
+                                        >
+                                            <Linkedin className="w-4 h-4" />
+                                            Share on LinkedIn
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase tracking-widest">
+                            Live Media Kit
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -227,9 +318,13 @@ const PublicMediaKit = () => {
                             </div>
                         </div>
 
-                        {/* Lead / Contact CTA */}
-                        <button className="w-full py-5 bg-white text-slate-950 font-black rounded-[2rem] hover:bg-slate-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                            WORK WITH ME
+                        {/* Phase 3: Book Me CTA */}
+                        <button
+                            onClick={handleBookMe}
+                            className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black rounded-[2rem] hover:opacity-90 transition-all shadow-[0_0_30px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2"
+                        >
+                            <Briefcase className="w-5 h-5" />
+                            BOOK ME ON REACHSTAKES
                         </button>
                         <p className="text-[10px] text-center text-slate-500 uppercase font-medium tracking-tighter">
                             Secure Booking Powered by Reachstakes Escrow
@@ -238,9 +333,13 @@ const PublicMediaKit = () => {
                 </div>
             </div>
 
-            {/* Sticky Footer for Brand Action */}
+            {/* Sticky Footer for Brand Action (Mobile) */}
             <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 z-50 md:hidden">
-                <button className="w-full py-5 bg-indigo-600 text-white font-black rounded-[2rem] shadow-2xl shadow-indigo-500/40">
+                <button
+                    onClick={handleBookMe}
+                    className="w-full py-5 bg-indigo-600 text-white font-black rounded-[2rem] shadow-2xl shadow-indigo-500/40 flex items-center justify-center gap-2"
+                >
+                    <Briefcase className="w-5 h-5" />
                     BOOK CAMPAIGN
                 </button>
             </div>

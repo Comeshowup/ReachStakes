@@ -36,10 +36,12 @@ import {
 } from "lucide-react";
 import { deleteAccount, getMyPosts, createPost, deletePost } from "../../../api/userService";
 import { calculateSuggestedRate, getPriceRange } from "../../../utils/rateUtils";
+import ReachVerifiedBadge from "../../components/ReachVerifiedBadge";
 // Mock data removed
 import EditProfileModal from "../../components/EditProfileModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
 
 // --- Mock Data removed ---
 // ...(TabButton, StatCard, CampaignCard, Modal, CreatePostModal components remain unchanged)...
@@ -290,7 +292,7 @@ const CreatorProfile = () => {
                 if (err.response && err.response.status === 401) {
                     localStorage.removeItem("token");
                     localStorage.removeItem("userInfo");
-                    window.location.href = "/login";
+                    window.location.href = "/auth";
                 } else {
                     setError("Failed to load profile data. Please try again later.");
                 }
@@ -344,7 +346,7 @@ const CreatorProfile = () => {
 
                 localStorage.removeItem('token');
                 localStorage.removeItem('userInfo');
-                window.location.href = '/login';
+                window.location.href = '/auth';
             } catch (err) {
                 console.error('Error deleting account:', err);
                 alert("Failed to delete account. Please try again.");
@@ -369,7 +371,7 @@ const CreatorProfile = () => {
                     onClick={() => {
                         localStorage.removeItem("token");
                         localStorage.removeItem("userInfo");
-                        window.location.href = "/login";
+                        window.location.href = "/auth";
                     }}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-bold"
                 >
@@ -408,7 +410,10 @@ const CreatorProfile = () => {
 
                             {/* Brand Identity */}
                             <div className="pb-1">
-                                <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">{profile.name}</h1>
+                                <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-2 flex items-center gap-3">
+                                    {profile.name}
+                                    <ReachVerifiedBadge tier={profile.verificationTier || "Gold"} size="md" />
+                                </h1>
                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-500 dark:text-slate-400">
                                     <span className="text-lg font-medium">{profile.tagline}</span>
                                     <div className="flex items-center gap-1.5 text-sm">

@@ -355,3 +355,215 @@ export const deletePost = async (req, res) => {
         res.status(500).json({ status: "error", message: "Failed to delete post" });
     }
 };
+
+// GET /api/users/me/dashboard-stats - Get creator's dashboard statistics (Phase 1 Activation)
+export const getMyDashboardStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Get user with profile
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                creatorProfile: true,
+                socialAccounts: { select: { id: true } }
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ status: "error", message: "User not found" });
+        }
+
+        // Get campaign collaborations
+        const collaborations = await prisma.campaignCollaboration.findMany({
+            where: { creatorId: userId },
+            include: {
+                campaign: {
+                    select: { title: true, isGuaranteedPay: true }
+                }
+            }
+        });
+
+        // Calculate stats
+        const activeCampaigns = collaborations.filter(c => c.status === 'In_Progress').length;
+        const pendingInvites = collaborations.filter(c => c.status === 'Invited').length;
+        const appliedCampaigns = collaborations.filter(c => c.status === 'Applied').length;
+        const approvedCampaigns = collaborations.filter(c => c.status === 'Approved' || c.status === 'Paid').length;
+
+        // Get completed payouts
+        const completedPayouts = await prisma.creatorPayout.findMany({
+            where: {
+                creatorId: userId,
+                status: 'Completed'
+            }
+        });
+
+        const totalEarnings = completedPayouts.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+        // Get pending earnings (approved but not yet paid)
+        const pendingEarnings = collaborations
+            .filter(c => c.status === 'Approved' && !c.payoutReleased && c.agreedPrice)
+            .reduce((sum, c) => sum + parseFloat(c.agreedPrice || 0), 0);
+
+        // Calculate quick win tasks completion
+        const profile = user.creatorProfile;
+        const quickWinTasks = {
+            profileComplete: !!(profile?.fullName && profile?.tagline && profile?.avatarUrl),
+            socialLinked: (user.socialAccounts?.length || 0) > 0,
+            firstApplied: appliedCampaigns > 0 || activeCampaigns > 0 || approvedCampaigns > 0
+        };
+
+        // Calculate match score (simple algorithm based on profile completeness)
+        const profileFields = [
+            profile?.fullName,
+            profile?.tagline,
+            profile?.avatarUrl,
+            profile?.about,
+            profile?.nicheTags,
+            profile?.location,
+            profile?.basePrice
+        ];
+        const completedFields = profileFields.filter(Boolean).length;
+        const matchScore = Math.round((completedFields / profileFields.length) * 100);
+
+        // Engagement rate from profile
+        const engagementRate = profile?.engagementRate ? parseFloat(profile.engagementRate) : 0;
+
+        res.json({
+            status: "success",
+            data: {
+                stats: [
+                    {
+                        label: "Active Campaigns",
+                        value: activeCampaigns.toString(),
+                        change: activeCampaigns > 0 ? "In Progress" : "Apply now!",
+                        color: "text-blue-500",
+                        icon: "Briefcase"
+                    },
+                    {
+                        label: "Pending Invites",
+                        value: pendingInvites.toString(),
+                        change: pendingInvites > 0 ? "New!" : "None",
+                        color: "text-purple-500",
+                        icon: "Users"
+                    },
+                    {
+                        label: "Total Earnings",
+                        value: `$${totalEarnings.toLocaleString()}`,
+                        change: totalEarnings > 0 ? "+earned" : "Start earning!",
+                        color: "text-green-500",
+                        icon: "DollarSign"
+                    },
+                    {
+                        label: "Avg. Engagement",
+                        value: `${engagementRate.toFixed(1)}%`,
+                        change: engagementRate > 3 ? "Great!" : "Link social",
+                        color: "text-orange-500",
+                        icon: "Activity"
+                    }
+                ],
+                pendingEarnings,
+                quickWinTasks,
+                matchScore,
+                userName: user.name,
+                onboardingStep: profile?.creatorOnboardingStep || 0,
+                completedCampaigns: profile?.completedCampaigns || 0
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        res.status(500).json({ status: "error", message: "Failed to fetch dashboard stats" });
+    }
+};
+
+// PUT /api/users/me/onboarding - Update onboarding progress
+export const updateOnboardingProgress = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { step, quickWinTasks } = req.body;
+
+        const updateData = {};
+
+        if (step !== undefined) {
+            updateData.creatorOnboardingStep = step;
+            if (step >= 4) {
+                updateData.creatorOnboardingCompletedAt = new Date();
+            }
+        }
+
+        if (quickWinTasks) {
+            updateData.quickWinTasks = quickWinTasks;
+        }
+
+        const updatedProfile = await prisma.creatorProfile.update({
+            where: { userId },
+            data: updateData
+        });
+
+        res.json({
+            status: "success",
+            data: {
+                onboardingStep: updatedProfile.creatorOnboardingStep,
+                onboardingCompleted: updatedProfile.creatorOnboardingCompletedAt !== null,
+                quickWinTasks: updatedProfile.quickWinTasks
+            }
+        });
+    } catch (error) {
+        console.error("Error updating onboarding:", error);
+        res.status(500).json({ status: "error", message: "Failed to update onboarding progress" });
+    }
+};
+
+// GET /api/creators/profile - Get creator profile for editing
+export const getCreatorProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const profile = await prisma.creatorProfile.findUnique({
+            where: { userId },
+            include: {
+                services: true,
+                demographics: true
+            }
+        });
+
+        if (!profile) {
+            return res.status(404).json({ status: "error", message: "Creator profile not found" });
+        }
+
+        res.json({ status: "success", data: profile });
+    } catch (error) {
+        console.error("Error fetching creator profile:", error);
+        res.status(500).json({ status: "error", message: "Failed to fetch profile" });
+    }
+};
+
+// PUT /api/creators/profile - Update creator profile
+export const updateCreatorProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { fullName, handle, tagline, avatarUrl, nicheTags, basePrice, location } = req.body;
+
+        const updateData = {};
+        if (fullName) updateData.fullName = fullName;
+        if (handle) updateData.handle = handle;
+        if (tagline) updateData.tagline = tagline;
+        if (avatarUrl) updateData.avatarUrl = avatarUrl;
+        if (nicheTags) updateData.nicheTags = nicheTags;
+        if (basePrice !== undefined) updateData.basePrice = parseFloat(basePrice);
+        if (location) updateData.location = location;
+
+        const updatedProfile = await prisma.creatorProfile.update({
+            where: { userId },
+            data: updateData
+        });
+
+        res.json({
+            status: "success",
+            data: updatedProfile,
+            message: "Profile updated successfully"
+        });
+    } catch (error) {
+        console.error("Error updating creator profile:", error);
+        res.status(500).json({ status: "error", message: "Failed to update profile" });
+    }
+};

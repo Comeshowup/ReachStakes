@@ -7,7 +7,8 @@ import {
     getAllCampaigns,
     getCampaignById,
     inviteToCampaign,
-    respondToInvite
+    respondToInvite,
+    discoverCampaigns
 } from '../controllers/campaignControllers.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -17,6 +18,9 @@ const router = express.Router();
 
 // All campaigns (for discovery) - public route, no auth required
 router.get('/all', getAllCampaigns);
+
+// Phase 2: Smart discovery for creators
+router.get('/discover', protect, authorize('creator'), discoverCampaigns);
 
 // Respond to invite (Creator)
 router.patch('/respond/:collabId', protect, authorize('creator'), respondToInvite);

@@ -84,7 +84,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         onClick={() => {
                             localStorage.removeItem('token');
                             localStorage.removeItem('userInfo');
-                            window.location.href = '/login';
+                            window.location.href = '/auth';
                         }}
                         className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
                     >

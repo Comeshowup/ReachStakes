@@ -6,8 +6,54 @@ import axios from "axios";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Phase 2: Gamification - Streak Tracking Helper
+const updateCreatorStreak = async (userId) => {
+    try {
+        const profile = await prisma.creatorProfile.findUnique({
+            where: { userId },
+            select: { lastLoginAt: true, currentStreak: true, longestStreak: true }
+        });
+
+        if (!profile) return null;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const lastLogin = profile.lastLoginAt ? new Date(profile.lastLoginAt) : null;
+        const lastLoginDate = lastLogin ? new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate()) : null;
+
+        let newStreak = 1;
+
+        if (lastLoginDate) {
+            const daysDiff = Math.floor((today - lastLoginDate) / (1000 * 60 * 60 * 24));
+
+            if (daysDiff === 0) {
+                // Same day login - don't change streak
+                newStreak = profile.currentStreak || 1;
+            } else if (daysDiff === 1) {
+                // Consecutive day - increment streak
+                newStreak = (profile.currentStreak || 0) + 1;
+            }
+            // else: Gap > 1 day - reset to 1
+        }
+
+        const newLongestStreak = Math.max(newStreak, profile.longestStreak || 0);
+
+        return await prisma.creatorProfile.update({
+            where: { userId },
+            data: {
+                lastLoginAt: now,
+                currentStreak: newStreak,
+                longestStreak: newLongestStreak
+            }
+        });
+    } catch (error) {
+        console.error("Streak update error:", error);
+        return null;
+    }
+};
+
 const register = async (req, res) => {
-    const { email, password, role, handle } = req.body;
+    const { email, password, role, handle, referralCode } = req.body;
     const name = req.body.name || req.body.companyName || req.body.fullName;
 
     //check if user exists
@@ -24,6 +70,18 @@ const register = async (req, res) => {
         });
     }
 
+    // Phase 3: Validate referral code if provided
+    let referrerUserId = null;
+    if (referralCode && role === 'creator') {
+        const referrer = await prisma.creatorProfile.findUnique({
+            where: { referralCode: referralCode.toUpperCase() },
+            select: { userId: true }
+        });
+        if (referrer) {
+            referrerUserId = referrer.userId;
+        }
+    }
+
     //hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -37,7 +95,8 @@ const register = async (req, res) => {
                     name: name, // This acts as "Full Name" for creators or "Contact Name" for brands initially
                     email: email,
                     passwordHash: hashedPassword,
-                    role: role
+                    role: role,
+                    referredBy: referrerUserId // Phase 3: Link to referrer
                 }
             });
 
@@ -61,9 +120,18 @@ const register = async (req, res) => {
                         handle: handle,
                         // Defaults
                         mediaKitEnabled: true,
-                        verificationTier: 'None'
+                        verificationTier: referrerUserId ? 'Silver' : 'None', // Phase 3: Fast-Track Verification for referred creators
+                        referredByUserId: referrerUserId // Phase 3: Also track in profile
                     }
                 });
+
+                // Phase 3: Increment referrer's count
+                if (referrerUserId) {
+                    await prisma.creatorProfile.update({
+                        where: { userId: referrerUserId },
+                        data: { referralCount: { increment: 1 } }
+                    });
+                }
             }
 
             return user;
@@ -104,7 +172,8 @@ const login = async (req, res) => {
     const user = await prisma.user.findUnique({
         where: {
             email: email
-        }
+        },
+        include: { brandProfile: true }
     });
 
     if (!user) {
@@ -135,6 +204,11 @@ const login = async (req, res) => {
 
     //generate token
     const token = generateToken(user.id, res);
+
+    // Phase 2: Update streak for creators
+    if (user.role === 'creator') {
+        await updateCreatorStreak(user.id);
+    }
 
     res.status(201).json({
         status: "success",
@@ -172,6 +246,7 @@ const googleLogin = async (req, res) => {
         // Check if user already exists in the database
         let user = await prisma.user.findUnique({
             where: { email },
+            include: { brandProfile: true }
         });
 
         if (!user) {
@@ -179,18 +254,57 @@ const googleLogin = async (req, res) => {
             // Defaulting role to "brand" if not provided, though typically role should be selected on frontend
             const userRole = role || "brand";
 
-            user = await prisma.user.create({
-                data: {
-                    name,
-                    email,
-                    role: userRole,
-                    // passwordHash is optional for Google users
-                },
+            const result = await prisma.$transaction(async (prisma) => {
+                const newUser = await prisma.user.create({
+                    data: {
+                        name,
+                        email,
+                        role: userRole,
+                        // passwordHash is optional for Google users
+                    },
+                });
+
+                // Create Profile based on role
+                if (userRole === 'brand') {
+                    await prisma.brandProfile.create({
+                        data: {
+                            userId: newUser.id,
+                            companyName: name,
+                            contactEmail: email,
+                            onboardingCompleted: false // Explicitly set false
+                        }
+                    });
+                } else if (userRole === 'creator') {
+                    // Generater a placeholder handle
+                    const handle = email.split('@')[0] + Math.floor(Math.random() * 1000);
+                    await prisma.creatorProfile.create({
+                        data: {
+                            userId: newUser.id,
+                            fullName: name,
+                            handle: handle,
+                            mediaKitEnabled: true,
+                            verificationTier: 'None'
+                        }
+                    });
+                }
+
+                return newUser;
+            });
+
+            // Re-fetch user with profile to ensure we return consistent structure
+            user = await prisma.user.findUnique({
+                where: { id: result.id },
+                include: { brandProfile: true }
             });
         }
 
         // Generate JWT token for session management
         const token = generateToken(user.id, res);
+
+        // Phase 2: Update streak for creators
+        if (user.role === 'creator') {
+            await updateCreatorStreak(user.id);
+        }
 
         res.status(200).json({
             status: "success",

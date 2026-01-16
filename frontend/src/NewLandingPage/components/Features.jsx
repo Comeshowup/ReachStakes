@@ -55,12 +55,12 @@ const Features = () => {
                 </div>
 
                 <h2 className="text-5xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-white mb-8">
-                    Collaboration intelligence
-                    <span className="text-white/60"> made effortless.</span>
+                    From Brief to Viral
+                    <span className="text-white/60"> in 7 Days.</span>
                 </h2>
 
                 <p className="text-xl text-white/60 leading-relaxed max-w-2xl font-light tracking-tight">
-                    Streamline your campaign workflows with tools designed to simplify, automate, and enhance your partnerships.
+                    We handle the creators, contracts, and content. You approve with one click and watch the ROI roll in.
                 </p>
             </div>
 
@@ -87,9 +87,9 @@ const Features = () => {
 
                     <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-                    <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">Command Center</h3>
+                    <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">One Dashboard. 100 Creators.</h3>
                     <p className="text-base text-white/50 leading-relaxed mb-12 relative z-10 font-light">
-                        Orchestrate global campaigns from a single interface. Real-time budget allocation, asset approval, and performance telemetry.
+                        See exactly where every dollar goes. Approve content, track live ROI, and manage campaigns without the spreadsheet chaos.
                     </p>
 
                     {/* Visual: Chat/Terminal UI */}
@@ -193,11 +193,11 @@ const Features = () => {
                                 </svg>
                             </div>
                             <h3 className="text-2xl font-semibold tracking-tight text-white group-hover:text-white transition-colors">
-                                Yield Generation
+                                We Find the Creators
                             </h3>
                         </div>
                         <p className="text-base text-white/50 leading-relaxed mb-12 font-light group-hover:text-white/70 transition-colors">
-                            Maximize your professional value. Access curated opportunities, manage submissions, and automate revenue streams.
+                            AI vets 10,000 creators. You approve 50 in minutes. No more endless TikTok scrolling or manual outreach.
                         </p>
 
                         {/* Visual: Hero-Inspired Orbit & Sonar */}
@@ -386,9 +386,9 @@ const Features = () => {
                         }}
                     ></div>
 
-                    <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">The Settlement Layer</h3>
+                    <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">Pay 100 Creators in One Click</h3>
                     <p className="text-base text-white/50 leading-relaxed mb-12 relative z-10 font-light">
-                        Frictionless communication and instant payouts. Trustless transparency for every deliverable.
+                        ReachSecure escrow holds funds until delivery is verified. If a creator ghosts, you're refunded instantly.
                     </p>
 
                     {/* Visual: Dashboard UI */}
@@ -478,7 +478,7 @@ const Features = () => {
             {/* CTA Button */}
             <div className="mt-24 relative z-10">
                 <button className="group relative px-9 py-4 rounded-full bg-white text-black font-semibold text-sm transition-all duration-300 hover:bg-[#e5e5e5] flex items-center gap-3 overflow-hidden tracking-tight">
-                    <span className="relative z-10">Start Your Journey</span>
+                    <span className="relative z-10">Book Strategy Call →</span>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="16"

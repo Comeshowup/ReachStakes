@@ -187,7 +187,7 @@ const CreatorFinancials = () => {
                     onClick={() => {
                         localStorage.removeItem("token");
                         localStorage.removeItem("userInfo");
-                        window.location.href = "/login";
+                        window.location.href = "/auth";
                     }}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-bold"
                 >
