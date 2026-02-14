@@ -5,7 +5,8 @@ import {
     calculateFees,
     getEscrowDetails,
     getTransactionHistory,
-    getTransactionStatus
+    getTransactionStatus,
+    verifyPayment
 } from '../controllers/paymentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -17,6 +18,7 @@ router.get('/escrow/:campaignId', protect, getEscrowDetails);
 router.post('/checkout', protect, initiatePayment);
 router.get('/history', protect, getTransactionHistory);
 router.get('/status/:transactionId', protect, getTransactionStatus);
+router.post('/verify/:transactionId', protect, verifyPayment);
 
 // Public - Webhook callback from Tazapay
 router.post('/webhook', handleWebhook);

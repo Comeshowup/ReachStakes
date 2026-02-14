@@ -17,6 +17,7 @@ import meetingRoutes from './routes/meetingRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
 import creatorRoutes from './routes/creatorRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 
 // ... other imports
 
@@ -85,6 +86,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/payouts', payoutRoutes); // Creator Payouts
 app.use('/api/creators', creatorRoutes); // Creator specific routes
 app.use('/api/referrals', referralRoutes); // Phase 3: Referral System
+app.use('/api/dashboard', dashboardRoutes); // Brand Dashboard API
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

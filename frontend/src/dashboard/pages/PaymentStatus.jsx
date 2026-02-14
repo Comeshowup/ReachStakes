@@ -61,6 +61,11 @@ const PaymentStatus = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [verifyMessage, setVerifyMessage] = useState(null);
+
+    // Check if user just returned from Tazapay checkout
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnStatus = searchParams.get('status');
 
     const fetchTransaction = async (showRefresh = false) => {
         if (showRefresh) setIsRefreshing(true);
@@ -77,23 +82,38 @@ const PaymentStatus = () => {
         }
     };
 
+    // Verify payment with Tazapay API directly (bypasses webhook dependency)
+    const verifyWithTazapay = async () => {
+        setIsRefreshing(true);
+        setVerifyMessage('Verifying payment with Tazapay...');
+        try {
+            const result = await paymentService.verifyPayment(transactionId);
+            setVerifyMessage(result.message);
+            // Re-fetch transaction to get updated status
+            await fetchTransaction();
+        } catch (err) {
+            console.error('Verification failed:', err);
+            setVerifyMessage('Could not verify, please try again');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
     useEffect(() => {
         fetchTransaction();
-
-        // Poll for status updates if pending
-        const interval = setInterval(() => {
-            if (transaction?.status === 'Pending' || transaction?.status === 'Processing') {
-                fetchTransaction();
-            }
-        }, 5000);
-
-        return () => clearInterval(interval);
     }, [transactionId]);
 
-    // Auto-refresh when transaction is pending
+    // Auto-verify when user returns from Tazapay checkout with success status
+    useEffect(() => {
+        if (transaction && transaction.status === 'Pending' && returnStatus === 'success') {
+            verifyWithTazapay();
+        }
+    }, [transaction?.id, returnStatus]);
+
+    // Poll & auto-verify for pending transactions
     useEffect(() => {
         if (transaction?.status === 'Pending') {
-            const interval = setInterval(() => fetchTransaction(), 10000);
+            const interval = setInterval(() => verifyWithTazapay(), 10000);
             return () => clearInterval(interval);
         }
     }, [transaction?.status]);
@@ -178,14 +198,19 @@ const PaymentStatus = () => {
 
                     {/* Refresh Button for Pending */}
                     {(transaction.status === 'Pending' || transaction.status === 'Processing') && (
-                        <button
-                            onClick={() => fetchTransaction(true)}
-                            disabled={isRefreshing}
-                            className="mt-6 flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
-                        </button>
+                        <div className="mt-6 flex flex-col items-center gap-2">
+                            <button
+                                onClick={verifyWithTazapay}
+                                disabled={isRefreshing}
+                                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                {isRefreshing ? 'Verifying...' : 'Verify Payment Status'}
+                            </button>
+                            {verifyMessage && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{verifyMessage}</p>
+                            )}
+                        </div>
                     )}
 
                     {/* Continue to Payment Button for Pending */}

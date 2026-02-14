@@ -1,9 +1,10 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import NewLandingPage from "./NewLandingPage/NewLandingPage";
 import HomePage from "./Homepage/HomePage";
 import DashboardLayout from "./dashboard/layout/DashboardLayout";
-import CMODashboard from "./dashboard/pages/CMODashboard";
+// CMODashboard removed — redirects to /brand
+import BrandCommandCenter from "./dashboard/pages/BrandCommandCenter";
 import CampaignManagement from "./dashboard/pages/CampaignManagement";
 
 import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
@@ -69,7 +70,8 @@ function App() {
       <Route path="/brand/workspace/:campaignId" element={<BrandWorkspace />} />
 
       <Route path="/brand" element={<DashboardLayout />}>
-        <Route index element={<CMODashboard />} />
+        <Route index element={<BrandCommandCenter />} />
+        <Route path="executive" element={<Navigate to="/brand" replace />} />
         <Route path="campaigns" element={<CampaignManagement />} />
         <Route path="profile" element={<BrandProfile />} />
         <Route path="approvals" element={<ApprovalQueue />} />

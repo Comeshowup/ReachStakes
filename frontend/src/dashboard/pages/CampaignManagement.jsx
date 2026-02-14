@@ -1,22 +1,102 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CAMPAIGNS_DATA } from '../data';
-import paymentService from '../../api/paymentService'; // Import payment service
 import * as brandService from '../../api/brandService';
 import {
-    LayoutGrid,
     Plus,
-    Search,
-    Filter,
-    ArrowRight,
-    Users,
-    Calendar,
-    Briefcase,
     X,
-    Loader2
+    Loader2,
+    AlertCircle,
 } from 'lucide-react';
 
+// Campaign Management Console Components
+import PageHeader from '../components/brand/campaigns/PageHeader';
+import FilterBar from '../components/brand/campaigns/FilterBar';
+import CampaignGrid from '../components/brand/campaigns/CampaignGrid';
+import CampaignTable from '../components/brand/campaigns/CampaignTable';
+import EmptyState from '../components/brand/campaigns/EmptyState';
+import { useCampaignFilters } from '../components/brand/campaigns/useCampaignFilters';
+import { mapApiCampaign } from '../components/brand/campaigns/campaignUtils';
+
+// =====================
+// ANIMATION TOKENS
+// =====================
+const VIEW_TRANSITION = {
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -6 },
+    transition: { duration: 0.15, ease: 'easeOut' },
+};
+
+// =====================
+// SKELETON LOADER
+// =====================
+const SkeletonCard = () => (
+    <div className="bd-cm-card p-6">
+        <div className="flex items-start justify-between mb-5">
+            <div>
+                <div className="bd-cm-skeleton h-4 w-14 mb-2.5" />
+                <div className="bd-cm-skeleton h-5 w-44" />
+            </div>
+            <div className="bd-cm-skeleton h-8 w-8 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-5">
+            {[1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                    <div className="bd-cm-skeleton h-3 w-16 mb-2" />
+                    <div className="bd-cm-skeleton h-5 w-20" />
+                </div>
+            ))}
+        </div>
+        <div className="bd-cm-skeleton h-1.5 w-full rounded-full mb-5" />
+        <div className="bd-cm-skeleton h-9 w-full rounded-lg" />
+    </div>
+);
+
+const LoadingGrid = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+            <SkeletonCard key={i} />
+        ))}
+    </div>
+);
+
+// =====================
+// ERROR STATE
+// =====================
+const ErrorState = ({ onRetry }) => (
+    <motion.div {...VIEW_TRANSITION} className="bd-cm-empty flex flex-col items-center justify-center py-16 text-center">
+        <div
+            className="p-3 rounded-full mb-4"
+            style={{ background: 'var(--bd-danger-muted)' }}
+        >
+            <AlertCircle className="w-5 h-5" style={{ color: 'var(--bd-danger)' }} />
+        </div>
+        <h3
+            className="text-base font-medium"
+            style={{ color: 'var(--bd-text-primary)' }}
+        >
+            Failed to load campaigns
+        </h3>
+        <p
+            className="mt-1 mb-5 max-w-sm text-sm"
+            style={{ color: 'var(--bd-text-secondary)' }}
+        >
+            Something went wrong. Please try again.
+        </p>
+        <button
+            onClick={onRetry}
+            className="bd-cm-btn-secondary bd-cm-focus-ring text-sm"
+            aria-label="Retry loading campaigns"
+        >
+            Try Again
+        </button>
+    </motion.div>
+);
+
+// =====================
+// REQUEST CAMPAIGN MODAL (preserved from original)
+// =====================
 const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,8 +138,8 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
 
             const response = await brandService.createCampaign(payload);
             if (response.status === 'success') {
-                // Redirect to meeting scheduler
                 onClose();
+                if (onSuccess) onSuccess();
                 navigate('/brand/contact?tab=meeting');
             }
         } catch (error) {
@@ -76,131 +156,148 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ background: 'var(--bd-overlay)' }}
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
+                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-white/5 max-h-[90vh] overflow-y-auto"
+                    className="bd-cm-card p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                    style={{ borderRadius: 'var(--bd-radius-3xl)' }}
                 >
                     <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Campaign</h2>
-                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Launch your next influencer initiative.</p>
+                        <div className="space-y-0.5">
+                            <h2
+                                className="text-xl font-semibold"
+                                style={{ color: 'var(--bd-text-primary)' }}
+                            >
+                                Create New Campaign
+                            </h2>
+                            <p
+                                className="text-sm"
+                                style={{ color: 'var(--bd-text-secondary)' }}
+                            >
+                                Launch your next influencer initiative.
+                            </p>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-500">
-                            <X className="w-5 h-5" />
+                        <button
+                            onClick={onClose}
+                            className="bd-cm-icon-btn bd-cm-focus-ring"
+                            aria-label="Close modal"
+                        >
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Title */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Title</label>
+                        <FieldGroup label="Campaign Title">
                             <input
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
                                 placeholder="e.g. Summer Collection Launch 2026"
-                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="bd-cm-input-field bd-cm-focus-ring w-full px-4"
                                 required
                             />
-                        </div>
+                        </FieldGroup>
 
                         {/* Goal/Description */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Goal & Description</label>
+                        <FieldGroup label="Campaign Goal & Description">
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
                                 placeholder="Describe your campaign goals, requirements, and deliverables..."
-                                className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none"
+                                className="bd-cm-input-field bd-cm-focus-ring w-full p-4 h-28 resize-none"
+                                style={{ height: 'auto', minHeight: '112px' }}
                                 required
                             />
-                        </div>
+                        </FieldGroup>
 
                         {/* Platform & Type */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Platform</label>
+                            <FieldGroup label="Platform">
                                 <select
                                     name="platformRequired"
                                     value={formData.platformRequired}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="bd-cm-input-field bd-cm-focus-ring w-full px-4 cursor-pointer"
                                 >
                                     <option value="Instagram">Instagram</option>
                                     <option value="TikTok">TikTok</option>
                                     <option value="YouTube">YouTube</option>
                                     <option value="UGC">Multi-Platform / UGC</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Campaign Type</label>
+                            </FieldGroup>
+                            <FieldGroup label="Campaign Type">
                                 <select
                                     name="campaignType"
                                     value={formData.campaignType}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="bd-cm-input-field bd-cm-focus-ring w-full px-4 cursor-pointer"
                                 >
                                     <option value="UGC">UGC (Content Only)</option>
                                     <option value="Influencer">Influencer Post</option>
                                     <option value="Affiliate">Affiliate / Performance</option>
                                 </select>
-                            </div>
+                            </FieldGroup>
                         </div>
 
                         {/* Budget & Date */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Target Budget</label>
+                            <FieldGroup label="Target Budget">
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                    <span
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-sm"
+                                        style={{ color: 'var(--bd-text-muted)' }}
+                                    >
+                                        $
+                                    </span>
                                     <input
                                         type="number"
                                         name="targetBudget"
                                         value={formData.targetBudget}
                                         onChange={handleChange}
                                         placeholder="5000"
-                                        className="w-full pl-8 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="bd-cm-input-field bd-cm-focus-ring w-full pl-8 pr-4"
                                         required
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Launch Deadline</label>
+                            </FieldGroup>
+                            <FieldGroup label="Launch Deadline">
                                 <input
                                     type="date"
                                     name="deadline"
                                     value={formData.deadline}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="bd-cm-input-field bd-cm-focus-ring w-full px-4"
                                     required
                                 />
-                            </div>
+                            </FieldGroup>
                         </div>
 
                         {/* Usage & Rights */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Usage Rights</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <FieldGroup label="Usage Rights">
                                 <select
                                     name="usageRights"
                                     value={formData.usageRights}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="bd-cm-input-field bd-cm-focus-ring w-full px-4 cursor-pointer"
                                 >
                                     <option value="30 Days">30 Days</option>
                                     <option value="90 Days">90 Days</option>
                                     <option value="Perpetual">Perpetual (Forever)</option>
                                     <option value="Organic Only">Organic Repost Only</option>
                                 </select>
-                            </div>
-                            <div className="flex items-center h-full pt-6">
+                            </FieldGroup>
+                            <div className="flex items-center h-10">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <div className="relative">
                                         <input
@@ -210,22 +307,39 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
                                             onChange={handleChange}
                                             className="sr-only peer"
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        <div
+                                            className="w-10 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
+                                            style={{
+                                                background: formData.isWhitelistingRequired
+                                                    ? 'var(--bd-accent)'
+                                                    : 'var(--bd-muted)',
+                                            }}
+                                        />
                                     </div>
-                                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Require Whitelisting / Ad Access</span>
+                                    <span
+                                        className="text-sm font-medium"
+                                        style={{ color: 'var(--bd-text-primary)' }}
+                                    >
+                                        Require Whitelisting
+                                    </span>
                                 </label>
                             </div>
                         </div>
 
-                        <div className="pt-2">
+                        <div className="pt-1">
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-70 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all"
+                                className="bd-cm-btn-primary bd-cm-focus-ring w-full py-3 text-sm"
                             >
-                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Launch Campaign"}
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch Campaign"}
                             </button>
-                            <p className="text-center text-xs text-gray-400 mt-4">Campaign will be created as "Active" immediately.</p>
+                            <p
+                                className="text-center text-xs mt-3"
+                                style={{ color: 'var(--bd-text-muted)' }}
+                            >
+                                Campaign will be created immediately.
+                            </p>
                         </div>
                     </form>
                 </motion.div>
@@ -234,196 +348,142 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
+/** Form field group — consistent label styling */
+const FieldGroup = ({ label, children }) => (
+    <div>
+        <label
+            className="bd-cm-label block mb-2"
+            style={{ fontSize: '13px', letterSpacing: '0.01em', textTransform: 'none', color: 'var(--bd-text-primary)', fontWeight: 600 }}
+        >
+            {label}
+        </label>
+        {children}
+    </div>
+);
+
+// =====================
+// MAIN CAMPAIGN MANAGEMENT PAGE
+// =====================
 const CampaignManagement = () => {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const fetchCampaigns = async () => {
+    const fetchCampaigns = useCallback(async () => {
         try {
             setIsLoading(true);
+            setError(null);
             const response = await brandService.getBrandCampaigns();
             if (response.status === 'success') {
-                setCampaigns(response.data);
+                const mapped = (response.data || []).map(mapApiCampaign);
+                setCampaigns(mapped);
             }
-        } catch (error) {
-            console.error("Failed to fetch campaigns:", error);
+        } catch (err) {
+            console.error("Failed to fetch campaigns:", err);
+            setError(err);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchCampaigns();
-    }, []);
+    }, [fetchCampaigns]);
 
-    const handleEnterWorkspace = (id) => {
+    const {
+        searchQuery,
+        setSearchQuery,
+        statusFilter,
+        setStatusFilter,
+        sortBy,
+        setSortBy,
+        viewMode,
+        setViewMode,
+        filteredCampaigns,
+    } = useCampaignFilters(campaigns);
+
+    const handleViewCampaign = (id) => {
         navigate(`/brand/workspace/${id}`);
     };
 
+    const handleFundCampaign = (id) => {
+        navigate(`/brand/escrow?campaign=${id}`);
+    };
+
+    const handleCreateCampaign = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setStatusFilter('All');
+    };
+
+    const isFiltered = searchQuery !== '' || statusFilter !== 'All';
+
     return (
-        <div className="space-y-8 p-6 min-h-screen">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Campaigns</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Manage all your campaigns, from draft to active.</p>
-                </div>
+        <div className="p-6 min-h-screen">
+            <div className="max-w-[1440px] mx-auto space-y-6">
+                {/* Page Header */}
+                <PageHeader onCreate={handleCreateCampaign} />
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Create Campaign
-                    </button>
-                </div>
-            </div>
+                {/* Content Area */}
+                {isLoading ? (
+                    <LoadingGrid />
+                ) : error ? (
+                    <ErrorState onRetry={fetchCampaigns} />
+                ) : campaigns.length === 0 ? (
+                    <EmptyState onCreate={handleCreateCampaign} />
+                ) : (
+                    <div className="space-y-5">
+                        {/* Filter Bar */}
+                        <FilterBar
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            statusFilter={statusFilter}
+                            onStatusChange={setStatusFilter}
+                            sortBy={sortBy}
+                            onSortChange={setSortBy}
+                            viewMode={viewMode}
+                            onViewChange={setViewMode}
+                        />
 
-            {/* Simple Search */}
-            <div className="bg-white dark:bg-slate-900/50 p-2 rounded-xl border border-gray-200 dark:border-slate-800 w-full max-w-sm">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search campaigns..."
-                        className="w-full pl-10 pr-4 py-2 bg-transparent outline-none text-slate-900 dark:text-white placeholder-slate-500 text-sm"
-                    />
-                </div>
-            </div>
-
-            {/* Campaign Grid */}
-            {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                </div>
-            ) : campaigns.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                        <Briefcase className="w-8 h-8 text-slate-400" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">No Campaigns Yet</h3>
-                    <p className="text-slate-500 max-w-xs mx-auto mt-2 mb-6">Start your first collaboration to see it here.</p>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="text-indigo-600 font-bold hover:underline"
-                    >
-                        Create your first campaign
-                    </button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {campaigns.map((campaign, index) => (
-                        <motion.div
-                            key={campaign.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="group relative bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 overflow-hidden hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300"
-                        >
-                            {/* Status Stripe */}
-                            <div className={`absolute top-0 left-0 w-1.5 h-full ${campaign.status === 'Active' ? 'bg-gradient-to-b from-emerald-400 to-emerald-600' : 'bg-slate-700'}`} />
-
-                            <div className="p-8 space-y-8">
-                                {/* Header */}
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${campaign.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-700/10 text-slate-500 border border-slate-700/20'}`}>
-                                                {campaign.status}
-                                            </span>
-                                            <span className="text-[10px] text-slate-400 font-medium tracking-wide">
-                                                ID: #{String(campaign.id).substring(0, 6)}
-                                            </span>
-                                        </div>
-                                        <h3 className="font-bold text-xl text-gray-900 dark:text-white leading-tight">{campaign.name}</h3>
-                                    </div>
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center border border-indigo-500/20">
-                                        <Briefcase className="w-5 h-5 text-indigo-500" />
-                                    </div>
-                                </div>
-
-                                {/* Metrics Grid */}
-                                <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
-                                            <Users className="w-3 h-3" /> Creators
-                                        </div>
-                                        <p className="font-mono font-bold text-gray-900 dark:text-white text-lg">{campaign.creators}</p>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
-                                            <Briefcase className="w-3 h-3" /> Target Budget
-                                        </div>
-                                        <p className="font-mono font-bold text-gray-900 dark:text-white text-lg">
-                                            ${campaign.targetBudget ? campaign.targetBudget.toLocaleString() : '0'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
-                                            <Calendar className="w-3 h-3" /> Est. ROI
-                                        </div>
-                                        <p className="font-mono font-bold text-emerald-500 text-lg">{campaign.roi}</p>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
-                                            <Calendar className="w-3 h-3" /> Funded
-                                        </div>
-                                        <p className="font-mono font-bold text-gray-900 dark:text-white text-lg">
-                                            {campaign.fundingProgress >= 100 ? (
-                                                <span className="text-emerald-500">100%</span>
-                                            ) : (
-                                                `${campaign.fundingProgress || 0}%`
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Funding Progress Bar */}
-                                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-500 ${campaign.fundingProgress >= 100
-                                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
-                                            : 'bg-gradient-to-r from-indigo-400 to-indigo-600'
-                                            }`}
-                                        style={{ width: `${Math.min(campaign.fundingProgress || 0, 100)}%` }}
-                                    />
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => handleEnterWorkspace(campaign.id)}
-                                        className="flex-1 py-3.5 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-900 dark:text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all border border-transparent hover:border-gray-200 dark:hover:border-slate-700 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500/50 group-hover:shadow-lg group-hover:shadow-indigo-500/25"
-                                    >
-                                        Workspace
-                                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    </button>
-
-                                    {['Draft', 'Pending Payment', 'Active'].includes(campaign.status) && campaign.fundingProgress < 100 && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                navigate(`/brand/escrow?campaign=${campaign.id}`);
-                                            }}
-                                            className="px-4 py-3.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white font-bold rounded-2xl transition-all border border-emerald-500/20 flex items-center justify-center gap-2"
-                                            title="Fund Campaign"
-                                        >
-                                            <Briefcase className="w-5 h-5" />
-                                            <span className="hidden sm:inline">Fund</span>
-                                        </button>
+                        {/* Campaign List */}
+                        <AnimatePresence mode="wait">
+                            {filteredCampaigns.length > 0 ? (
+                                <motion.div key={viewMode} {...VIEW_TRANSITION}>
+                                    {viewMode === 'grid' ? (
+                                        <CampaignGrid
+                                            campaigns={filteredCampaigns}
+                                            onView={handleViewCampaign}
+                                            onFund={handleFundCampaign}
+                                        />
+                                    ) : (
+                                        <CampaignTable
+                                            campaigns={filteredCampaigns}
+                                            onView={handleViewCampaign}
+                                        />
                                     )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </div>
-            )}
+                                </motion.div>
+                            ) : (
+                                <EmptyState
+                                    isFiltered
+                                    onClearFilters={handleClearFilters}
+                                />
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
+            </div>
 
-
-            <RequestCampaignModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchCampaigns} />
+            {/* Create Campaign Modal */}
+            <RequestCampaignModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchCampaigns}
+            />
         </div>
     );
 };

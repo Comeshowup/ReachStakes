@@ -123,6 +123,9 @@ export const initiatePayment = async (req, res) => {
         });
 
         // 3. Create Checkout Session with Tazapay
+        // Build redirect URLs so Tazapay sends the user back to our app after payment
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
         const checkout = await tazapayService.createCheckoutSession({
             amount: totalCharge, // Total including fees
             invoice_currency: 'USD',
@@ -132,26 +135,143 @@ export const initiatePayment = async (req, res) => {
                 country: 'US',
             },
             txn_description: `Funding Campaign: ${campaign.title} (Ref: TXN-${transaction.id})`,
+            success_url: `${frontendUrl}/brand/payment/${transaction.id}?status=success`,
+            cancel_url: `${frontendUrl}/brand/payment/${transaction.id}?status=cancelled`,
         });
 
         // 4. Update transaction with Tazapay reference
+        // Log the full response to see what Tazapay returns
+        console.log('Tazapay Checkout Response:', JSON.stringify(checkout, null, 2));
+
+        // Store the checkout ID (chk_ format) - needed for GET /v3/checkout/{id} verification
+        const checkoutData = checkout.data || checkout;
+        const checkoutId = checkoutData?.id || checkoutData?.checkout_id || checkoutData?.txn_no || `ref_${Date.now()}`;
+
         await prisma.transaction.update({
             where: { id: transaction.id },
             data: {
-                tazapayReferenceId: checkout.data?.txn_no || checkout.txn_no || `ref_${Date.now()}`,
-                checkoutUrl: checkout.data?.url || checkout.url
+                tazapayReferenceId: checkoutId,
+                checkoutUrl: checkoutData?.url || checkout.url
             }
         });
 
         res.status(200).json({
             message: 'Checkout initiated',
-            url: checkout.data?.url || checkout.url,
+            url: checkoutData?.url || checkout.url,
             transactionId: transaction.id
         });
 
     } catch (error) {
         console.error('Initiate Payment Error:', error);
         res.status(500).json({ error: 'Failed to initiate payment' });
+    }
+};
+
+// Verify payment status by checking Tazapay API directly
+// This is essential for local dev where webhooks can't reach localhost
+export const verifyPayment = async (req, res) => {
+    try {
+        const { transactionId } = req.params;
+        const userId = req.user.id;
+
+        // 1. Find the transaction
+        const transaction = await prisma.transaction.findFirst({
+            where: {
+                id: parseInt(transactionId),
+                userId: userId
+            }
+        });
+
+        if (!transaction) {
+            return res.status(404).json({ error: 'Transaction not found' });
+        }
+
+        // If already completed or failed, just return current status
+        if (transaction.status === 'Completed' || transaction.status === 'Failed') {
+            return res.json({ status: transaction.status, message: `Transaction already ${transaction.status.toLowerCase()}` });
+        }
+
+        // 2. Check with Tazapay API using the reference ID
+        const referenceId = transaction.tazapayReferenceId;
+        if (!referenceId) {
+            return res.json({ status: 'Pending', message: 'No Tazapay reference found yet' });
+        }
+
+        let tazapayStatus;
+        try {
+            tazapayStatus = await tazapayService.getCheckoutStatus(referenceId);
+            console.log('Tazapay Checkout Status Response:', JSON.stringify(tazapayStatus, null, 2));
+        } catch (err) {
+            console.error('Could not verify with Tazapay:', err.message);
+            return res.json({ status: 'Pending', message: 'Unable to verify with Tazapay, still pending' });
+        }
+
+        // 3. Determine payment status from Tazapay response
+        // IMPORTANT: checkoutData.status = checkout session status ("active")
+        //            checkoutData.payment_status = actual payment result ("paid")
+        const checkoutData = tazapayStatus?.data || tazapayStatus;
+        const paymentStatus = checkoutData?.payment_status || '';
+
+        // Also check individual payment attempts for confirmation
+        const latestAttempt = checkoutData?.payment_attempts?.[0];
+        const attemptStatus = latestAttempt?.status || '';
+
+        const isPaid = ['paid', 'success', 'completed', 'payment_completed'].includes(paymentStatus.toLowerCase())
+            || attemptStatus === 'succeeded';
+        const isFailed = ['failed', 'expired', 'cancelled', 'canceled'].includes(paymentStatus.toLowerCase())
+            || attemptStatus === 'failed';
+
+        if (isPaid) {
+            // Update transaction to Completed
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: {
+                    status: 'Completed',
+                    processedAt: new Date(),
+                    gatewayStatus: paymentStatus,
+                    metadata: tazapayStatus
+                }
+            });
+
+            // Update campaign escrow balance
+            if (transaction.campaignId) {
+                const incrementAmount = transaction.netAmount || transaction.amount || 0;
+                if (Number(incrementAmount) > 0) {
+                    try {
+                        await prisma.campaign.update({
+                            where: { id: transaction.campaignId },
+                            data: {
+                                escrowBalance: { increment: incrementAmount },
+                                totalFunded: { increment: incrementAmount },
+                                escrowFundedAt: new Date(),
+                                isGuaranteedPay: true
+                            }
+                        });
+                        console.log(`✅ Verified & updated campaign ${transaction.campaignId} balance by ${incrementAmount}`);
+                    } catch (campError) {
+                        console.error(`Failed to update campaign balance: ${campError.message}`);
+                    }
+                }
+            }
+
+            return res.json({ status: 'Completed', message: 'Payment verified and confirmed!' });
+        } else if (isFailed) {
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: {
+                    status: 'Failed',
+                    gatewayStatus: paymentStatus,
+                    metadata: tazapayStatus
+                }
+            });
+            return res.json({ status: 'Failed', message: `Payment ${paymentStatus}` });
+        }
+
+        // Still pending
+        return res.json({ status: 'Pending', message: `Tazapay status: ${paymentStatus || 'awaiting payment'}` });
+    } catch (error) {
+        console.error('Verify Payment Error:', error);
+        res.status(500).json({ error: 'Failed to verify payment' });
     }
 };
 

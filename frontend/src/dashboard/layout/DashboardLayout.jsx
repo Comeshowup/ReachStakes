@@ -1,11 +1,26 @@
 import React, { useState } from "react";
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { NAV_GROUPS } from "../data";
-import { Bell, Search, User, Menu, X, ChevronRight } from "lucide-react";
-import { ThemeToggle } from "../../components/ThemeToggle";
+import {
+    Bell,
+    Search,
+    Menu,
+    X,
+    Plus,
+    LogOut,
+    Calendar,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import NotificationDropdown from "../components/NotificationDropdown";
+import { ThemeProvider, useTheme } from "../../contexts/ThemeProvider";
+import { ThemeToggle } from "../../components/ThemeToggle";
 
+// ===========================
+// SIDEBAR — Semantic tokens only
+// ===========================
 const Sidebar = ({ isOpen, onClose }) => {
+    const navigate = useNavigate();
+
     return (
         <>
             {/* Mobile Overlay */}
@@ -16,60 +31,102 @@ const Sidebar = ({ isOpen, onClose }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
+                        className="fixed inset-0 z-40 md:hidden"
+                        style={{ background: 'var(--bd-overlay)', backdropFilter: 'blur(4px)' }}
                     />
                 )}
             </AnimatePresence>
 
-            {/* Sidebar Container */}
-            <aside className={`
-                fixed top-0 left-0 z-50 h-screen w-64 bg-zinc-50/80 dark:bg-slate-950/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-slate-800/50 transition-transform duration-300 ease-in-out
-                ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-            `}>
+            <aside
+                role="navigation"
+                aria-label="Main navigation"
+                className={`
+                    fixed top-0 left-0 z-50 h-screen w-[320px] flex flex-col
+                    transition-transform duration-300 ease-in-out
+                    ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+                `}
+                style={{
+                    background: 'var(--bd-sidebar-bg)',
+                    backdropFilter: 'blur(40px)',
+                    WebkitBackdropFilter: 'blur(40px)',
+                    borderRadius: '0 2.5rem 2.5rem 0',
+                    borderRight: '1px solid var(--bd-sidebar-border)',
+                    boxShadow: 'var(--bd-sidebar-shadow)',
+                }}
+            >
                 {/* Logo */}
-                <div className="h-16 flex items-center px-6 border-b border-gray-200/50 dark:border-slate-800/50">
-                    <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900 dark:text-white">
-                        <div className="w-6 h-6 bg-indigo-600 rounded-lg"></div>
-                        BrandDash
+                <div className="px-8 pt-8 pb-6 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                            style={{
+                                background: 'var(--bd-sidebar-logo-bg)',
+                                boxShadow: 'var(--bd-sidebar-logo-shadow)'
+                            }}>
+                            <span className="text-white text-sm font-bold">RS</span>
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-lg tracking-tight"
+                                style={{ color: 'var(--bd-text-primary)' }}>
+                                Reachstakes
+                            </h1>
+                            <p className="text-[11px] font-medium uppercase tracking-wider"
+                                style={{ color: 'var(--bd-text-secondary)' }}>
+                                Brand Portal
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="ml-auto md:hidden text-gray-500">
+                    <button
+                        onClick={onClose}
+                        className="md:hidden p-1.5 rounded-xl"
+                        style={{ color: 'var(--bd-text-secondary)' }}
+                        aria-label="Close navigation">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Navigation */}
-                <nav className="p-4 space-y-8 overflow-y-auto flex-1">
+                <nav className="flex-1 overflow-y-auto px-5 py-2 space-y-6">
                     {NAV_GROUPS.map((group) => (
                         <div key={group.title}>
-                            <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2">
+                            <h3 className="px-4 text-[11px] font-bold uppercase tracking-[0.1em] mb-2"
+                                style={{ color: 'var(--bd-text-muted)' }}>
                                 {group.title}
                             </h3>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                                 {group.items.map((item) => (
                                     <NavLink
                                         key={item.path}
                                         to={item.path}
                                         end={item.path === "/brand"}
                                         onClick={() => window.innerWidth < 768 && onClose()}
-                                        className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 relative group ${isActive
-                                                ? "text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50/50 dark:bg-indigo-900/10"
-                                                : "text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-100/50 dark:hover:bg-slate-800/50"
-                                            }`
-                                        }
+                                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative"
+                                        style={({ isActive }) => ({
+                                            ...(isActive ? {
+                                                background: 'var(--bd-sidebar-active)',
+                                                boxShadow: 'var(--bd-shadow-active-nav)',
+                                                color: 'var(--bd-text-primary)',
+                                            } : {
+                                                color: 'var(--bd-text-secondary)',
+                                            })
+                                        })}
                                     >
                                         {({ isActive }) => (
                                             <>
-                                                {isActive && (
-                                                    <motion.div
-                                                        layoutId="activeIndicator"
-                                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-indigo-600 dark:bg-indigo-400 rounded-r-full"
-                                                    />
-                                                )}
-                                                <item.icon className={`w-[18px] h-[18px] stroke-[1.5px] ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-slate-500 group-hover:text-gray-600 dark:group-hover:text-slate-300"}`} />
+                                                <item.icon
+                                                    className="w-[18px] h-[18px] shrink-0"
+                                                    style={{
+                                                        color: isActive ? 'var(--bd-text-primary)' : 'var(--bd-text-secondary)',
+                                                        strokeWidth: isActive ? 2 : 1.5,
+                                                    }}
+                                                />
                                                 <span>{item.label}</span>
                                                 {item.badge && (
-                                                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white shadow-lg shadow-indigo-500/30 animate-pulse">
+                                                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full text-[10px] font-bold"
+                                                        style={{
+                                                            background: 'var(--bd-danger)',
+                                                            color: 'var(--bd-text-inverse)',
+                                                            boxShadow: 'var(--bd-shadow-badge)',
+                                                        }}>
                                                         {item.badge}
                                                     </span>
                                                 )}
@@ -82,106 +139,188 @@ const Sidebar = ({ isOpen, onClose }) => {
                     ))}
                 </nav>
 
-                {/* Footer Actions */}
-                <div className="p-4 border-t border-gray-200/50 dark:border-slate-800/50">
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('userInfo'); // If stored
-                            window.location.href = '/auth'; // Or use useNavigate if hook available, but window.location ensures clean state
-                        }}
-                        className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
-                        <span>Log Out</span>
-                    </button>
+                {/* User Profile Card */}
+                <div className="px-5 pb-5 pt-3 shrink-0">
+                    <div className="p-4 rounded-2xl"
+                        style={{ background: 'var(--bd-surface-overlay)', border: '1px solid var(--bd-border-subtle)' }}>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
+                                style={{
+                                    background: 'var(--bd-sidebar-logo-bg)',
+                                    color: '#ffffff'
+                                }}>
+                                B
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate"
+                                    style={{ color: 'var(--bd-text-primary)' }}>
+                                    Brand Account
+                                </p>
+                                <p className="text-xs truncate"
+                                    style={{ color: 'var(--bd-text-secondary)' }}>
+                                    brand@reachstakes.com
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('token');
+                                localStorage.removeItem('userInfo');
+                                window.location.href = '/auth';
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all"
+                            style={{
+                                color: 'var(--bd-danger)',
+                                background: 'transparent',
+                                border: '1px solid var(--bd-danger-border)',
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = 'var(--bd-danger-muted)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = 'transparent';
+                            }}
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Log Out
+                        </button>
+                    </div>
                 </div>
             </aside>
         </>
     );
 };
 
-import NotificationDropdown from "../components/NotificationDropdown";
-
+// ===========================
+// TOPBAR — Semantic tokens only
+// ===========================
 const Topbar = ({ onMenuClick }) => {
-    const location = useLocation();
-    const pathSegments = location.pathname.split("/").filter(Boolean);
+    const navigate = useNavigate();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     return (
-        <header className="h-16 sticky top-0 z-40 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md border-b border-gray-200/50 dark:border-slate-800/50 px-4 md:px-8 flex items-center justify-between transition-colors">
+        <header
+            className="h-16 sticky top-0 z-40 flex items-center justify-between px-4 md:px-8 shrink-0"
+            style={{
+                background: 'var(--bd-topbar-bg)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderBottom: '1px solid var(--bd-topbar-border)',
+            }}
+        >
+            {/* Left */}
             <div className="flex items-center gap-4">
-                <button onClick={onMenuClick} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
+                <button
+                    onClick={onMenuClick}
+                    className="md:hidden p-2 rounded-xl"
+                    style={{ color: 'var(--bd-text-secondary)' }}
+                    aria-label="Open navigation menu">
                     <Menu className="w-5 h-5" />
                 </button>
 
-                {/* Breadcrumbs */}
-                <div className="hidden md:flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
-                    <span className="hover:text-gray-900 dark:hover:text-slate-200 transition-colors cursor-pointer">Dashboard</span>
-                    {pathSegments.slice(1).map((segment, index) => (
-                        <React.Fragment key={segment}>
-                            <ChevronRight className="w-4 h-4 text-gray-300 dark:text-slate-600" />
-                            <span className="capitalize font-medium text-gray-900 dark:text-white">
-                                {segment.replace("-", " ")}
-                            </span>
-                        </React.Fragment>
-                    ))}
+                <div className="relative hidden md:block">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                        style={{ color: 'var(--bd-text-secondary)' }} />
+                    <input
+                        type="search"
+                        placeholder="Search campaigns, creators..."
+                        className="w-72 pl-9 pr-4 py-2 rounded-2xl text-sm outline-none transition-all"
+                        style={{
+                            background: 'var(--bd-surface-input)',
+                            border: '1px solid var(--bd-border-subtle)',
+                            color: 'var(--bd-text-primary)',
+                        }}
+                        aria-label="Search campaigns and creators"
+                    />
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 md:gap-6">
-                <div className="relative hidden md:block">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="w-64 pl-9 pr-4 py-1.5 rounded-full bg-gray-100/50 dark:bg-slate-900/50 border border-transparent focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500/30 focus:ring-2 focus:ring-indigo-500/10 transition-all text-sm outline-none"
+            {/* Right */}
+            <div className="flex items-center gap-3">
+                <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+                    style={{
+                        background: 'var(--bd-surface-input)',
+                        border: '1px solid var(--bd-border-subtle)',
+                        color: 'var(--bd-text-secondary)',
+                    }}>
+                    <Calendar className="w-4 h-4" />
+                    {currentMonth}
+                </button>
+
+                <ThemeToggle />
+
+                <div className="relative">
+                    <button
+                        onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                        className="relative p-2.5 rounded-xl transition-colors"
+                        style={{ color: 'var(--bd-text-secondary)' }}
+                        aria-label="View notifications"
+                    >
+                        <Bell className="w-5 h-5" strokeWidth={1.5} />
+                        <span className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                            style={{
+                                background: 'var(--bd-danger)',
+                                border: '2px solid var(--bd-bg-primary)'
+                            }} />
+                    </button>
+                    <NotificationDropdown
+                        isOpen={isNotificationsOpen}
+                        onClose={() => setIsNotificationsOpen(false)}
                     />
                 </div>
 
-                <div className="h-6 w-px bg-gray-200 dark:bg-slate-800 hidden md:block"></div>
-
-                <div className="flex items-center gap-3">
-                    <ThemeToggle />
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                            className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                        >
-                            <Bell className="w-5 h-5 stroke-[1.5px]" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-950"></span>
-                        </button>
-                        <NotificationDropdown isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
-                    </div>
-                    <NavLink to="/brand/profile" className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[1px] cursor-pointer hover:scale-105 transition-transform">
-                        <div className="w-full h-full rounded-full bg-white dark:bg-slate-950 p-[1px]">
-                            <img
-                                src="https://i.pravatar.cc/150?u=brand"
-                                alt="Profile"
-                                className="w-full h-full rounded-full object-cover"
-                            />
-                        </div>
-                    </NavLink>
-                </div>
+                <button
+                    onClick={() => navigate('/brand/campaigns')}
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                        background: 'var(--bd-primary)',
+                        color: 'var(--bd-primary-fg)',
+                        boxShadow: 'var(--bd-shadow-primary-btn)',
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.boxShadow = 'var(--bd-shadow-primary-btn-hover)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.boxShadow = 'var(--bd-shadow-primary-btn)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                >
+                    <Plus className="w-4 h-4" />
+                    Create Campaign
+                </button>
             </div>
         </header>
     );
 };
 
-const DashboardLayout = () => {
+// ===========================
+// LAYOUT WRAPPER + THEME PROVIDER
+// ===========================
+const DashboardContent = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
+    const { theme } = useTheme();
 
     return (
-        <div className="min-h-screen bg-gray-50/50 dark:bg-slate-950 font-sans text-gray-900 dark:text-slate-100 selection:bg-indigo-100 dark:selection:bg-indigo-900/30">
+        <div data-theme={theme}
+            className="min-h-screen font-sans"
+            style={{
+                background: 'var(--bd-bg-primary)',
+                color: 'var(--bd-text-primary)',
+            }}>
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <div className="md:pl-64 transition-all duration-300">
+            <div className="md:pl-[320px] transition-all duration-300 flex flex-col min-h-screen">
                 <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
 
-                <main className={location.pathname === "/brand/messages" || location.pathname === "/brand/approvals" || location.pathname === "/brand/financials" || location.pathname.startsWith("/brand/workspace")
-                    ? "h-[calc(100vh-64px)] overflow-hidden"
-                    : "p-6 md:p-8 max-w-7xl mx-auto min-h-[calc(100vh-64px)]"
+                <main className={
+                    location.pathname === "/brand"
+                        ? "flex-1 overflow-auto p-4 md:p-8"
+                        : location.pathname === "/brand/messages" || location.pathname === "/brand/approvals" || location.pathname === "/brand/financials" || location.pathname.startsWith("/brand/workspace")
+                            ? "flex-1 overflow-hidden"
+                            : "flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full"
                 }>
                     <AnimatePresence mode="wait">
                         <motion.div
@@ -190,7 +329,11 @@ const DashboardLayout = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
-                            className={location.pathname === "/brand/messages" || location.pathname === "/brand/approvals" || location.pathname === "/brand/financials" ? "h-full" : ""}
+                            className={
+                                ["/brand", "/brand/messages", "/brand/approvals", "/brand/financials"].includes(location.pathname) || location.pathname.startsWith("/brand/workspace")
+                                    ? "h-full"
+                                    : ""
+                            }
                         >
                             <Outlet />
                         </motion.div>
@@ -198,6 +341,14 @@ const DashboardLayout = () => {
                 </main>
             </div>
         </div>
+    );
+};
+
+const DashboardLayout = () => {
+    return (
+        <ThemeProvider>
+            <DashboardContent />
+        </ThemeProvider>
     );
 };
 

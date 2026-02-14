@@ -102,6 +102,26 @@ const paymentService = {
             console.error('Get Transaction Status Error:', error);
             throw error;
         }
+    },
+
+    /**
+     * Verify payment status by checking with Tazapay API directly
+     * This is used when webhooks can't reach the server (e.g., localhost)
+     * @param {number} transactionId
+     * @returns {Promise<{status: string, message: string}>}
+     */
+    verifyPayment: async (transactionId) => {
+        try {
+            const response = await api.post(
+                `/payments/verify/${transactionId}`,
+                {},
+                getAuthHeaders()
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Verify Payment Error:', error);
+            throw error;
+        }
     }
 };
 

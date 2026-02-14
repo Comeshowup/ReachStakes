@@ -3,6 +3,7 @@ import axios from 'axios';
 const TAZAPAY_API_BASE_URL = process.env.TAZAPAY_API_BASE_URL || 'https://service-sandbox.tazapay.com';
 const TAZAPAY_API_KEY = process.env.TAZAPAY_API_KEY;
 const TAZAPAY_API_SECRET = process.env.TAZAPAY_API_SECRET;
+const TAZAPAY_ACCOUNT_EMAIL = process.env.TAZAPAY_ACCOUNT_EMAIL; // Email of the Tazapay account owner
 
 const getAuthHeader = () => {
     if (!TAZAPAY_API_KEY || !TAZAPAY_API_SECRET) {
@@ -10,6 +11,38 @@ const getAuthHeader = () => {
     }
     const token = Buffer.from(`${TAZAPAY_API_KEY}:${TAZAPAY_API_SECRET}`).toString('base64');
     return `Basic ${token}`;
+};
+
+/**
+ * Basic email validation - checks for valid format with a real domain (must have a TLD).
+ */
+const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+/**
+ * Ensure the customer email is valid and different from the Tazapay account owner email.
+ * 
+ * 1. Tazapay error 15501 occurs if the email is not a valid format (e.g. "Cleo@newbrand").
+ * 2. Tazapay error 19009 ("Parties should not be identical") occurs when the
+ *    customer_details.email matches the API key owner's email.
+ * 
+ * For card-based checkout, the email is only used for receipts/identification,
+ * so using a fallback doesn't affect the actual payment flow.
+ */
+const getSafeCustomerEmail = (customerEmail) => {
+    // If email is missing or invalid, generate a valid placeholder
+    if (!customerEmail || !isValidEmail(customerEmail)) {
+        return `customer_${Date.now()}@reachstakes.com`;
+    }
+
+    // Check if it matches the Tazapay account owner email (causes "identical parties" error)
+    const accountEmail = TAZAPAY_ACCOUNT_EMAIL;
+    if (accountEmail && customerEmail.toLowerCase() === accountEmail.toLowerCase()) {
+        const [localPart, domain] = customerEmail.split('@');
+        return `customer+${localPart}@${domain}`;
+    }
+    return customerEmail;
 };
 
 export const tazapayService = {
@@ -25,16 +58,18 @@ export const tazapayService = {
         seller_id, // Email or specific ID if managed
         txn_description,
         customer_details, // { name, email, country }
-        is_escrow = true // Default to true for Reachstakes
+        is_escrow = true, // Default to true for Reachstakes
+        success_url,
+        cancel_url
     }) => {
         try {
-            // Escrow-specific configurations could be added here if the API requires specific flags
-            // Based on docs, standard checkout can handle escrow if configured or if "protection" is enabled
-
-            // For escrow payments, we need distinct buyer (brand) and seller (platform) details
             // IMPORTANT: Tazapay expects amount in MINOR UNITS (cents for USD)
             // So $10.79 should be sent as 1079, $1079.00 should be sent as 107900
             const amountInCents = Math.round(parseFloat(amount) * 100);
+
+            // Ensure customer email differs from the Tazapay account owner email
+            // to avoid error 19009: "Parties should not be identical"
+            const safeEmail = getSafeCustomerEmail(customer_details.email);
 
             const payload = {
                 invoice_currency: invoice_currency, // Required: ISO 4217 alpha-3 currency code
@@ -45,15 +80,16 @@ export const tazapayService = {
                 // Customer details is required by Tazapay v3 API
                 customer_details: {
                     name: customer_details.name,
-                    email: customer_details.email,
+                    email: safeEmail,
                     country: customer_details.country || 'US',
                 },
             };
 
-            // Correction based on typical Tazapay /v3/checkout usage:
-            // It needs a distinct payload structure.
-            // Since I don't have the EXACT payload from the brief research, I will use a robust generic structure 
-            // and log the response to debug if it fails.
+            // Add redirect URLs so Tazapay sends the user back to our app
+            if (success_url) payload.success_url = success_url;
+            if (cancel_url) payload.cancel_url = cancel_url;
+
+            console.log('Tazapay Checkout Payload:', JSON.stringify(payload, null, 2));
 
             const response = await axios.post(`${TAZAPAY_API_BASE_URL}/v3/checkout`, payload, {
                 headers: {
@@ -66,6 +102,28 @@ export const tazapayService = {
         } catch (error) {
             console.error('Tazapay Create Checkout Error:', error.response?.data || error.message);
             throw new Error('Failed to create Tazapay checkout session');
+        }
+    },
+
+    /**
+     * Get checkout session status from Tazapay API
+     * Used to verify payment status when webhooks can't reach the server (e.g., localhost)
+     * @param {string} checkoutId - The Tazapay checkout/transaction reference ID
+     * @returns {Object} Checkout status data
+     */
+    getCheckoutStatus: async (checkoutId) => {
+        try {
+            const response = await axios.get(`${TAZAPAY_API_BASE_URL}/v3/checkout/${checkoutId}`, {
+                headers: {
+                    'Authorization': getAuthHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Tazapay Get Checkout Status Error:', error.response?.data || error.message);
+            throw new Error('Failed to get checkout status from Tazapay');
         }
     },
 

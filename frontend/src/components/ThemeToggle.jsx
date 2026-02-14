@@ -1,43 +1,51 @@
 import React from "react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import { useTheme } from "../contexts/ThemeProvider";
 
 export function ThemeToggle() {
-    const { theme, setTheme } = useTheme();
+    const { theme, toggleTheme } = useTheme();
+    const isDark = theme === "dark";
 
     return (
         <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="relative p-2 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Toggle Theme"
+            onClick={toggleTheme}
+            className="relative p-2 rounded-xl transition-colors"
+            style={{
+                background: 'var(--bd-surface-input)',
+                color: 'var(--bd-text-secondary)',
+            }}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
         >
             <div className="relative w-5 h-5">
                 <motion.div
-                    initial={{ scale: 1, rotate: 0 }}
+                    initial={false}
                     animate={{
-                        scale: theme === "dark" ? 0 : 1,
-                        rotate: theme === "dark" ? 90 : 0,
-                        opacity: theme === "dark" ? 0 : 1,
+                        scale: isDark ? 0 : 1,
+                        rotate: isDark ? 90 : 0,
+                        opacity: isDark ? 0 : 1,
                     }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
                     className="absolute inset-0 flex items-center justify-center"
                 >
-                    <Sun className="w-5 h-5" />
+                    <Sun className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </motion.div>
                 <motion.div
-                    initial={{ scale: 0, rotate: -90 }}
+                    initial={false}
                     animate={{
-                        scale: theme === "dark" ? 1 : 0,
-                        rotate: theme === "dark" ? 0 : -90,
-                        opacity: theme === "dark" ? 1 : 0,
+                        scale: isDark ? 1 : 0,
+                        rotate: isDark ? 0 : -90,
+                        opacity: isDark ? 1 : 0,
                     }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
                     className="absolute inset-0 flex items-center justify-center"
                 >
-                    <Moon className="w-5 h-5" />
+                    <Moon className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </motion.div>
             </div>
         </button>
     );
 }
+
+export default ThemeToggle;
