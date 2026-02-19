@@ -405,7 +405,7 @@ const CampaignManagement = () => {
     } = useCampaignFilters(campaigns);
 
     const handleViewCampaign = (id) => {
-        navigate(`/brand/workspace/${id}`);
+        navigate(`/brand/campaigns/${id}`);
     };
 
     const handleFundCampaign = (id) => {
@@ -413,7 +413,7 @@ const CampaignManagement = () => {
     };
 
     const handleCreateCampaign = () => {
-        setIsModalOpen(true);
+        navigate('/brand/campaigns/create');
     };
 
     const handleClearFilters = () => {

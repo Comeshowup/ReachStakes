@@ -264,6 +264,54 @@
     --bd-cm-gradient-from: var(--p-purple-600);
     --bd-cm-gradient-to: var(--p-brand-600);
     --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.2);
+
+    /* --- Approvals Engine --- */
+    --bd-aq-surface: var(--p-neutral-50);
+    --bd-aq-surface-elevated: var(--p-neutral-0);
+    --bd-aq-card-bg: var(--p-neutral-0);
+    --bd-aq-card-selected: rgba(99, 102, 241, 0.06);
+    --bd-aq-card-selected-border: rgba(99, 102, 241, 0.25);
+    --bd-aq-card-hover: rgba(0, 0, 0, 0.02);
+    --bd-aq-accent-bar: var(--p-brand-500);
+    --bd-aq-status-review: var(--p-warning-600);
+    --bd-aq-status-review-bg: var(--p-warning-50);
+    --bd-aq-status-review-border: var(--p-warning-100);
+    --bd-aq-status-updated: var(--p-info-600);
+    --bd-aq-status-updated-bg: var(--p-info-50);
+    --bd-aq-status-updated-border: var(--p-info-100);
+    --bd-aq-status-waiting: var(--p-neutral-500);
+    --bd-aq-status-waiting-bg: rgba(0, 0, 0, 0.04);
+    --bd-aq-status-waiting-border: rgba(0, 0, 0, 0.08);
+    --bd-aq-status-overdue: var(--p-danger-600);
+    --bd-aq-status-overdue-bg: var(--p-danger-50);
+    --bd-aq-status-overdue-border: var(--p-danger-100);
+    --bd-aq-escrow-text: var(--p-success-700);
+    --bd-aq-escrow-bg: var(--p-success-50);
+    --bd-aq-escrow-border: var(--p-success-100);
+    --bd-aq-btn-approve-from: var(--p-success-600);
+    --bd-aq-btn-approve-to: #047857;
+    --bd-aq-btn-approve-shadow: rgba(16, 185, 129, 0.25);
+    --bd-aq-btn-changes-border: var(--p-warning-200);
+    --bd-aq-btn-changes-text: var(--p-warning-700);
+    --bd-aq-btn-changes-bg: var(--p-warning-50);
+    --bd-aq-line-number: var(--p-neutral-400);
+    --bd-aq-script-bg: var(--p-neutral-50);
+    --bd-aq-script-border: var(--p-neutral-150);
+    --bd-aq-highlight-sponsor: rgba(139, 92, 246, 0.08);
+    --bd-aq-highlight-cta: rgba(59, 130, 246, 0.08);
+    --bd-aq-timeline-line: var(--p-neutral-200);
+    --bd-aq-timeline-brand: var(--p-brand-500);
+    --bd-aq-timeline-creator: var(--p-success-500);
+    --bd-aq-financial-surface: rgba(99, 102, 241, 0.04);
+    --bd-aq-financial-border: rgba(99, 102, 241, 0.12);
+    --bd-aq-insight-surface: rgba(59, 130, 246, 0.04);
+    --bd-aq-insight-border: rgba(59, 130, 246, 0.12);
+    --bd-aq-decision-bar-bg: var(--p-neutral-0);
+    --bd-aq-decision-bar-border: rgba(0, 0, 0, 0.08);
+    --bd-aq-modal-overlay: rgba(0, 0, 0, 0.4);
+    --bd-aq-compliance-pass: var(--p-success-600);
+    --bd-aq-compliance-fail: var(--p-danger-600);
+    --bd-aq-compliance-fail-bg: var(--p-danger-50);
 }
 
 /* ===========================================
@@ -431,6 +479,54 @@
     --bd-cm-gradient-from: #7c3aed;
     --bd-cm-gradient-to: #4f46e5;
     --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.3);
+
+    /* --- Approvals Engine --- */
+    --bd-aq-surface: var(--p-neutral-900);
+    --bd-aq-surface-elevated: var(--p-neutral-850);
+    --bd-aq-card-bg: rgba(255, 255, 255, 0.03);
+    --bd-aq-card-selected: rgba(99, 102, 241, 0.1);
+    --bd-aq-card-selected-border: rgba(99, 102, 241, 0.35);
+    --bd-aq-card-hover: rgba(255, 255, 255, 0.04);
+    --bd-aq-accent-bar: var(--p-brand-400);
+    --bd-aq-status-review: var(--p-warning-400);
+    --bd-aq-status-review-bg: rgba(245, 158, 11, 0.12);
+    --bd-aq-status-review-border: rgba(245, 158, 11, 0.2);
+    --bd-aq-status-updated: var(--p-info-400);
+    --bd-aq-status-updated-bg: rgba(59, 130, 246, 0.12);
+    --bd-aq-status-updated-border: rgba(59, 130, 246, 0.2);
+    --bd-aq-status-waiting: var(--p-neutral-400);
+    --bd-aq-status-waiting-bg: rgba(255, 255, 255, 0.05);
+    --bd-aq-status-waiting-border: rgba(255, 255, 255, 0.08);
+    --bd-aq-status-overdue: var(--p-danger-400);
+    --bd-aq-status-overdue-bg: rgba(212, 24, 61, 0.12);
+    --bd-aq-status-overdue-border: rgba(212, 24, 61, 0.2);
+    --bd-aq-escrow-text: var(--p-success-400);
+    --bd-aq-escrow-bg: rgba(16, 185, 129, 0.1);
+    --bd-aq-escrow-border: rgba(16, 185, 129, 0.2);
+    --bd-aq-btn-approve-from: #059669;
+    --bd-aq-btn-approve-to: #047857;
+    --bd-aq-btn-approve-shadow: rgba(16, 185, 129, 0.3);
+    --bd-aq-btn-changes-border: rgba(245, 158, 11, 0.3);
+    --bd-aq-btn-changes-text: var(--p-warning-400);
+    --bd-aq-btn-changes-bg: rgba(245, 158, 11, 0.08);
+    --bd-aq-line-number: var(--p-neutral-600);
+    --bd-aq-script-bg: rgba(255, 255, 255, 0.02);
+    --bd-aq-script-border: rgba(255, 255, 255, 0.06);
+    --bd-aq-highlight-sponsor: rgba(139, 92, 246, 0.12);
+    --bd-aq-highlight-cta: rgba(59, 130, 246, 0.12);
+    --bd-aq-timeline-line: rgba(255, 255, 255, 0.08);
+    --bd-aq-timeline-brand: var(--p-brand-400);
+    --bd-aq-timeline-creator: var(--p-success-400);
+    --bd-aq-financial-surface: rgba(99, 102, 241, 0.06);
+    --bd-aq-financial-border: rgba(99, 102, 241, 0.15);
+    --bd-aq-insight-surface: rgba(59, 130, 246, 0.06);
+    --bd-aq-insight-border: rgba(59, 130, 246, 0.15);
+    --bd-aq-decision-bar-bg: var(--p-neutral-900);
+    --bd-aq-decision-bar-border: rgba(255, 255, 255, 0.08);
+    --bd-aq-modal-overlay: rgba(0, 0, 0, 0.6);
+    --bd-aq-compliance-pass: var(--p-success-400);
+    --bd-aq-compliance-fail: var(--p-danger-400);
+    --bd-aq-compliance-fail-bg: rgba(212, 24, 61, 0.1);
 }
 
 /* ===========================================

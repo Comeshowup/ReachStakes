@@ -18,6 +18,7 @@ import payoutRoutes from './routes/payoutRoutes.js';
 import creatorRoutes from './routes/creatorRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import brandCampaignRoutes from './routes/campaign.routes.js';
 
 // ... other imports
 
@@ -87,6 +88,7 @@ app.use('/api/payouts', payoutRoutes); // Creator Payouts
 app.use('/api/creators', creatorRoutes); // Creator specific routes
 app.use('/api/referrals', referralRoutes); // Phase 3: Referral System
 app.use('/api/dashboard', dashboardRoutes); // Brand Dashboard API
+app.use('/api/v1/brand/campaigns', brandCampaignRoutes); // Campaign Wizard & Detail
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

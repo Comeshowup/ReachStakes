@@ -187,36 +187,82 @@ model Campaign {
   platformRequired String?         @map("platform_required") @db.VarChar(50)
   campaignType     String?         @map("campaign_type") @db.VarChar(50)
   status           CampaignStatus? @default(Draft)
-  targetBudget     Decimal?        @map("target_budget") @db.Decimal(10, 2) // Single budget amount
+  targetBudget     Decimal?        @map("target_budget") @db.Decimal(10, 2)
   deadline         DateTime?       @db.Date
 
-  // Contractual Details (New)
-  usageRights            String? @map("usage_rights") @db.VarChar(100) // e.g., "30 Days", "Perpetual"
-  usageCategory          String? @map("usage_category") @db.VarChar(100) // e.g., "Digital Only", "All Media"
+  // Campaign Wizard Fields
+  objective          String?   @db.VarChar(100)
+  targetRoas         Decimal?  @map("target_roas") @db.Decimal(10, 4)
+  escrowPercentage   Decimal?  @map("escrow_percentage") @db.Decimal(5, 2)
+  paymentModel       String?   @map("payment_model") @db.VarChar(50)
+  creatorFilters     Json?     @map("creator_filters")
+  startDate          DateTime? @map("start_date")
+  endDate            DateTime? @map("end_date")
+  autoPauseThreshold Decimal?  @map("auto_pause_threshold") @db.Decimal(5, 2)
+  riskScoreCached    Int?      @default(0) @map("risk_score_cached")
+
+  // Contractual Details
+  usageRights            String? @map("usage_rights") @db.VarChar(100)
+  usageCategory          String? @map("usage_category") @db.VarChar(100)
   exclusivity            String? @map("exclusivity") @db.VarChar(100)
-  exclusivityPeriod      Int?    @map("exclusivity_period") // Days
+  exclusivityPeriod      Int?    @map("exclusivity_period")
   isWhitelistingRequired Boolean @default(false) @map("is_whitelisting_required")
-  contentUsageScope      String? @map("content_usage_scope") @db.VarChar(255) // e.g., "Organic, Paid Social"
+  contentUsageScope      String? @map("content_usage_scope") @db.VarChar(255)
 
   // Escrow / Vault
   escrowBalance   Decimal?      @default(0.00) @map("escrow_balance") @db.Decimal(10, 2)
-  totalFunded     Decimal?      @default(0.00) @map("total_funded") @db.Decimal(10, 2) // Sum of all funding transactions
-  totalReleased   Decimal?      @default(0.00) @map("total_released") @db.Decimal(10, 2) // Sum of creator payouts
+  totalFunded     Decimal?      @default(0.00) @map("total_funded") @db.Decimal(10, 2)
+  totalReleased   Decimal?      @default(0.00) @map("total_released") @db.Decimal(10, 2)
   escrowStatus    EscrowStatus? @default(Locked) @map("escrow_status")
   payoutSpeed     PayoutSpeed?  @default(Standard) @map("payout_speed")
   escrowFundedAt  DateTime?     @map("escrow_funded_at")
   isGuaranteedPay Boolean       @default(false) @map("is_guaranteed_pay")
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
 
   brand User @relation("BrandCampaigns", fields: [brandId], references: [id], onDelete: Cascade)
 
   collaborations CampaignCollaboration[]
   transactions   Transaction[]
   analytics      AnalyticsDaily[]
+  campaignEscrow CampaignEscrow?
+  events         CampaignEvent[]
 
+  @@index([brandId])
   @@index([status])
   @@map("campaigns")
+}
+
+// 4a. Campaign Escrow (State-Level)
+model CampaignEscrow {
+  id              String   @id @default(uuid())
+  campaignId      Int      @unique @map("campaign_id")
+  lockedAmount    Decimal  @default(0.00) @db.Decimal(12, 2)
+  releasedAmount  Decimal  @default(0.00) @db.Decimal(12, 2)
+  remainingAmount Decimal  @default(0.00) @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@index([campaignId])
+  @@map("campaign_escrows")
+}
+
+// 4b. Campaign Event (Audit Log)
+model CampaignEvent {
+  id          String   @id @default(uuid())
+  campaignId  Int      @map("campaign_id")
+  type        String   @db.VarChar(50)
+  description String?  @db.Text
+  createdBy   Int?     @map("created_by")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@index([campaignId])
+  @@map("campaign_events")
 }
 
 // 5. Campaign Submissions / Collaborations

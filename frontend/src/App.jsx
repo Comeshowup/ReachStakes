@@ -6,6 +6,8 @@ import DashboardLayout from "./dashboard/layout/DashboardLayout";
 // CMODashboard removed — redirects to /brand
 import BrandCommandCenter from "./dashboard/pages/BrandCommandCenter";
 import CampaignManagement from "./dashboard/pages/CampaignManagement";
+import CreateCampaignPage from "./dashboard/pages/CreateCampaignPage";
+import CampaignDetailPage from "./dashboard/pages/CampaignDetailPage";
 
 import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
@@ -72,6 +74,8 @@ function App() {
       <Route path="/brand" element={<DashboardLayout />}>
         <Route index element={<BrandCommandCenter />} />
         <Route path="executive" element={<Navigate to="/brand" replace />} />
+        <Route path="campaigns/create" element={<CreateCampaignPage />} />
+        <Route path="campaigns/:id" element={<CampaignDetailPage />} />
         <Route path="campaigns" element={<CampaignManagement />} />
         <Route path="profile" element={<BrandProfile />} />
         <Route path="approvals" element={<ApprovalQueue />} />
