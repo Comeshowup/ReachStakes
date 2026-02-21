@@ -173,7 +173,7 @@ export const StepBudget = ({ data, update, errors }) => {
                         style={{ ...styles.fieldInput, cursor: 'pointer' }}
                     >
                         <option value="cpa">CPA (Cost Per Action)</option>
-                        <option value="flat">Flat Rate</option>
+                        <option value="flat_rate">Flat Rate</option>
                         <option value="hybrid">Hybrid</option>
                     </select>
                 </div>

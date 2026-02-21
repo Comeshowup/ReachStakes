@@ -19,9 +19,7 @@ import creatorRoutes from './routes/creatorRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import brandCampaignRoutes from './routes/campaign.routes.js';
-
-// ... other imports
-
+import escrowRoutes from './routes/escrowRoutes.js';
 
 import cron from 'node-cron';
 import { fetchVideoStats } from './utils/videoStats.js';
@@ -89,6 +87,7 @@ app.use('/api/creators', creatorRoutes); // Creator specific routes
 app.use('/api/referrals', referralRoutes); // Phase 3: Referral System
 app.use('/api/dashboard', dashboardRoutes); // Brand Dashboard API
 app.use('/api/v1/brand/campaigns', brandCampaignRoutes); // Campaign Wizard & Detail
+app.use('/api/escrow', escrowRoutes); // Escrow Vault
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

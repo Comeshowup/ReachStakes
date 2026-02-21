@@ -34,14 +34,15 @@ model User {
   creatorCollabs CampaignCollaboration[] @relation("CreatorCollaborations")
 
   // Financials and Content
-  transactions     Transaction[]
-  analytics        AnalyticsDaily[]
-  posts            CommunityPost[]
-  socialAccounts   SocialAccount[]
-  invoices         Invoice[]
-  contentFeedbacks ContentFeedback[]
-  documents        Document[]
-  meetings         Meeting[]
+  transactions        Transaction[]
+  analytics           AnalyticsDaily[]
+  posts               CommunityPost[]
+  socialAccounts      SocialAccount[]
+  invoices            Invoice[]
+  contentFeedbacks    ContentFeedback[]
+  documents           Document[]
+  meetings            Meeting[]
+  escrowLedgerEntries EscrowLedger[]
 
   @@index([email])
   @@index([role])
@@ -228,6 +229,7 @@ model Campaign {
   analytics      AnalyticsDaily[]
   campaignEscrow CampaignEscrow?
   events         CampaignEvent[]
+  escrowLedger   EscrowLedger[]
 
   @@index([brandId])
   @@index([status])
@@ -673,4 +675,36 @@ model CreatorPayout {
 
   @@index([creatorId, status])
   @@map("creator_payouts")
+}
+
+// 15. Escrow Ledger (Audit Trail)
+model EscrowLedger {
+  id          String             @id @default(uuid())
+  brandId     Int                @map("brand_id")
+  campaignId  Int                @map("campaign_id")
+  milestoneId String?            @map("milestone_id") @db.VarChar(100)
+  type        EscrowLedgerType
+  amount      Decimal            @db.Decimal(12, 2)
+  status      EscrowLedgerStatus @default(Completed)
+  description String?            @db.Text
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  brand    User     @relation(fields: [brandId], references: [id])
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@index([brandId])
+  @@index([campaignId])
+  @@map("escrow_ledger")
+}
+
+enum EscrowLedgerType {
+  Funding
+  Release
+  Adjustment
+}
+
+enum EscrowLedgerStatus {
+  Completed
+  Pending
+  Failed
 }
