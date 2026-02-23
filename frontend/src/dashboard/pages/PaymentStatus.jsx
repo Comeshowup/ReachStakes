@@ -110,10 +110,20 @@ const PaymentStatus = () => {
         }
     }, [transaction?.id, returnStatus]);
 
-    // Poll & auto-verify for pending transactions
+    // Poll & auto-verify for pending transactions (max 30 attempts = ~5 min)
     useEffect(() => {
         if (transaction?.status === 'Pending') {
-            const interval = setInterval(() => verifyWithTazapay(), 10000);
+            let pollCount = 0;
+            const MAX_POLLS = 30;
+            const interval = setInterval(() => {
+                pollCount++;
+                if (pollCount >= MAX_POLLS) {
+                    clearInterval(interval);
+                    setVerifyMessage('Automatic verification timed out. Use the button below to verify manually.');
+                    return;
+                }
+                verifyWithTazapay();
+            }, 10000);
             return () => clearInterval(interval);
         }
     }, [transaction?.status]);

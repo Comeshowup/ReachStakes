@@ -1,4 +1,4 @@
-import { tazapayService } from '../services/tazapayService.js';
+import { tazapayService, TazapayError } from '../services/tazapayService.js';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -7,16 +7,39 @@ const prisma = new PrismaClient();
 const PLATFORM_FEE_PERCENT = 5;
 const PROCESSING_FEE_PERCENT = 2.9;
 
+// Amount limits
+const MIN_AMOUNT = 1;      // $1 minimum
+const MAX_AMOUNT = 50000;  // $50,000 maximum
+
+/**
+ * Send a structured error response
+ */
+const sendError = (res, statusCode, error, code = 'UNKNOWN', details = null) => {
+    return res.status(statusCode).json({
+        error: typeof error === 'string' ? error : error.message,
+        code,
+        ...(details && process.env.NODE_ENV !== 'production' ? { details } : {})
+    });
+};
+
 // Calculate fees for a given amount
 export const calculateFees = async (req, res) => {
     try {
         const { amount } = req.body;
 
         if (!amount || amount <= 0) {
-            return res.status(400).json({ error: 'Valid amount is required' });
+            return sendError(res, 400, 'Valid amount is required', 'INVALID_AMOUNT');
         }
 
         const amountNum = parseFloat(amount);
+
+        if (amountNum < MIN_AMOUNT) {
+            return sendError(res, 400, `Minimum amount is $${MIN_AMOUNT}`, 'AMOUNT_TOO_LOW');
+        }
+        if (amountNum > MAX_AMOUNT) {
+            return sendError(res, 400, `Maximum amount is $${MAX_AMOUNT.toLocaleString()}`, 'AMOUNT_TOO_HIGH');
+        }
+
         const platformFee = amountNum * (PLATFORM_FEE_PERCENT / 100);
         const processingFee = amountNum * (PROCESSING_FEE_PERCENT / 100);
         const total = amountNum + platformFee + processingFee;
@@ -31,7 +54,7 @@ export const calculateFees = async (req, res) => {
         });
     } catch (error) {
         console.error('Calculate Fees Error:', error);
-        res.status(500).json({ error: 'Failed to calculate fees' });
+        sendError(res, 500, 'Failed to calculate fees', 'INTERNAL');
     }
 };
 
@@ -44,25 +67,17 @@ export const getEscrowDetails = async (req, res) => {
         const campaign = await prisma.campaign.findUnique({
             where: { id: parseInt(campaignId) },
             select: {
-                id: true,
-                title: true,
-                targetBudget: true,
-                escrowBalance: true,
-                totalFunded: true,
-                totalReleased: true,
-                escrowStatus: true,
-                isGuaranteedPay: true,
-                brandId: true
+                id: true, title: true, targetBudget: true,
+                escrowBalance: true, totalFunded: true, totalReleased: true,
+                escrowStatus: true, isGuaranteedPay: true, brandId: true
             }
         });
 
         if (!campaign) {
-            return res.status(404).json({ error: 'Campaign not found' });
+            return sendError(res, 404, 'Campaign not found', 'NOT_FOUND');
         }
-
-        // Verify ownership
         if (campaign.brandId !== userId) {
-            return res.status(403).json({ error: 'Not authorized' });
+            return sendError(res, 403, 'Not authorized', 'FORBIDDEN');
         }
 
         res.json({
@@ -73,7 +88,7 @@ export const getEscrowDetails = async (req, res) => {
         });
     } catch (error) {
         console.error('Get Escrow Details Error:', error);
-        res.status(500).json({ error: 'Failed to fetch escrow details' });
+        sendError(res, 500, 'Failed to fetch escrow details', 'INTERNAL');
     }
 };
 
@@ -82,52 +97,90 @@ export const initiatePayment = async (req, res) => {
         const { campaignId, amount } = req.body;
         const userId = req.user.id;
 
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ error: 'Valid amount is required' });
+        // ── Validation ──────────────────────────
+        if (!campaignId) {
+            return sendError(res, 400, 'Campaign ID is required', 'MISSING_CAMPAIGN_ID');
         }
 
-        // 1. Fetch Campaign and Brand details
+        const amountNum = parseFloat(amount);
+        if (!amount || isNaN(amountNum) || amountNum <= 0) {
+            return sendError(res, 400, 'Valid amount is required', 'INVALID_AMOUNT');
+        }
+        if (amountNum < MIN_AMOUNT) {
+            return sendError(res, 400, `Minimum funding amount is $${MIN_AMOUNT}`, 'AMOUNT_TOO_LOW');
+        }
+        if (amountNum > MAX_AMOUNT) {
+            return sendError(res, 400, `Maximum funding amount is $${MAX_AMOUNT.toLocaleString()}`, 'AMOUNT_TOO_HIGH');
+        }
+
+        // ── Fetch Campaign ──────────────────────
         const campaign = await prisma.campaign.findUnique({
             where: { id: parseInt(campaignId) },
             include: { brand: true }
         });
 
         if (!campaign) {
-            return res.status(404).json({ error: 'Campaign not found' });
+            return sendError(res, 404, 'Campaign not found', 'NOT_FOUND');
         }
-
-        // Verify ownership
         if (campaign.brandId !== userId) {
-            return res.status(403).json({ error: 'Not authorized to fund this campaign' });
+            return sendError(res, 403, 'Not authorized to fund this campaign', 'FORBIDDEN');
         }
 
-        // Calculate fees
-        const amountNum = parseFloat(amount);
+        // ── Idempotency: Check for existing pending transaction ──
+        const existingPending = await prisma.transaction.findFirst({
+            where: {
+                userId,
+                campaignId: campaign.id,
+                status: 'Pending',
+                // Only reuse if created within last 30 minutes
+                transactionDate: { gte: new Date(Date.now() - 30 * 60 * 1000) }
+            },
+            orderBy: { transactionDate: 'desc' }
+        });
+
+        if (existingPending && existingPending.checkoutUrl) {
+            // Return existing checkout URL if amount matches
+            const existingAmount = parseFloat(existingPending.amount);
+            if (Math.abs(existingAmount - amountNum) < 0.01) {
+                console.log(`Reusing existing pending transaction ${existingPending.id} for campaign ${campaign.id}`);
+                return res.status(200).json({
+                    message: 'Checkout session resumed',
+                    url: existingPending.checkoutUrl,
+                    transactionId: existingPending.id
+                });
+            }
+            // Different amount — mark old one as Failed before creating new
+            await prisma.transaction.update({
+                where: { id: existingPending.id },
+                data: { status: 'Failed', gatewayStatus: 'superseded' }
+            });
+        }
+
+        // ── Calculate Fees ──────────────────────
         const platformFee = amountNum * (PLATFORM_FEE_PERCENT / 100);
         const processingFee = amountNum * (PROCESSING_FEE_PERCENT / 100);
         const totalCharge = amountNum + platformFee + processingFee;
 
-        // 2. Create pending transaction record
+        // ── Create Pending Transaction ──────────
         const transaction = await prisma.transaction.create({
             data: {
-                userId: userId,
+                userId,
                 campaignId: campaign.id,
                 amount: amountNum,
                 type: 'Deposit',
                 status: 'Pending',
                 description: `Campaign Funding: ${campaign.title}`,
-                platformFee: platformFee,
-                processingFee: processingFee,
+                platformFee,
+                processingFee,
                 netAmount: amountNum
             }
         });
 
-        // 3. Create Checkout Session with Tazapay
-        // Build redirect URLs so Tazapay sends the user back to our app after payment
+        // ── Create Tazapay Checkout Session ─────
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
         const checkout = await tazapayService.createCheckoutSession({
-            amount: totalCharge, // Total including fees
+            amount: totalCharge,
             invoice_currency: 'USD',
             customer_details: {
                 name: campaign.brand.name,
@@ -139,96 +192,115 @@ export const initiatePayment = async (req, res) => {
             cancel_url: `${frontendUrl}/brand/payment/${transaction.id}?status=cancelled`,
         });
 
-        // 4. Update transaction with Tazapay reference
-        // Log the full response to see what Tazapay returns
-        console.log('Tazapay Checkout Response:', JSON.stringify(checkout, null, 2));
-
-        // Store the checkout ID (chk_ format) - needed for GET /v3/checkout/{id} verification
-        const checkoutData = checkout.data || checkout;
+        // ── Extract checkout URL and ID ─────────
+        const checkoutData = checkout?.data || checkout;
         const checkoutId = checkoutData?.id || checkoutData?.checkout_id || checkoutData?.txn_no || `ref_${Date.now()}`;
+        const checkoutUrl = checkoutData?.url || checkoutData?.checkout_url || checkout?.url;
 
+        console.log('Tazapay Checkout Created:', { checkoutId, hasUrl: !!checkoutUrl, transactionId: transaction.id });
+
+        if (!checkoutUrl) {
+            console.error('Tazapay response missing checkout URL:', JSON.stringify(checkout, null, 2));
+            // Mark transaction as failed
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: { status: 'Failed', gatewayStatus: 'no_checkout_url', metadata: checkout }
+            });
+            return sendError(res, 502, 'Payment service did not return a checkout page. Please try again.', 'NO_CHECKOUT_URL');
+        }
+
+        // ── Update transaction with Tazapay reference ──
         await prisma.transaction.update({
             where: { id: transaction.id },
             data: {
                 tazapayReferenceId: checkoutId,
-                checkoutUrl: checkoutData?.url || checkout.url
+                checkoutUrl: checkoutUrl
             }
         });
 
         res.status(200).json({
             message: 'Checkout initiated',
-            url: checkoutData?.url || checkout.url,
+            url: checkoutUrl,
             transactionId: transaction.id
         });
 
     } catch (error) {
         console.error('Initiate Payment Error:', error);
-        res.status(500).json({ error: 'Failed to initiate payment' });
+
+        if (error instanceof TazapayError) {
+            return sendError(res, error.statusCode, error.message, error.code, error.details);
+        }
+
+        sendError(res, 500, 'Failed to initiate payment. Please try again.', 'INTERNAL');
     }
 };
 
 // Verify payment status by checking Tazapay API directly
-// This is essential for local dev where webhooks can't reach localhost
 export const verifyPayment = async (req, res) => {
     try {
         const { transactionId } = req.params;
         const userId = req.user.id;
 
-        // 1. Find the transaction
         const transaction = await prisma.transaction.findFirst({
             where: {
                 id: parseInt(transactionId),
-                userId: userId
+                userId
             }
         });
 
         if (!transaction) {
-            return res.status(404).json({ error: 'Transaction not found' });
+            return sendError(res, 404, 'Transaction not found', 'NOT_FOUND');
         }
 
-        // If already completed or failed, just return current status
-        if (transaction.status === 'Completed' || transaction.status === 'Failed') {
-            return res.json({ status: transaction.status, message: `Transaction already ${transaction.status.toLowerCase()}` });
+        // If already completed or failed, return current status
+        if (transaction.status === 'Completed') {
+            return res.json({ status: 'Completed', message: 'Payment already confirmed' });
+        }
+        if (transaction.status === 'Failed') {
+            return res.json({ status: 'Failed', message: 'Payment was not successful' });
         }
 
-        // 2. Check with Tazapay API using the reference ID
         const referenceId = transaction.tazapayReferenceId;
         if (!referenceId) {
-            return res.json({ status: 'Pending', message: 'No Tazapay reference found yet' });
+            return res.json({ status: 'Pending', message: 'Payment is being initialized' });
         }
 
+        // ── Check with Tazapay API ──────────────
         let tazapayStatus;
         try {
             tazapayStatus = await tazapayService.getCheckoutStatus(referenceId);
-            console.log('Tazapay Checkout Status Response:', JSON.stringify(tazapayStatus, null, 2));
+            console.log('Tazapay Verification Response:', JSON.stringify({
+                id: tazapayStatus?.data?.id,
+                status: tazapayStatus?.data?.status,
+                payment_status: tazapayStatus?.data?.payment_status
+            }));
         } catch (err) {
-            console.error('Could not verify with Tazapay:', err.message);
-            return res.json({ status: 'Pending', message: 'Unable to verify with Tazapay, still pending' });
+            console.error('Verification API call failed:', err.message);
+            return res.json({ status: 'Pending', message: 'Verification in progress, please wait...' });
         }
 
-        // 3. Determine payment status from Tazapay response
-        // IMPORTANT: checkoutData.status = checkout session status ("active")
-        //            checkoutData.payment_status = actual payment result ("paid")
+        // ── Determine payment status ────────────
         const checkoutData = tazapayStatus?.data || tazapayStatus;
-        const paymentStatus = checkoutData?.payment_status || '';
-
-        // Also check individual payment attempts for confirmation
+        const paymentStatus = (checkoutData?.payment_status || '').toLowerCase();
+        const checkoutStatus = (checkoutData?.status || '').toLowerCase();
         const latestAttempt = checkoutData?.payment_attempts?.[0];
-        const attemptStatus = latestAttempt?.status || '';
+        const attemptStatus = (latestAttempt?.status || '').toLowerCase();
 
-        const isPaid = ['paid', 'success', 'completed', 'payment_completed'].includes(paymentStatus.toLowerCase())
+        const isPaid = ['paid', 'success', 'completed', 'payment_completed'].includes(paymentStatus)
             || attemptStatus === 'succeeded';
-        const isFailed = ['failed', 'expired', 'cancelled', 'canceled'].includes(paymentStatus.toLowerCase())
+
+        const isFailed = ['failed', 'expired', 'cancelled', 'canceled'].includes(paymentStatus)
+            || ['failed', 'expired'].includes(checkoutStatus)
             || attemptStatus === 'failed';
 
         if (isPaid) {
-            // Update transaction to Completed
+            // ── Payment Confirmed ───────────────
             await prisma.transaction.update({
                 where: { id: transaction.id },
                 data: {
                     status: 'Completed',
                     processedAt: new Date(),
-                    gatewayStatus: paymentStatus,
+                    gatewayStatus: paymentStatus || 'paid',
                     metadata: tazapayStatus
                 }
             });
@@ -247,7 +319,7 @@ export const verifyPayment = async (req, res) => {
                                 isGuaranteedPay: true
                             }
                         });
-                        console.log(`✅ Verified & updated campaign ${transaction.campaignId} balance by ${incrementAmount}`);
+                        console.log(`✅ Campaign ${transaction.campaignId} funded: +$${incrementAmount}`);
                     } catch (campError) {
                         console.error(`Failed to update campaign balance: ${campError.message}`);
                     }
@@ -255,23 +327,34 @@ export const verifyPayment = async (req, res) => {
             }
 
             return res.json({ status: 'Completed', message: 'Payment verified and confirmed!' });
+
         } else if (isFailed) {
+            // ── Payment Failed ──────────────────
             await prisma.transaction.update({
                 where: { id: transaction.id },
                 data: {
                     status: 'Failed',
-                    gatewayStatus: paymentStatus,
+                    gatewayStatus: paymentStatus || checkoutStatus || 'failed',
                     metadata: tazapayStatus
                 }
             });
-            return res.json({ status: 'Failed', message: `Payment ${paymentStatus}` });
+            return res.json({ status: 'Failed', message: `Payment ${paymentStatus || 'was not completed'}` });
         }
 
-        // Still pending
-        return res.json({ status: 'Pending', message: `Tazapay status: ${paymentStatus || 'awaiting payment'}` });
+        // ── Still Pending ───────────────────────
+        return res.json({
+            status: 'Pending',
+            message: paymentStatus
+                ? `Payment status: ${paymentStatus}`
+                : 'Waiting for payment to be completed...'
+        });
+
     } catch (error) {
         console.error('Verify Payment Error:', error);
-        res.status(500).json({ error: 'Failed to verify payment' });
+        if (error instanceof TazapayError) {
+            return sendError(res, error.statusCode, error.message, error.code);
+        }
+        sendError(res, 500, 'Failed to verify payment', 'INTERNAL');
     }
 };
 
@@ -280,17 +363,16 @@ export const handleWebhook = async (req, res) => {
         const event = req.body;
         console.log('Tazapay Webhook Event:', JSON.stringify(event, null, 2));
 
-        // 1. Verify source
+        // ── Verify Signature ────────────────────
         if (!tazapayService.verifyWebhook(req)) {
             console.error('Webhook signature verification failed');
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
-        // Extract event type and data - Tazapay may nest data differently
+        // ── Extract event data ──────────────────
         const eventType = event.type || event.event_type || '';
         const eventData = event.data || event;
 
-        // Extract reference ID from multiple possible locations
         const referenceId = eventData.reference_id
             || eventData.txn_no
             || event.reference_id
@@ -298,64 +380,41 @@ export const handleWebhook = async (req, res) => {
             || eventData.checkout_id
             || event.checkout_id;
 
-        console.log(`Webhook Event Type: ${eventType}, Reference ID: ${referenceId}`);
+        console.log(`Webhook: type=${eventType}, reference=${referenceId}`);
 
-        // 2. Handle payment success - check for all possible success event types
+        // ── Handle Payment Success ──────────────
         const successEventTypes = [
-            'checkout.paid',
-            'payment.succeeded',
-            'payment_attempt.succeeded',
-            'payin.success',
-            'transaction.success'
+            'checkout.paid', 'payment.succeeded', 'payment_attempt.succeeded',
+            'payin.success', 'transaction.success'
         ];
 
         const isSuccessEvent = successEventTypes.includes(eventType)
-            || event.status === 'success'
-            || event.status === 'paid'
-            || eventData.status === 'success'
-            || eventData.status === 'paid';
+            || event.status === 'success' || event.status === 'paid'
+            || eventData.status === 'success' || eventData.status === 'paid';
 
         if (isSuccessEvent && referenceId) {
-            // Find transaction by Tazapay reference
             let transaction = await prisma.transaction.findFirst({
                 where: { tazapayReferenceId: referenceId }
             });
 
-            // If not found by reference, try finding by pattern match if it looks like our custom ref
             if (!transaction && typeof referenceId === 'string') {
                 transaction = await prisma.transaction.findFirst({
                     where: {
-                        tazapayReferenceId: {
-                            contains: referenceId.split('_')[1] || referenceId
-                        }
+                        tazapayReferenceId: { contains: referenceId.split('_')[1] || referenceId }
                     }
                 });
             }
 
-            // Also try to find pending transactions if reference doesn't match
-            if (!transaction) {
-                // Get the most recent pending transaction as a fallback
-                // WARNING: This falls back to ANY pending transaction, which might be risky in high volume
-                // Added 1 min time window check to be safer or just rely on IDs for now.
-                // For now, let's keep it but log a warning.
-                console.log('Could not find transaction by reference, looking for recent pending...');
-                transaction = await prisma.transaction.findFirst({
-                    where: { status: 'Pending' },
-                    orderBy: { transactionDate: 'desc' }
-                });
-            }
-
             if (transaction) {
-                // Extract received amount from webhook data (Tazapay sends amount in cents)
-                // Check various possible locations for the paid/received amount
-                const paidAmountCents = eventData.amount_paid
-                    || eventData.paid_amount
-                    || eventData.amount
-                    || event.amount_paid
-                    || event.paid_amount
-                    || event.amount;
+                // Don't process if already completed (idempotent)
+                if (transaction.status === 'Completed') {
+                    console.log(`Webhook: Transaction ${transaction.id} already completed, skipping`);
+                    return res.status(200).json({ received: true });
+                }
 
-                // Convert from cents to dollars if we have a value
+                const paidAmountCents = eventData.amount_paid || eventData.paid_amount
+                    || eventData.amount || event.amount_paid || event.paid_amount || event.amount;
+
                 let receivedAmount = null;
                 if (paidAmountCents !== undefined && paidAmountCents !== null) {
                     const parsedCents = parseFloat(paidAmountCents);
@@ -366,76 +425,59 @@ export const handleWebhook = async (req, res) => {
 
                 const receivedCurrency = eventData.currency || event.currency || eventData.invoice_currency || 'USD';
 
-                console.log(`Received Amount: ${receivedAmount} ${receivedCurrency}`);
-
-                // Update transaction status
                 await prisma.transaction.update({
                     where: { id: transaction.id },
                     data: {
                         status: 'Completed',
                         processedAt: new Date(),
                         gatewayStatus: eventData.status || event.status || 'success',
-                        tazapayReferenceId: referenceId, // Update with actual reference
-                        receivedAmount: receivedAmount || undefined, // undefined to skip update if null
-                        receivedCurrency: receivedCurrency,
+                        tazapayReferenceId: referenceId,
+                        receivedAmount: receivedAmount || undefined,
+                        receivedCurrency,
                         metadata: event
                     }
                 });
 
-                // Update campaign escrow balance
                 if (transaction.campaignId) {
-                    // Ensure netAmount is valid for increment
                     const incrementAmount = transaction.netAmount || transaction.amount || 0;
-
                     if (Number(incrementAmount) > 0) {
                         try {
                             await prisma.campaign.update({
                                 where: { id: transaction.campaignId },
                                 data: {
-                                    escrowBalance: {
-                                        increment: incrementAmount
-                                    },
-                                    totalFunded: {
-                                        increment: incrementAmount
-                                    },
+                                    escrowBalance: { increment: incrementAmount },
+                                    totalFunded: { increment: incrementAmount },
                                     escrowFundedAt: new Date(),
                                     isGuaranteedPay: true
                                 }
                             });
-                            console.log(`Updated campaign ${transaction.campaignId} balance by ${incrementAmount}`);
+                            console.log(`✅ Webhook: Campaign ${transaction.campaignId} funded +$${incrementAmount}`);
                         } catch (campError) {
-                            console.error(`Failed to update campaign balance: ${campError.message}`);
-                            // Do not re-throw, so we return 200 for the webhook
+                            console.error(`Webhook: Failed to update campaign: ${campError.message}`);
                         }
-                    } else {
-                        console.warn(`Transaction ${transaction.id} has invalid amount ${incrementAmount}, skipping campaign balance update.`);
                     }
                 }
 
-                console.log(`✅ Payment completed for transaction ${transaction.id}`);
+                console.log(`✅ Webhook: Transaction ${transaction.id} completed`);
             } else {
-                console.log(`⚠️ No matching transaction found for reference: ${referenceId}`);
+                console.warn(`⚠️ Webhook: No transaction found for reference ${referenceId}`);
             }
         }
 
-        // 3. Handle payment failure
+        // ── Handle Payment Failure ──────────────
         const failureEventTypes = [
-            'payment.failed',
-            'payment_attempt.failed',
-            'checkout.failed',
-            'payin.failed'
+            'payment.failed', 'payment_attempt.failed', 'checkout.failed', 'payin.failed'
         ];
 
         const isFailureEvent = failureEventTypes.includes(eventType)
-            || event.status === 'failed'
-            || eventData.status === 'failed';
+            || event.status === 'failed' || eventData.status === 'failed';
 
         if (isFailureEvent && referenceId) {
             const transaction = await prisma.transaction.findFirst({
                 where: { tazapayReferenceId: referenceId }
             });
 
-            if (transaction) {
+            if (transaction && transaction.status !== 'Completed') {
                 await prisma.transaction.update({
                     where: { id: transaction.id },
                     data: {
@@ -444,15 +486,15 @@ export const handleWebhook = async (req, res) => {
                         metadata: event
                     }
                 });
-
-                console.log(`❌ Payment failed for transaction ${transaction.id}`);
+                console.log(`❌ Webhook: Transaction ${transaction.id} failed`);
             }
         }
 
         res.status(200).json({ received: true });
     } catch (error) {
-        console.error('Webhook Error Full:', error);
-        res.status(500).json({ error: 'Webhook processing failed' });
+        console.error('Webhook Error:', error);
+        // Always return 200 for webhooks to prevent retries on processing errors
+        res.status(200).json({ received: true, error: 'Processing error' });
     }
 };
 
@@ -463,25 +505,19 @@ export const getTransactionHistory = async (req, res) => {
         const { campaignId } = req.query;
 
         const where = { userId };
-        if (campaignId) {
-            where.campaignId = parseInt(campaignId);
-        }
+        if (campaignId) where.campaignId = parseInt(campaignId);
 
         const transactions = await prisma.transaction.findMany({
             where,
             orderBy: { transactionDate: 'desc' },
-            include: {
-                campaign: {
-                    select: { title: true }
-                }
-            },
+            include: { campaign: { select: { title: true } } },
             take: 50
         });
 
         res.json(transactions);
     } catch (error) {
         console.error('Get Transaction History Error:', error);
-        res.status(500).json({ error: 'Failed to fetch transactions' });
+        sendError(res, 500, 'Failed to fetch transactions', 'INTERNAL');
     }
 };
 
@@ -492,24 +528,14 @@ export const getTransactionStatus = async (req, res) => {
         const userId = req.user.id;
 
         const transaction = await prisma.transaction.findFirst({
-            where: {
-                id: parseInt(transactionId),
-                userId: userId
-            },
+            where: { id: parseInt(transactionId), userId },
             include: {
-                campaign: {
-                    select: {
-                        id: true,
-                        title: true,
-                        escrowBalance: true,
-                        targetBudget: true
-                    }
-                }
+                campaign: { select: { id: true, title: true, escrowBalance: true, targetBudget: true } }
             }
         });
 
         if (!transaction) {
-            return res.status(404).json({ error: 'Transaction not found' });
+            return sendError(res, 404, 'Transaction not found', 'NOT_FOUND');
         }
 
         res.json({
@@ -532,6 +558,6 @@ export const getTransactionStatus = async (req, res) => {
         });
     } catch (error) {
         console.error('Get Transaction Status Error:', error);
-        res.status(500).json({ error: 'Failed to fetch transaction status' });
+        sendError(res, 500, 'Failed to fetch transaction status', 'INTERNAL');
     }
 };

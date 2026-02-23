@@ -95,7 +95,9 @@ const FundCampaignModal = ({ isOpen, onClose, campaign, onFundSuccess }) => {
                 onClose();
             }
         } catch (err) {
-            setError(err?.response?.data?.message || 'Payment initiation failed. Please try again.');
+            // paymentService.js now throws structured errors with userMessage, code, message
+            const userMessage = err?.userMessage || err?.message || 'Payment initiation failed. Please try again.';
+            setError(userMessage);
             setSubmitting(false);
         }
     }, [amount, agreed, campaign, onFundSuccess, onClose]);

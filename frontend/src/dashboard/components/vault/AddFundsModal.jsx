@@ -2,14 +2,19 @@ import React, { useState, useEffect, memo } from 'react';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../../utils/formatCurrency';
 
+// Fee constants (match backend)
+const PLATFORM_FEE_PERCENT = 5;
+const PROCESSING_FEE_PERCENT = 2.9;
+
 /**
- * AddFundsModal — Deposit funds into the vault.
+ * AddFundsModal — Deposit funds into the vault via Tazapay payment.
  * Accepts optional minimumAmount + context for insufficient-funds redirect flow.
  */
 function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount, fundingContext }) {
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Wire');
     const [error, setError] = useState('');
+    const [redirecting, setRedirecting] = useState(false);
 
     // Pre-fill with minimum amount when provided (from insufficient-funds redirect)
     useEffect(() => {
@@ -18,12 +23,25 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
         }
     }, [isOpen, minimumAmount]);
 
+    // Reset on close
+    useEffect(() => {
+        if (!isOpen) {
+            setRedirecting(false);
+            setError('');
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const parsedAmount = parseFloat(amount);
     const hasMinimum = minimumAmount && minimumAmount > 0;
     const meetsMinimum = !hasMinimum || parsedAmount >= minimumAmount;
     const isValid = parsedAmount > 0 && parsedAmount <= 10000000 && meetsMinimum;
+
+    // Fee preview
+    const platformFee = parsedAmount > 0 ? parsedAmount * (PLATFORM_FEE_PERCENT / 100) : 0;
+    const processingFee = parsedAmount > 0 ? parsedAmount * (PROCESSING_FEE_PERCENT / 100) : 0;
+    const totalCharge = parsedAmount + platformFee + processingFee;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -40,11 +58,22 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
         }
 
         try {
-            await onSubmit({ amount: parsedAmount, method });
-            toast.success(`Successfully deposited ${formatCurrency(parsedAmount)} via ${method}`);
-            setAmount('');
-            setMethod('Wire');
-            onClose();
+            const result = await onSubmit({ amount: parsedAmount, method });
+
+            // Check if the backend returned a Tazapay checkout URL
+            if (result?.data?.url || result?.url) {
+                const checkoutUrl = result?.data?.url || result?.url;
+                setRedirecting(true);
+                toast.success('Redirecting to payment gateway...');
+                // Redirect to Tazapay checkout page
+                window.location.href = checkoutUrl;
+            } else {
+                // Fallback: direct deposit (no payment gateway)
+                toast.success(`Successfully deposited ${formatCurrency(parsedAmount)}`);
+                setAmount('');
+                setMethod('Wire');
+                onClose();
+            }
         } catch (err) {
             setError(err?.response?.data?.message || err?.message || 'Deposit failed. Please try again.');
         }
@@ -91,6 +120,28 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                             </div>
                         </label>
 
+                        {/* Fee breakdown */}
+                        {parsedAmount > 0 && (
+                            <div className="vault-modal__fees" style={{ margin: '12px 0', padding: '12px', background: 'var(--surface-secondary, #f8f9fa)', borderRadius: '8px', fontSize: '13px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>Deposit amount</span>
+                                    <span>{formatCurrency(parsedAmount)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', opacity: 0.7 }}>
+                                    <span>Platform fee ({PLATFORM_FEE_PERCENT}%)</span>
+                                    <span>{formatCurrency(platformFee)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', opacity: 0.7 }}>
+                                    <span>Processing fee ({PROCESSING_FEE_PERCENT}%)</span>
+                                    <span>{formatCurrency(processingFee)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, borderTop: '1px solid var(--border-primary, #e0e0e0)', paddingTop: '8px' }}>
+                                    <span>Total charge</span>
+                                    <span>{formatCurrency(totalCharge)}</span>
+                                </div>
+                            </div>
+                        )}
+
                         <label className="vault-modal__label">
                             Funding Method
                             <div className="vault-modal__method-group">
@@ -114,9 +165,14 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                         <button
                             type="submit"
                             className="vault-modal__btn vault-modal__btn--submit"
-                            disabled={!isValid || isSubmitting}
+                            disabled={!isValid || isSubmitting || redirecting}
                         >
-                            {isSubmitting ? (
+                            {redirecting ? (
+                                <>
+                                    <span className="vault-modal__spinner" />
+                                    Redirecting to payment...
+                                </>
+                            ) : isSubmitting ? (
                                 <span className="vault-modal__spinner" />
                             ) : (
                                 <>Deposit {amount ? formatCurrency(parsedAmount) : ''}</>
@@ -130,3 +186,4 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
 }
 
 export default memo(AddFundsModal);
+

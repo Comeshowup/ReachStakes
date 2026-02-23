@@ -3,6 +3,12 @@
  * All endpoints require authentication. Brand ownership is validated.
  */
 import { EscrowService } from '../services/escrow.service.js';
+import { tazapayService } from '../services/tazapayService.js';
+import { prisma } from '../config/db.js';
+
+// Fee constants (match paymentController.js)
+const PLATFORM_FEE_PERCENT = 5;
+const PROCESSING_FEE_PERCENT = 2.9;
 
 /**
  * @desc    Get escrow vault overview (KPIs, liquidity, trends)
@@ -83,7 +89,7 @@ export const fundCampaign = async (req, res) => {
 };
 
 /**
- * @desc    Deposit funds into vault (general fund)
+ * @desc    Deposit funds into vault via Tazapay checkout
  * @route   POST /api/escrow/deposit
  * @access  Private/Brand
  */
@@ -99,11 +105,96 @@ export const depositFunds = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Amount exceeds maximum allowed ($10,000,000).' });
         }
 
-        const result = await EscrowService.depositFunds(brandId, amount, method);
-        res.json({ status: 'success', data: result });
+        // Get user details for Tazapay checkout
+        const user = await prisma.user.findUnique({ where: { id: brandId } });
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: 'User not found.' });
+        }
+
+        // Calculate fees
+        const platformFee = amount * (PLATFORM_FEE_PERCENT / 100);
+        const processingFee = amount * (PROCESSING_FEE_PERCENT / 100);
+        const totalCharge = amount + platformFee + processingFee;
+
+        // Create a Pending transaction record
+        const transaction = await prisma.transaction.create({
+            data: {
+                userId: brandId,
+                amount,
+                type: 'Deposit',
+                status: 'Pending',
+                description: `Vault deposit: $${amount.toFixed(2)} via ${method || 'Tazapay'}`,
+                platformFee,
+                processingFee,
+                netAmount: amount,
+                transactionDate: new Date(),
+            },
+        });
+
+        // Create Tazapay Checkout Session
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+        const checkout = await tazapayService.createCheckoutSession({
+            amount: totalCharge,
+            invoice_currency: 'USD',
+            customer_details: {
+                name: user.name || user.email,
+                email: user.email,
+                country: 'US',
+            },
+            txn_description: `Vault Deposit (Ref: TXN-${transaction.id})`,
+            success_url: `${frontendUrl}/brand/escrow?payment=success&txn=${transaction.id}`,
+            cancel_url: `${frontendUrl}/brand/escrow?payment=cancelled&txn=${transaction.id}`,
+        });
+
+        // Extract checkout URL
+        const checkoutData = checkout?.data || checkout;
+        const checkoutUrl = checkoutData?.url || checkoutData?.checkout_url || checkout?.url;
+        const checkoutId = checkoutData?.id || checkoutData?.checkout_id || checkoutData?.txn_no || `ref_${Date.now()}`;
+
+        console.log('[EscrowController] Tazapay Checkout Created:', {
+            checkoutId,
+            hasUrl: !!checkoutUrl,
+            transactionId: transaction.id,
+            amount: totalCharge,
+        });
+
+        if (!checkoutUrl) {
+            // Mark transaction as failed
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: { status: 'Failed', gatewayStatus: 'checkout_creation_failed' },
+            });
+            return res.status(502).json({
+                status: 'error',
+                message: 'Payment gateway did not return a checkout URL. Please try again.',
+            });
+        }
+
+        // Update transaction with checkout references
+        await prisma.transaction.update({
+            where: { id: transaction.id },
+            data: {
+                checkoutUrl,
+                tazapayReferenceId: checkoutId,
+                gatewayStatus: 'checkout_created',
+            },
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                url: checkoutUrl,
+                transactionId: transaction.id,
+                amount,
+                totalCharge,
+                platformFee,
+                processingFee,
+            },
+        });
     } catch (error) {
         console.error('[EscrowController] Deposit error:', error);
-        res.status(400).json({ status: 'error', message: error.message });
+        res.status(400).json({ status: 'error', message: error.message || 'Failed to initiate deposit.' });
     }
 };
 
