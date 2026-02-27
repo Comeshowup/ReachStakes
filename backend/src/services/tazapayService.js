@@ -252,7 +252,8 @@ export const tazapayService = {
         customer_details,
         txn_description,
         success_url,
-        cancel_url
+        cancel_url,
+        reference_id // New: allow passing reference_id
     }) => {
         // Amount in minor units (cents for USD)
         const amountInCents = Math.round(parseFloat(amount) * 100);
@@ -266,7 +267,7 @@ export const tazapayService = {
         const payload = {
             invoice_currency,
             amount: amountInCents,
-            reference_id: `txn_${Date.now()}`,
+            reference_id: reference_id || `txn_${Date.now()}`,
             transaction_description: txn_description || 'Reachstakes Campaign Funding',
             customer_details: {
                 name: customer_details.name || 'Customer',

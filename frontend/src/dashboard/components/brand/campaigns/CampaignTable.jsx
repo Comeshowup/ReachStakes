@@ -5,8 +5,8 @@ import ProgressBar from './ProgressBar';
 import { formatCurrency, formatROI, calcProgress } from './campaignUtils';
 
 /**
- * CampaignTable — table/list view.
- * Uses CSS classes for row hover, sticky columns, and all interaction states.
+ * CampaignTable — Fintech-grade table/list view.
+ * 52px row height, sticky header, right-aligned numerics.
  */
 const CampaignTable = ({ campaigns, onView }) => {
     if (campaigns.length === 0) return null;
@@ -14,10 +14,10 @@ const CampaignTable = ({ campaigns, onView }) => {
     return (
         <div className="bd-cm-table-wrap">
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left" style={{ fontSize: 'var(--bd-font-size-sm)' }}>
                     <thead>
-                        <tr className="bd-cm-separator">
-                            <th className="h-11 px-4 w-10 sticky left-0 z-10 bd-cm-sticky-surface">
+                        <tr style={{ borderBottom: '1px solid var(--bd-border-subtle)' }}>
+                            <th className="px-4 w-10 sticky left-0 z-10 bd-cm-sticky-surface" style={{ height: 44 }}>
                                 <input
                                     type="checkbox"
                                     className="rounded bd-cm-focus-ring"
@@ -31,7 +31,7 @@ const CampaignTable = ({ campaigns, onView }) => {
                             <HeadCell align="right">ROI</HeadCell>
                             <HeadCell align="center">Creators</HeadCell>
                             <HeadCell className="w-32">Progress</HeadCell>
-                            <th className="h-11 px-4 w-10 sticky right-0 z-10 bd-cm-sticky-surface" />
+                            <th className="px-4 w-10 sticky right-0 z-10 bd-cm-sticky-surface" style={{ height: 44 }} />
                         </tr>
                     </thead>
                     <tbody>
@@ -44,8 +44,9 @@ const CampaignTable = ({ campaigns, onView }) => {
                                     key={campaign.id}
                                     onClick={() => onView(campaign.id)}
                                     className="bd-cm-table-row group"
+                                    style={{ height: 52 }}
                                 >
-                                    <td className="py-3 px-4 sticky left-0 z-10 bd-cm-sticky-surface">
+                                    <td className="px-4 sticky left-0 z-10 bd-cm-sticky-surface" style={{ verticalAlign: 'middle' }}>
                                         <input
                                             type="checkbox"
                                             className="rounded bd-cm-focus-ring"
@@ -53,7 +54,7 @@ const CampaignTable = ({ campaigns, onView }) => {
                                             aria-label={`Select ${campaign.name}`}
                                         />
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="px-4" style={{ verticalAlign: 'middle' }}>
                                         <span
                                             className="font-medium truncate block max-w-[200px]"
                                             style={{ color: 'var(--bd-text-primary)' }}
@@ -61,43 +62,37 @@ const CampaignTable = ({ campaigns, onView }) => {
                                             {campaign.name}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="px-4" style={{ verticalAlign: 'middle' }}>
                                         <StatusBadge status={campaign.status} />
                                     </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="bd-cm-value text-sm">{formatCurrency(campaign.budget)}</span>
+                                    <td className="px-4 text-right" style={{ verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--bd-font-mono)' }}>
+                                        <span style={{ color: 'var(--bd-text-primary)', fontWeight: 600, fontSize: '0.875rem' }}>{formatCurrency(campaign.budget)}</span>
                                     </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span
-                                            className="text-sm font-medium"
-                                            style={{ color: 'var(--bd-text-secondary)', fontVariantNumeric: 'tabular-nums' }}
-                                        >
+                                    <td className="px-4 text-right" style={{ verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--bd-font-mono)' }}>
+                                        <span style={{ color: 'var(--bd-text-secondary)', fontSize: '0.875rem' }}>
                                             {formatCurrency(campaign.spent)}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4 text-right">
+                                    <td className="px-4 text-right" style={{ verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--bd-font-mono)' }}>
                                         <span
-                                            className="text-sm font-medium"
                                             style={{
                                                 color: roi.isPositive ? 'var(--bd-success)' : 'var(--bd-text-muted)',
-                                                fontVariantNumeric: 'tabular-nums',
+                                                fontWeight: 500,
+                                                fontSize: '0.875rem',
                                             }}
                                         >
                                             {roi.text}
                                         </span>
                                     </td>
-                                    <td
-                                        className="py-3 px-4 text-center text-sm"
-                                        style={{ color: 'var(--bd-text-secondary)' }}
-                                    >
+                                    <td className="px-4 text-center" style={{ verticalAlign: 'middle', color: 'var(--bd-text-secondary)', fontSize: '0.875rem' }}>
                                         {campaign.creators}
                                     </td>
-                                    <td className="py-3 px-4 w-32">
+                                    <td className="px-4 w-32" style={{ verticalAlign: 'middle' }}>
                                         <div className="w-full max-w-[120px]">
                                             <ProgressBar value={utilized} />
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 sticky right-0 z-10 bd-cm-sticky-surface text-right">
+                                    <td className="px-4 sticky right-0 z-10 bd-cm-sticky-surface text-right" style={{ verticalAlign: 'middle' }}>
                                         <button
                                             className="bd-cm-icon-btn bd-cm-focus-ring"
                                             onClick={(e) => e.stopPropagation()}
@@ -116,9 +111,22 @@ const CampaignTable = ({ campaigns, onView }) => {
     );
 };
 
-/** Reusable table header cell */
+/** Reusable table header cell — fintech-grade */
 const HeadCell = ({ children, align = 'left', className = '' }) => (
-    <th className={`bd-cm-label h-11 px-4 ${className}`} style={{ textAlign: align }}>
+    <th
+        className={`px-4 ${className}`}
+        style={{
+            textAlign: align,
+            height: 44,
+            fontSize: '0.6875rem',
+            fontWeight: 600,
+            color: 'var(--bd-text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            background: 'var(--bd-bg-tertiary)',
+            whiteSpace: 'nowrap',
+        }}
+    >
         {children}
     </th>
 );

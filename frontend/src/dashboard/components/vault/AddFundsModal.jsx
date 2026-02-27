@@ -12,7 +12,7 @@ const PROCESSING_FEE_PERCENT = 2.9;
  */
 function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount, fundingContext }) {
     const [amount, setAmount] = useState('');
-    const [method, setMethod] = useState('Wire');
+
     const [error, setError] = useState('');
     const [redirecting, setRedirecting] = useState(false);
 
@@ -38,10 +38,7 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
     const meetsMinimum = !hasMinimum || parsedAmount >= minimumAmount;
     const isValid = parsedAmount > 0 && parsedAmount <= 10000000 && meetsMinimum;
 
-    // Fee preview
-    const platformFee = parsedAmount > 0 ? parsedAmount * (PLATFORM_FEE_PERCENT / 100) : 0;
-    const processingFee = parsedAmount > 0 ? parsedAmount * (PROCESSING_FEE_PERCENT / 100) : 0;
-    const totalCharge = parsedAmount + platformFee + processingFee;
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -58,7 +55,7 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
         }
 
         try {
-            const result = await onSubmit({ amount: parsedAmount, method });
+            const result = await onSubmit({ amount: parsedAmount });
 
             // Check if the backend returned a Tazapay checkout URL
             if (result?.data?.url || result?.url) {
@@ -120,43 +117,6 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                             </div>
                         </label>
 
-                        {/* Fee breakdown */}
-                        {parsedAmount > 0 && (
-                            <div className="vault-modal__fees" style={{ margin: '12px 0', padding: '12px', background: 'var(--surface-secondary, #f8f9fa)', borderRadius: '8px', fontSize: '13px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                    <span>Deposit amount</span>
-                                    <span>{formatCurrency(parsedAmount)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', opacity: 0.7 }}>
-                                    <span>Platform fee ({PLATFORM_FEE_PERCENT}%)</span>
-                                    <span>{formatCurrency(platformFee)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', opacity: 0.7 }}>
-                                    <span>Processing fee ({PROCESSING_FEE_PERCENT}%)</span>
-                                    <span>{formatCurrency(processingFee)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, borderTop: '1px solid var(--border-primary, #e0e0e0)', paddingTop: '8px' }}>
-                                    <span>Total charge</span>
-                                    <span>{formatCurrency(totalCharge)}</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <label className="vault-modal__label">
-                            Funding Method
-                            <div className="vault-modal__method-group">
-                                {['Wire', 'ACH'].map((m) => (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        className={`vault-modal__method-btn ${method === m ? 'vault-modal__method-btn--active' : ''}`}
-                                        onClick={() => setMethod(m)}
-                                    >
-                                        {m} Transfer
-                                    </button>
-                                ))}
-                            </div>
-                        </label>
 
                         {error && <p className="vault-modal__error">{error}</p>}
                     </div>

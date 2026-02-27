@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 
 /**
- * TrustSnapshot - Above-the-fold business metrics
- * Shows platform reach, engagement, campaign status, and audience location
- * Designed for brands to instantly assess creator value
+ * TrustSnapshot — Above-the-fold credibility metrics.
+ * Token-driven, no gradients. Clean fintech aesthetic.
+ * Shows platform reach, engagement, campaign status, and audience location.
  */
 
 const getPlatformIcon = (platform) => {
@@ -31,64 +31,27 @@ const TrustCard = ({
     label,
     value,
     subValue,
-    variant = "default",
     delay = 0
-}) => {
-    const variants = {
-        default: "bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800",
-        success: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30",
-        info: "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800/30",
-        highlight: "bg-gradient-to-br from-indigo-500 to-purple-600 border-transparent text-white"
-    };
-
-    const isHighlight = variant === "highlight";
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, type: "spring", stiffness: 100 }}
-            className={`p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all ${variants[variant]}`}
+}) => (
+    <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="trust-strip__card"
+    >
+        <div
+            className="kpi-card-polished__icon"
+            style={{ background: 'var(--bd-bg-secondary)', marginBottom: 'var(--bd-space-3)' }}
         >
-            <div className="flex items-start gap-3">
-                <div className={`p-2.5 rounded-xl ${isHighlight
-                        ? "bg-white/20"
-                        : "bg-gray-50 dark:bg-slate-800"
-                    }`}>
-                    <Icon className={`w-5 h-5 ${isHighlight
-                            ? "text-white"
-                            : "text-indigo-600 dark:text-indigo-400"
-                        }`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${isHighlight
-                            ? "text-white/70"
-                            : "text-gray-500 dark:text-slate-400"
-                        }`}>
-                        {label}
-                    </p>
-                    <p className={`text-lg font-bold truncate ${isHighlight
-                            ? "text-white"
-                            : "text-gray-900 dark:text-white"
-                        }`}>
-                        {value}
-                    </p>
-                    {subValue && (
-                        <p className={`text-xs mt-0.5 ${isHighlight
-                                ? "text-white/60"
-                                : "text-gray-400 dark:text-slate-500"
-                            }`}>
-                            {subValue}
-                        </p>
-                    )}
-                </div>
-            </div>
-        </motion.div>
-    );
-};
+            <Icon style={{ width: 16, height: 16, color: 'var(--bd-text-secondary)' }} />
+        </div>
+        <p className="trust-strip__label">{label}</p>
+        <p className="trust-strip__value">{value}</p>
+        {subValue && <p className="trust-strip__sub">{subValue}</p>}
+    </motion.div>
+);
 
 const PlatformReachCard = ({ socialAccounts = [], totalFollowers = 0, delay = 0 }) => {
-    // Get top 2 platforms by followers
     const topPlatforms = [...socialAccounts]
         .filter(acc => acc.followersCount > 0)
         .sort((a, b) => (b.followersCount || 0) - (a.followersCount || 0))
@@ -102,41 +65,42 @@ const PlatformReachCard = ({ socialAccounts = [], totalFollowers = 0, delay = 0 
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, type: "spring", stiffness: 100 }}
-            className="p-5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all"
+            transition={{ delay, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="trust-strip__card"
         >
-            <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600">
-                    <Users className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium uppercase tracking-wider mb-1 text-gray-500 dark:text-slate-400">
-                        Total Reach
-                    </p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatFollowers(totalFollowers)}
-                    </p>
-                    {topPlatforms.length > 0 && (
-                        <div className="flex items-center gap-2 mt-2">
-                            {topPlatforms.map((acc, i) => {
-                                const PlatformIcon = getPlatformIcon(acc.platform);
-                                return (
-                                    <div
-                                        key={acc.platform}
-                                        className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400"
-                                    >
-                                        <PlatformIcon className="w-3 h-3" />
-                                        <span>{formatFollowers(acc.followersCount)}</span>
-                                        {i < topPlatforms.length - 1 && <span className="mx-1">·</span>}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+            <div
+                className="kpi-card-polished__icon"
+                style={{ background: 'var(--bd-purple-muted)', marginBottom: 'var(--bd-space-3)' }}
+            >
+                <Users style={{ width: 16, height: 16, color: 'var(--bd-purple)' }} />
             </div>
+            <p className="trust-strip__label">Total Reach</p>
+            <p className="trust-strip__value">{formatFollowers(totalFollowers)}</p>
+            {topPlatforms.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    {topPlatforms.map((acc, i) => {
+                        const PlatformIcon = getPlatformIcon(acc.platform);
+                        return (
+                            <span
+                                key={acc.platform}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    fontSize: '0.6875rem',
+                                    color: 'var(--bd-text-muted)',
+                                }}
+                            >
+                                <PlatformIcon style={{ width: 12, height: 12 }} />
+                                {formatFollowers(acc.followersCount)}
+                                {i < topPlatforms.length - 1 && <span style={{ margin: '0 2px' }}>·</span>}
+                            </span>
+                        );
+                    })}
+                </div>
+            )}
         </motion.div>
     );
 };
@@ -174,40 +138,34 @@ const TrustSnapshot = ({
         : location;
 
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-8 relative z-20 px-8">
-            {/* Platform Reach */}
+        <div className="trust-strip" style={{ position: 'relative', zIndex: 20, marginTop: '-2rem', padding: '0 2rem' }}>
             <PlatformReachCard
                 socialAccounts={socialAccounts}
                 totalFollowers={totalFollowers}
-                delay={0.1}
+                delay={0.05}
             />
 
-            {/* Engagement Rate */}
             <TrustCard
                 icon={TrendingUp}
                 label="Engagement"
                 value={formattedEngagement}
                 subValue="Avg. across platforms"
-                variant="highlight"
-                delay={0.2}
+                delay={0.1}
             />
 
-            {/* Campaign Status */}
             <TrustCard
                 icon={StatusIcon}
                 label={completedCampaigns > 0 ? "Track Record" : "Status"}
                 value={statusDisplay.value}
-                variant={statusDisplay.variant}
-                delay={0.3}
+                delay={0.15}
             />
 
-            {/* Audience Location */}
             <TrustCard
                 icon={MapPin}
                 label="Audience"
                 value={primaryRegion}
                 subValue={audienceRegions.length > 1 ? `+${audienceRegions.length - 1} more` : undefined}
-                delay={0.4}
+                delay={0.2}
             />
         </div>
     );

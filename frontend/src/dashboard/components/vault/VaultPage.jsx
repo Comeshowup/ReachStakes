@@ -1,38 +1,94 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import ErrorBoundary from '../../../components/ErrorBoundary';
 import {
     useVaultSummary,
     useVaultTransactions,
+    useVaultCampaigns,
     useSystemStatus,
-    useDepositFunds,
-    useWithdrawFunds,
-    useAllocateCampaign,
 } from '../../../hooks/useVaultData';
+import { verifyDeposit } from '../../../api/escrowService';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Components
 import VaultBalanceHeader from './VaultBalanceHeader';
 import LiquidityBreakdown from './LiquidityBreakdown';
 import TransactionLedgerTable from './TransactionLedgerTable';
-import VaultActionsPanel from './VaultActionsPanel';
 import CapitalDistributionChart from './CapitalDistributionChart';
 import SystemStatusBadge from './SystemStatusBadge';
 import StatementAlertCard from './StatementAlertCard';
+import CapitalDeploymentSection from './CapitalDeploymentSection';
 
-// Modals
-import AddFundsModal from './AddFundsModal';
-import WithdrawModal from './WithdrawModal';
-import AllocateCampaignModal from './AllocateCampaignModal';
+// Modal
+import VaultFundModal from './VaultFundModal';
 
 import '../../../styles/vault-overview.css';
 
 /**
  * VaultPage — Main Vault Overview page.
- * Assembles all vault components with React Query data.
+ * Shows vault balance, campaigns needing funding, and transaction history.
  */
 export default function VaultPage() {
+    const queryClient = useQueryClient();
+
+    // ─── Payment redirect verification ──────────────
+    const verifyAttempted = useRef(false);
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentStatus = params.get('payment');
+        const txnId = params.get('txn');
+
+        if (paymentStatus === 'success' && txnId && !verifyAttempted.current) {
+            verifyAttempted.current = true;
+
+            // Clean URL
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+
+            // Poll verify endpoint (Tazapay may take a moment)
+            const pollVerify = async (retriesLeft = 5) => {
+                try {
+                    const res = await verifyDeposit(txnId);
+                    const status = res?.data?.paymentStatus;
+
+                    if (status === 'Completed') {
+                        toast.success('Payment confirmed! Campaign funded successfully.');
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'summary'] });
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'transactions'] });
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'campaigns'] });
+                        return;
+                    }
+                    if (status === 'Failed') {
+                        toast.error('Payment was not successful.');
+                        return;
+                    }
+                    // Still pending — retry after delay
+                    if (retriesLeft > 0) {
+                        setTimeout(() => pollVerify(retriesLeft - 1), 3000);
+                    } else {
+                        toast('Payment verification is taking longer than expected. Your balance will update shortly.', { icon: '⏳' });
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'summary'] });
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'transactions'] });
+                        queryClient.invalidateQueries({ queryKey: ['vault', 'campaigns'] });
+                    }
+                } catch (err) {
+                    console.error('Verify deposit error:', err);
+                    toast.error('Could not verify payment. Please refresh the page.');
+                }
+            };
+
+            toast.loading('Verifying payment...', { id: 'verify-payment', duration: 15000 });
+            pollVerify().finally(() => toast.dismiss('verify-payment'));
+        } else if (paymentStatus === 'cancelled' && txnId) {
+            window.history.replaceState({}, '', window.location.pathname);
+            toast.error('Payment was cancelled.');
+        }
+    }, [queryClient]);
+
     // ─── Data hooks ─────────────────────────────────
     const { data: summary, isLoading: summaryLoading, error: summaryError } = useVaultSummary();
     const { data: systemStatus, isLoading: statusLoading } = useSystemStatus();
+    const { data: campaignsData, isLoading: campaignsLoading } = useVaultCampaigns();
 
     // ─── Transaction state ──────────────────────────
     const [page, setPage] = useState(1);
@@ -42,7 +98,7 @@ export default function VaultPage() {
     const [searchDebounced, setSearchDebounced] = useState('');
 
     // Debounce search
-    const searchTimerRef = React.useRef(null);
+    const searchTimerRef = useRef(null);
     const handleSearchChange = useCallback((value) => {
         setSearch(value);
         if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -57,29 +113,19 @@ export default function VaultPage() {
         isLoading: txLoading,
     } = useVaultTransactions(page, 10, { sortBy, sortOrder, search: searchDebounced });
 
-    // ─── Mutations ──────────────────────────────────
-    const depositMutation = useDepositFunds();
-    const withdrawMutation = useWithdrawFunds();
-    const allocateMutation = useAllocateCampaign();
+    // ─── Fund Modal state ───────────────────────────
+    const [selectedCampaign, setSelectedCampaign] = useState(null);
 
-    // ─── Modal state ────────────────────────────────
-    const [modal, setModal] = useState(null); // 'add' | 'withdraw' | 'allocate' | null
-    const [addFundsMinimum, setAddFundsMinimum] = useState(null);
-    const [addFundsContext, setAddFundsContext] = useState(null);
-
-    // Handler for insufficient funds redirect from allocation modal
-    const handleInsufficientFunds = useCallback(({ minimumAmount, campaignName }) => {
-        setAddFundsMinimum(minimumAmount);
-        setAddFundsContext(campaignName);
-        setModal('add');
+    const handleFundCampaign = useCallback((campaign) => {
+        setSelectedCampaign(campaign);
     }, []);
 
-    // Clear minimum when Add Funds modal closes
-    const handleAddFundsClose = useCallback(() => {
-        setModal(null);
-        setAddFundsMinimum(null);
-        setAddFundsContext(null);
-    }, []);
+    const handleFundSuccess = useCallback(() => {
+        setSelectedCampaign(null);
+        queryClient.invalidateQueries({ queryKey: ['vault', 'summary'] });
+        queryClient.invalidateQueries({ queryKey: ['vault', 'campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['vault', 'transactions'] });
+    }, [queryClient]);
 
     const handleSortChange = useCallback((col, order) => {
         setSortBy(col);
@@ -111,10 +157,10 @@ export default function VaultPage() {
                     <div className="vault-breadcrumb">
                         <span>Dashboard</span>
                         <span className="material-symbols-outlined vault-breadcrumb__sep">chevron_right</span>
-                        <span>Capital Intelligence</span>
+                        <span>Escrow Vault</span>
                     </div>
-                    <h1 className="vault-page__title">Vault Overview</h1>
-                    <p className="vault-page__subtitle">Real-time escrow vault overview and liquidity management.</p>
+                    <h1 className="vault-page__title">Escrow Vault</h1>
+                    <p className="vault-page__subtitle">Fund your campaigns and manage escrow payments.</p>
                 </div>
                 <div className="vault-page__header-right">
                     <SystemStatusBadge
@@ -152,6 +198,23 @@ export default function VaultPage() {
                         />
                     </ErrorBoundary>
 
+                    {/* Capital Deployment Section — campaign allocation engine */}
+                    <ErrorBoundary>
+                        <CapitalDeploymentSection
+                            campaigns={campaignsData?.campaigns || campaignsData || []}
+                            vault={{
+                                availableLiquidity: summary?.available ?? 0,
+                                lockedInEscrow: summary?.locked ?? 0,
+                                pendingRelease: summary?.pending ?? 0,
+                            }}
+                            onAllocate={(campaignId) => {
+                                const campaign = (campaignsData?.campaigns || campaignsData || []).find(c => c.id === campaignId);
+                                if (campaign) handleFundCampaign(campaign);
+                            }}
+                            isLoading={campaignsLoading || summaryLoading}
+                        />
+                    </ErrorBoundary>
+
                     <ErrorBoundary>
                         <TransactionLedgerTable
                             transactions={txData?.transactions ?? []}
@@ -178,41 +241,16 @@ export default function VaultPage() {
                         />
                     </ErrorBoundary>
 
-                    <ErrorBoundary>
-                        <VaultActionsPanel
-                            onAddFunds={() => setModal('add')}
-                            onWithdraw={() => setModal('withdraw')}
-                            onAllocate={() => setModal('allocate')}
-                        />
-                    </ErrorBoundary>
-
                     <StatementAlertCard />
                 </div>
             </div>
 
-            {/* ─── Modals ─── */}
-            <AddFundsModal
-                isOpen={modal === 'add'}
-                onClose={handleAddFundsClose}
-                onSubmit={(data) => depositMutation.mutateAsync(data)}
-                isSubmitting={depositMutation.isPending}
-                minimumAmount={addFundsMinimum}
-                fundingContext={addFundsContext}
-            />
-            <WithdrawModal
-                isOpen={modal === 'withdraw'}
-                onClose={() => setModal(null)}
-                onSubmit={(data) => withdrawMutation.mutateAsync(data)}
-                isSubmitting={withdrawMutation.isPending}
-                availableBalance={summary?.available ?? 0}
-            />
-            <AllocateCampaignModal
-                isOpen={modal === 'allocate'}
-                onClose={() => setModal(null)}
-                onSubmit={(data) => allocateMutation.mutateAsync(data)}
-                isSubmitting={allocateMutation.isPending}
-                availableBalance={summary?.available ?? 0}
-                onInsufficientFunds={handleInsufficientFunds}
+            {/* ─── Fund Campaign Modal ─── */}
+            <VaultFundModal
+                isOpen={!!selectedCampaign}
+                onClose={() => setSelectedCampaign(null)}
+                campaign={selectedCampaign}
+                onFundSuccess={handleFundSuccess}
             />
         </div>
     );

@@ -6,6 +6,7 @@ import {
     getEscrowCampaigns,
     fundCampaign,
     depositFunds,
+    verifyDeposit,
     withdrawFunds,
     releaseMilestone,
     getTransactions,
@@ -31,6 +32,9 @@ router.post('/fund', fundCampaign);
 
 // POST /api/escrow/deposit — Deposit to vault
 router.post('/deposit', depositFunds);
+
+// POST /api/escrow/verify-deposit — Verify deposit payment status
+router.post('/verify-deposit', verifyDeposit);
 
 // POST /api/escrow/withdraw — Withdraw from vault
 router.post('/withdraw', withdrawFunds);

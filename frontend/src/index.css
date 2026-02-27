@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/brand-theme.css";
+@import "./styles/design-polish.css";
 
 @theme {
   --color-slate-950: #020617;

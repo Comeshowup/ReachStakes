@@ -175,7 +175,7 @@ export const FEED_DATA = posts.map((post) => {
 });
 
 // Navigation Data
-import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link, BarChart3, HelpCircle } from 'lucide-react';
+import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link, BarChart3, Headphones } from 'lucide-react';
 
 export const NAV_GROUPS = [
     {
@@ -190,7 +190,7 @@ export const NAV_GROUPS = [
     {
         title: "Support",
         items: [
-            { label: "Contact Us", path: "/brand/contact", icon: HelpCircle },
+            { label: "Support Center", path: "/brand/support", icon: Headphones },
         ]
     },
     {
@@ -215,7 +215,7 @@ export const CREATOR_NAV_GROUPS = [
     {
         title: "Support",
         items: [
-            { label: "Contact Us", path: "/creator/contact", icon: HelpCircle },
+            { label: "Support Center", path: "/creator/support", icon: Headphones },
         ]
     },
     {

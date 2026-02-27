@@ -39,7 +39,7 @@ import MeetingPage from "./pages/MeetingPage/MeetingPage";
 import CampaignPage from "./pages/CampaignPage/CampaignPage";
 import PublicMediaKit from "./pages/PublicMediaKit";
 import BrandWorkspace from "./dashboard/pages/BrandWorkspace";
-import ContactUsPage from "./dashboard/pages/ContactUsPage";
+import SupportCenterPage from "./dashboard/pages/SupportCenterPage";
 import BrandOnboardingWizard from "./pages/BrandOnboardingWizard";
 import CreatorOnboardingWizard from "./pages/CreatorOnboardingWizard";
 import Pricing from "./pages/Pricing";
@@ -82,7 +82,10 @@ function App() {
         <Route path="financials" element={<EscrowVault />} />
         <Route path="escrow" element={<EscrowVault />} />
         <Route path="payment-status/:transactionId" element={<PaymentStatus />} />
-        <Route path="contact" element={<ContactUsPage />} />
+        <Route path="payment/:transactionId" element={<PaymentStatus />} />
+
+        <Route path="support" element={<SupportCenterPage />} />
+        <Route path="contact" element={<Navigate to="/brand/support" replace />} />
         <Route path="content-hub" element={<ContentHub />} />
       </Route>
 
@@ -97,7 +100,8 @@ function App() {
         <Route path="social-accounts" element={<SocialAccounts />} />
         <Route path="video-stats" element={<VideoStatsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
-        <Route path="contact" element={<ContactUsPage />} />
+        <Route path="support" element={<SupportCenterPage />} />
+        <Route path="contact" element={<Navigate to="/creator/support" replace />} />
         <Route path="onboarding-status" element={<OnboardingStatusPage />} />
       </Route>
 

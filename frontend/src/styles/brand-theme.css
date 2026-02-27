@@ -429,6 +429,40 @@
     --bd-vault-modal-method-active-bg: rgba(99, 102, 241, 0.06);
     --bd-vault-modal-method-active-border: var(--bd-accent);
     --bd-vault-modal-method-active-fg: var(--bd-accent);
+
+    /* ── Capital Deployment Section ─────────────── */
+    --bd-cd-surface: var(--bd-vault-surface-1);
+    --bd-cd-surface-muted: var(--bd-bg-secondary);
+    --bd-cd-card-bg: var(--bd-vault-surface-1);
+    --bd-cd-card-hover-border: var(--bd-border-strong);
+    --bd-cd-cta-bg: var(--bd-vault-action-primary);
+    --bd-cd-cta-hover: var(--bd-vault-action-primary-hover);
+    --bd-cd-cta-fg: var(--bd-vault-action-primary-fg);
+
+    /* ── Support Center ────────────────────────────── */
+    --bd-sc-surface: var(--p-neutral-0);
+    --bd-sc-surface-elevated: rgba(255, 255, 255, 0.85);
+    --bd-sc-chat-bg: var(--p-neutral-50);
+    --bd-sc-agent-bubble: var(--p-neutral-0);
+    --bd-sc-agent-bubble-border: rgba(0, 0, 0, 0.06);
+    --bd-sc-user-bubble: var(--p-brand-500);
+    --bd-sc-user-bubble-fg: #ffffff;
+    --bd-sc-sidebar-bg: var(--p-neutral-0);
+    --bd-sc-online: #22c55e;
+    --bd-sc-online-pulse: rgba(34, 197, 94, 0.4);
+    --bd-sc-offline: var(--p-neutral-400);
+    --bd-sc-tier-starter: var(--p-neutral-500);
+    --bd-sc-tier-starter-bg: var(--bd-bg-tertiary);
+    --bd-sc-tier-pro: var(--p-brand-600);
+    --bd-sc-tier-pro-bg: rgba(99, 102, 241, 0.08);
+    --bd-sc-tier-enterprise: var(--p-purple-600);
+    --bd-sc-tier-enterprise-bg: var(--p-purple-50);
+    --bd-sc-sla-breach: var(--p-warning-600);
+    --bd-sc-sla-breach-bg: var(--p-warning-50);
+    --bd-sc-trust-bar-bg: var(--bd-bg-tertiary);
+    --bd-sc-help-hover: rgba(0, 0, 0, 0.03);
+    --bd-sc-escalation-bg: rgba(139, 92, 246, 0.05);
+    --bd-sc-escalation-border: rgba(139, 92, 246, 0.15);
 }
 
 /* ===========================================
@@ -748,6 +782,40 @@
     --bd-vault-modal-method-active-bg: rgba(99, 102, 241, 0.1);
     --bd-vault-modal-method-active-border: var(--bd-accent);
     --bd-vault-modal-method-active-fg: var(--bd-accent);
+
+    /* ── Capital Deployment Section ─────────────── */
+    --bd-cd-surface: var(--bd-vault-surface-1);
+    --bd-cd-surface-muted: var(--bd-bg-secondary);
+    --bd-cd-card-bg: rgba(255, 255, 255, 0.03);
+    --bd-cd-card-hover-border: var(--bd-border-strong);
+    --bd-cd-cta-bg: var(--bd-vault-action-primary);
+    --bd-cd-cta-hover: var(--bd-vault-action-primary-hover);
+    --bd-cd-cta-fg: var(--bd-vault-action-primary-fg);
+
+    /* ── Support Center ────────────────────────────── */
+    --bd-sc-surface: var(--p-neutral-900);
+    --bd-sc-surface-elevated: rgba(255, 255, 255, 0.05);
+    --bd-sc-chat-bg: var(--p-neutral-950);
+    --bd-sc-agent-bubble: rgba(255, 255, 255, 0.06);
+    --bd-sc-agent-bubble-border: rgba(255, 255, 255, 0.08);
+    --bd-sc-user-bubble: var(--p-brand-500);
+    --bd-sc-user-bubble-fg: #ffffff;
+    --bd-sc-sidebar-bg: var(--p-neutral-900);
+    --bd-sc-online: #4ade80;
+    --bd-sc-online-pulse: rgba(74, 222, 128, 0.35);
+    --bd-sc-offline: var(--p-neutral-600);
+    --bd-sc-tier-starter: var(--p-neutral-400);
+    --bd-sc-tier-starter-bg: rgba(255, 255, 255, 0.05);
+    --bd-sc-tier-pro: var(--p-brand-400);
+    --bd-sc-tier-pro-bg: rgba(99, 102, 241, 0.12);
+    --bd-sc-tier-enterprise: var(--p-purple-400);
+    --bd-sc-tier-enterprise-bg: rgba(139, 92, 246, 0.12);
+    --bd-sc-sla-breach: var(--p-warning-400);
+    --bd-sc-sla-breach-bg: rgba(245, 158, 11, 0.12);
+    --bd-sc-trust-bar-bg: rgba(255, 255, 255, 0.03);
+    --bd-sc-help-hover: rgba(255, 255, 255, 0.04);
+    --bd-sc-escalation-bg: rgba(139, 92, 246, 0.08);
+    --bd-sc-escalation-border: rgba(139, 92, 246, 0.2);
 }
 
 /* ===========================================

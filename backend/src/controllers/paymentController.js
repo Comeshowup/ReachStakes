@@ -166,13 +166,13 @@ export const initiatePayment = async (req, res) => {
             data: {
                 userId,
                 campaignId: campaign.id,
-                amount: amountNum,
+                amount: totalCharge, // Total amount user is charged (including fees)
                 type: 'Deposit',
                 status: 'Pending',
                 description: `Campaign Funding: ${campaign.title}`,
                 platformFee,
                 processingFee,
-                netAmount: amountNum
+                netAmount: amountNum // The portion that goes into campaign escrow
             }
         });
 
@@ -190,6 +190,7 @@ export const initiatePayment = async (req, res) => {
             txn_description: `Funding Campaign: ${campaign.title} (Ref: TXN-${transaction.id})`,
             success_url: `${frontendUrl}/brand/payment/${transaction.id}?status=success`,
             cancel_url: `${frontendUrl}/brand/payment/${transaction.id}?status=cancelled`,
+            reference_id: `txn_${transaction.id}` // Pass predictable reference
         });
 
         // ── Extract checkout URL and ID ─────────
@@ -378,7 +379,9 @@ export const handleWebhook = async (req, res) => {
             || event.reference_id
             || event.txn_no
             || eventData.checkout_id
-            || event.checkout_id;
+            || event.checkout_id
+            || eventData.id
+            || event.id;
 
         console.log(`Webhook: type=${eventType}, reference=${referenceId}`);
 
@@ -393,16 +396,24 @@ export const handleWebhook = async (req, res) => {
             || eventData.status === 'success' || eventData.status === 'paid';
 
         if (isSuccessEvent && referenceId) {
+            console.log(`Searching for transaction with reference: ${referenceId}`);
             let transaction = await prisma.transaction.findFirst({
-                where: { tazapayReferenceId: referenceId }
+                where: {
+                    OR: [
+                        { tazapayReferenceId: referenceId },
+                        { id: parseInt(referenceId.replace('txn_', '')) || -1 }
+                    ]
+                }
             });
 
             if (!transaction && typeof referenceId === 'string') {
-                transaction = await prisma.transaction.findFirst({
-                    where: {
-                        tazapayReferenceId: { contains: referenceId.split('_')[1] || referenceId }
-                    }
-                });
+                // Fallback: try mapping from checkout_id or other fields if available
+                const checkoutId = eventData.checkout_id || event.checkout_id;
+                if (checkoutId) {
+                    transaction = await prisma.transaction.findFirst({
+                        where: { tazapayReferenceId: checkoutId }
+                    });
+                }
             }
 
             if (transaction) {

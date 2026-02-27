@@ -62,6 +62,12 @@ export const getSystemStatus = async () => {
     return response.data;
 };
 
+// Verify deposit payment status (polls Tazapay API)
+export const verifyDeposit = async (transactionId) => {
+    const response = await api.post('/escrow/verify-deposit', { transactionId: parseInt(transactionId) });
+    return response.data;
+};
+
 export default {
     getEscrowOverview,
     getVaultSummary,
@@ -72,5 +78,5 @@ export default {
     releaseMilestone,
     getEscrowTransactions,
     getSystemStatus,
+    verifyDeposit,
 };
-

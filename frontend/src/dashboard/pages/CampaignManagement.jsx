@@ -140,7 +140,7 @@ const RequestCampaignModal = ({ isOpen, onClose, onSuccess }) => {
             if (response.status === 'success') {
                 onClose();
                 if (onSuccess) onSuccess();
-                navigate('/brand/contact?tab=meeting');
+                navigate('/brand/support');
             }
         } catch (error) {
             console.error("Failed to create campaign:", error);

@@ -2,38 +2,26 @@ import React from 'react';
 
 /**
  * StatusBadge — renders campaign status pill.
- * Uses bd-cm-badge class + token-driven variant styles.
+ * Uses standardized status-pill system with token-driven variant styles.
  */
 
-const STATUS_STYLES = {
-    Draft: {
-        background: 'var(--bd-muted)',
-        color: 'var(--bd-muted-fg)',
-        border: '1px solid var(--bd-border-default)',
-    },
-    Active: {
-        background: 'var(--bd-success-muted)',
-        color: 'var(--bd-success)',
-        border: '1px solid var(--bd-success-border)',
-    },
-    Completed: {
-        background: 'var(--bd-info-muted)',
-        color: 'var(--bd-info)',
-        border: '1px solid var(--bd-info-border)',
-    },
-    'Pending Payment': {
-        background: 'var(--bd-warning-muted)',
-        color: 'var(--bd-warning)',
-        border: '1px solid var(--bd-warning-border)',
-    },
+const STATUS_TO_VARIANT = {
+    Draft: 'neutral',
+    Active: 'success',
+    Completed: 'info',
+    'Pending Payment': 'warning',
+    Paused: 'warning',
+    Cancelled: 'danger',
 };
 
 const StatusBadge = ({ status, className = '' }) => {
-    const style = STATUS_STYLES[status] || STATUS_STYLES.Draft;
+    const variant = STATUS_TO_VARIANT[status] || 'neutral';
+    const label = status ? status.toUpperCase() : 'DRAFT';
 
     return (
-        <span className={`bd-cm-badge ${className}`} style={style}>
-            {status ? status.toUpperCase() : 'DRAFT'}
+        <span className={`status-pill status-pill--${variant} ${className}`} style={{ fontSize: '0.6875rem', letterSpacing: '0.04em' }}>
+            <span className="status-pill__dot" style={{ width: 5, height: 5 }} />
+            {label}
         </span>
     );
 };

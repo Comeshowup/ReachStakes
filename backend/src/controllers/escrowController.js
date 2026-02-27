@@ -111,22 +111,24 @@ export const depositFunds = async (req, res) => {
             return res.status(404).json({ status: 'error', message: 'User not found.' });
         }
 
-        // Calculate fees
-        const platformFee = amount * (PLATFORM_FEE_PERCENT / 100);
-        const processingFee = amount * (PROCESSING_FEE_PERCENT / 100);
-        const totalCharge = amount + platformFee + processingFee;
+        // Calculate fees from the total amount (amount is the totalCharge)
+        // Backwards calculation: total = base * (1 + 0.05 + 0.029) => base = total / 1.079
+        const baseAmount = amount / (1 + (PLATFORM_FEE_PERCENT / 100) + (PROCESSING_FEE_PERCENT / 100));
+        const platformFee = baseAmount * (PLATFORM_FEE_PERCENT / 100);
+        const processingFee = baseAmount * (PROCESSING_FEE_PERCENT / 100);
+        const totalCharge = amount; // The user provided the final total charge
 
         // Create a Pending transaction record
         const transaction = await prisma.transaction.create({
             data: {
                 userId: brandId,
-                amount,
+                amount: baseAmount,
                 type: 'Deposit',
                 status: 'Pending',
                 description: `Vault deposit: $${amount.toFixed(2)} via ${method || 'Tazapay'}`,
                 platformFee,
                 processingFee,
-                netAmount: amount,
+                netAmount: baseAmount,
                 transactionDate: new Date(),
             },
         });
@@ -198,6 +200,100 @@ export const depositFunds = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Verify a vault deposit by checking Tazapay checkout status
+ * @route   POST /api/escrow/verify-deposit
+ * @access  Private/Brand
+ */
+export const verifyDeposit = async (req, res) => {
+    try {
+        const brandId = req.user.id;
+        const { transactionId } = req.body;
+
+        if (!transactionId) {
+            return res.status(400).json({ status: 'error', message: 'transactionId is required.' });
+        }
+
+        const transaction = await prisma.transaction.findFirst({
+            where: { id: parseInt(transactionId), userId: brandId },
+        });
+
+        if (!transaction) {
+            return res.status(404).json({ status: 'error', message: 'Transaction not found.' });
+        }
+
+        if (transaction.status === 'Completed') {
+            return res.json({ status: 'success', data: { paymentStatus: 'Completed', message: 'Payment already confirmed.' } });
+        }
+        if (transaction.status === 'Failed') {
+            return res.json({ status: 'success', data: { paymentStatus: 'Failed', message: 'Payment was not successful.' } });
+        }
+
+        const referenceId = transaction.tazapayReferenceId;
+        if (!referenceId) {
+            return res.json({ status: 'success', data: { paymentStatus: 'Pending', message: 'Payment is being initialized.' } });
+        }
+
+        // Check with Tazapay API
+        let tazapayStatus;
+        try {
+            tazapayStatus = await tazapayService.getCheckoutStatus(referenceId);
+            console.log('[EscrowController] Tazapay status:', JSON.stringify({
+                id: tazapayStatus?.data?.id,
+                status: tazapayStatus?.data?.status,
+                payment_status: tazapayStatus?.data?.payment_status,
+            }));
+        } catch (err) {
+            console.error('[EscrowController] Tazapay verification failed:', err.message);
+            return res.json({ status: 'success', data: { paymentStatus: 'Pending', message: 'Verification in progress...' } });
+        }
+
+        const checkoutData = tazapayStatus?.data || tazapayStatus;
+        const paymentStatus = (checkoutData?.payment_status || '').toLowerCase();
+        const checkoutStatus = (checkoutData?.status || '').toLowerCase();
+        const latestAttempt = checkoutData?.payment_attempts?.[0];
+        const attemptStatus = (latestAttempt?.status || '').toLowerCase();
+
+        const isPaid = ['paid', 'success', 'completed', 'payment_completed'].includes(paymentStatus)
+            || attemptStatus === 'succeeded';
+
+        const isFailed = ['failed', 'expired', 'cancelled', 'canceled'].includes(paymentStatus)
+            || ['failed', 'expired'].includes(checkoutStatus)
+            || attemptStatus === 'failed';
+
+        if (isPaid) {
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: {
+                    status: 'Completed',
+                    processedAt: new Date(),
+                    gatewayStatus: paymentStatus || 'paid',
+                },
+            });
+
+            const depositAmount = transaction.netAmount || transaction.amount || 0;
+            console.log(`✅ Deposit verified: Transaction ${transaction.id} completed, +$${depositAmount}`);
+
+            return res.json({ status: 'success', data: { paymentStatus: 'Completed', message: 'Payment verified and confirmed!' } });
+        }
+
+        if (isFailed) {
+            await prisma.transaction.update({
+                where: { id: transaction.id },
+                data: {
+                    status: 'Failed',
+                    gatewayStatus: paymentStatus || checkoutStatus || 'failed',
+                },
+            });
+            return res.json({ status: 'success', data: { paymentStatus: 'Failed', message: 'Payment was not successful.' } });
+        }
+
+        return res.json({ status: 'success', data: { paymentStatus: 'Pending', message: 'Waiting for payment to complete...' } });
+    } catch (error) {
+        console.error('[EscrowController] Verify deposit error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to verify deposit.' });
+    }
+};
 /**
  * @desc    Withdraw funds from vault
  * @route   POST /api/escrow/withdraw

@@ -154,7 +154,13 @@ function TransactionLedgerTable({
                             </thead>
                             <tbody>
                                 {transactions.map((tx) => {
-                                    const { text: amountText, isCredit } = formatAmount(tx.amount, tx.type);
+                                    // Calculate total gross amount (amount + fees) if not already explicitly in amount 
+                                    // or just use receivedAmount if the transaction is completed.
+                                    const grossAmount = tx.receivedAmount
+                                        ? Number(tx.receivedAmount)
+                                        : (Number(tx.amount) + Number(tx.platformFee || 0) + Number(tx.processingFee || 0));
+
+                                    const { text: amountText, isCredit } = formatAmount(grossAmount, tx.type);
                                     const status = STATUS_CONFIG[tx.status] || STATUS_CONFIG.Pending;
                                     const counterparty = tx.campaignName || 'Unknown';
                                     const initials = getInitials(counterparty);

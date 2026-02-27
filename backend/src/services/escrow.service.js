@@ -139,11 +139,21 @@ export class EscrowService {
             // Compute required allocation (targetBudget + all fees)
             const allocation = EscrowService.computeAllocationTotal(targetBudget);
 
+            // Derive funding status for the UI
+            let fundingStatus = 'UNFUNDED';
+            if (fundedAmount >= targetBudget && targetBudget > 0) {
+                fundingStatus = 'FUNDED';
+            } else if (fundedAmount > 0) {
+                fundingStatus = 'PARTIAL';
+            }
+
             return {
                 id: c.id,
                 name: c.title,
-                status: c.status || 'Draft',
+                status: fundingStatus, // Use funding status for the vault view
+                lifecycleStatus: c.status || 'Draft', // Preserve lifecycle status
                 targetBudget,
+                requiredAmount: targetBudget, // Component 
                 fundedAmount,
                 releasedAmount,
                 remaining,
@@ -338,13 +348,13 @@ export class EscrowService {
 
         // Build orderBy based on sortBy param
         const orderByMap = {
-            date: { createdAt: sortOrder },
+            date: { transactionDate: sortOrder },
             amount: { amount: sortOrder },
         };
-        const orderBy = orderByMap[sortBy] || { createdAt: 'desc' };
+        const orderBy = orderByMap[sortBy] || { transactionDate: 'desc' };
 
-        // Build where clause with optional search and type filter
-        const where = { brandId };
+        // Build where clause — query Transaction table (userId = brandId)
+        const where = { userId: brandId };
         if (type && type !== 'all') {
             where.type = type;
         }
@@ -357,53 +367,28 @@ export class EscrowService {
 
         try {
             const [entries, total] = await Promise.all([
-                prisma.escrowLedger.findMany({
+                prisma.transaction.findMany({
                     where,
                     orderBy,
                     skip,
                     take: limit,
                     include: {
-                        campaign: {
-                            select: { title: true }
-                        }
+                        campaign: { select: { title: true } }
                     }
                 }),
-                prisma.escrowLedger.count({ where }),
+                prisma.transaction.count({ where }),
             ]);
 
-            // Compute running balance for each transaction
-            let runningBalance = 0;
-            // Get total balance before first entry on this page
-            try {
-                const priorEntries = await prisma.escrowLedger.findMany({
-                    where: { brandId, status: 'Completed' },
-                    orderBy: { createdAt: 'asc' },
-                    select: { type: true, amount: true, createdAt: true },
-                });
-                for (const e of priorEntries) {
-                    const amt = parseFloat(e.amount);
-                    if (e.type === 'Funding' || e.type === 'Adjustment') runningBalance += amt;
-                    if (e.type === 'Release') runningBalance -= amt;
-                }
-            } catch (_) {
-                // Ledger may not exist yet
-            }
-
             return {
-                transactions: entries.map(e => {
-                    const amount = parseFloat(e.amount);
-                    return {
-                        id: e.id,
-                        date: e.createdAt,
-                        campaignName: e.campaign?.title || 'Unknown',
-                        type: e.type,
-                        amount,
-                        status: e.status,
-                        description: e.description,
-                        milestoneId: e.milestoneId,
-                        runningBalance,
-                    };
-                }),
+                transactions: entries.map(e => ({
+                    id: e.id,
+                    date: e.transactionDate || e.createdAt,
+                    campaignName: e.campaign?.title || (e.type === 'Deposit' ? 'Vault Deposit' : 'Vault'),
+                    type: e.type,
+                    amount: parseFloat(e.amount || 0),
+                    status: e.status,
+                    description: e.description,
+                })),
                 pagination: {
                     page,
                     limit,
@@ -412,7 +397,7 @@ export class EscrowService {
                 },
             };
         } catch (err) {
-            console.warn('[EscrowService] Ledger unavailable:', err.message);
+            console.warn('[EscrowService] Transactions unavailable:', err.message);
             return {
                 transactions: [],
                 pagination: { page, limit, total: 0, totalPages: 0 },
