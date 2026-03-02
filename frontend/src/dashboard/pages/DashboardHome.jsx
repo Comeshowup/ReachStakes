@@ -135,19 +135,20 @@ const DashboardHome = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.3 }}
                                 onClick={() => navigate('/dashboard/discovery')}
-                                className="md:col-span-2 bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-2xl cursor-pointer hover:shadow-xl transition-all group"
+                                className="md:col-span-2 kpi-card-polished cursor-pointer group"
+                                style={{ background: 'var(--bd-primary)', color: 'var(--bd-primary-fg)', border: '1px solid var(--bd-border-subtle)' }}
                             >
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                            <Sparkles className="w-5 h-5" />
+                                        <h3 style={{ fontSize: 'var(--bd-font-size-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <Sparkles style={{ width: 20, height: 20 }} />
                                             Discover Campaigns
                                         </h3>
-                                        <p className="text-indigo-200 text-sm mt-1">
+                                        <p style={{ fontSize: 'var(--bd-font-size-sm)', opacity: 0.7, marginTop: 4 }}>
                                             Find opportunities matched to your niche
                                         </p>
                                     </div>
-                                    <div className="text-white/80 group-hover:translate-x-2 transition-transform">
+                                    <div style={{ opacity: 0.7, transition: 'transform 150ms ease' }} className="group-hover:translate-x-2">
                                         →
                                     </div>
                                 </div>

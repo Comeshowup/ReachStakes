@@ -313,39 +313,42 @@ const TransactionRow = ({ txn }) => {
         <>
             <tr
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="group hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer border-b border-gray-100 dark:border-slate-800/50 last:border-0"
+                className="table-polished__row"
+                style={{ cursor: 'pointer' }}
             >
-                <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${txn.type === 'Deposit' ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
-                                'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                            }`}>
-                            {txn.type === 'Deposit' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                <td style={{ padding: '16px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                            padding: 8, borderRadius: '50%',
+                            background: txn.type === 'Deposit' ? 'var(--bd-success-muted)' : 'var(--bd-bg-tertiary)',
+                            color: txn.type === 'Deposit' ? 'var(--bd-success)' : 'var(--bd-accent)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            {txn.type === 'Deposit' ? <ArrowDownLeft style={{ width: 16, height: 16 }} /> : <ArrowUpRight style={{ width: 16, height: 16 }} />}
                         </div>
                         <div>
-                            <div className="font-bold text-gray-900 dark:text-white">{txn.description}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-500 mt-1">{txn.id}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--bd-text-primary)' }}>{txn.description}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)', marginTop: 2 }}>{txn.id}</div>
                         </div>
                     </div>
                 </td>
-                <td className="px-6 py-5 text-sm text-gray-500 dark:text-slate-400 font-medium">
+                <td style={{ padding: '16px 24px', fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-secondary)', fontWeight: 500 }}>
                     {txn.date}
                 </td>
-                <td className={`px-6 py-5 font-bold text-sm ${txn.amount > 0 ? "text-green-500" : "text-gray-900 dark:text-white"}`}>
-                    {txn.amount > 0 ? "+" : ""}{txn.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                <td style={{ padding: '16px 24px' }}>
+                    <span className="financial-amount" style={{ color: txn.amount > 0 ? 'var(--bd-success)' : 'var(--bd-text-primary)' }}>
+                        {txn.amount > 0 ? "+" : ""}{txn.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </span>
                 </td>
-                <td className="px-6 py-5">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${txn.status === "Completed" ? "bg-green-500/10 text-green-500" :
-                            txn.status === "Pending" ? "bg-yellow-500/10 text-yellow-500" :
-                                "bg-red-500/10 text-red-500"
-                        }`}>
-                        {txn.status === "Completed" && <Check className="w-3 h-3" />}
-                        {txn.status === "Pending" && <AlertCircle className="w-3 h-3" />}
+                <td style={{ padding: '16px 24px' }}>
+                    <span className={`status-pill ${txn.status === 'Completed' ? 'status-pill--success' : txn.status === 'Pending' ? 'status-pill--warning' : 'status-pill--danger'}`}>
+                        {txn.status === "Completed" && <Check style={{ width: 12, height: 12 }} />}
+                        {txn.status === "Pending" && <AlertCircle style={{ width: 12, height: 12 }} />}
                         {txn.status}
                     </span>
                 </td>
-                <td className="px-6 py-5 text-right">
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                    <ChevronDown style={{ width: 16, height: 16, color: 'var(--bd-text-muted)', transition: 'transform 200ms', transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
                 </td>
             </tr>
             <AnimatePresence>
@@ -354,24 +357,30 @@ const TransactionRow = ({ txn }) => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="bg-gray-50/50 dark:bg-slate-800/30 overflow-hidden"
+                        style={{ background: 'var(--bd-bg-secondary)', overflow: 'hidden' }}
                     >
-                        <td colSpan={5} className="px-6 py-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+                        <td colSpan={5} style={{ padding: '20px 24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32, fontSize: 'var(--bd-font-size-sm)' }}>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Payment Method</p>
-                                    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
-                                        <CreditCard className="w-4 h-4" />
+                                    <p className="kpi-card-polished__label" style={{ marginBottom: 8 }}>Payment Method</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--bd-text-primary)' }}>
+                                        <CreditCard style={{ width: 16, height: 16 }} />
                                         {txn.method}
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Details</p>
-                                    <p className="text-gray-600 dark:text-slate-400 leading-relaxed">{txn.details}</p>
+                                    <p className="kpi-card-polished__label" style={{ marginBottom: 8 }}>Details</p>
+                                    <p style={{ color: 'var(--bd-text-secondary)', lineHeight: 1.5 }}>{txn.details}</p>
                                 </div>
-                                <div className="flex items-end justify-end">
-                                    <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-                                        <FileText className="w-4 h-4" />
+                                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                                    <button style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                                        background: 'var(--bd-surface)', border: '1px solid var(--bd-border-default)',
+                                        borderRadius: 'var(--bd-radius-lg)', fontSize: 'var(--bd-font-size-sm)',
+                                        fontWeight: 500, color: 'var(--bd-text-primary)', cursor: 'pointer',
+                                        transition: 'all 150ms ease', boxShadow: 'var(--bd-shadow-sm)'
+                                    }}>
+                                        <FileText style={{ width: 16, height: 16 }} />
                                         Download Receipt PDF
                                     </button>
                                 </div>
@@ -389,71 +398,74 @@ const FinancialManagementPanel = () => {
     const [activeTab, setActiveTab] = useState("All");
 
     return (
-        <div className="min-h-screen pb-12 space-y-8">
-            {/* 1. Hero Card */}
-            <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                {/* Background with subtle gradient */}
-                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl z-0">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-50"></div>
-                    <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
-                    <div className="absolute top-1/2 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div style={{ minHeight: '100vh', paddingBottom: 'var(--bd-space-12)' }} className="space-y-8">
+            {/* 1. Header Strip — Clean, institutional */}
+            <div className="surface-card" style={{ padding: 'var(--bd-space-8)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--bd-space-6)' }}>
+                    <div>
+                        <h1 className="page-title" style={{ marginBottom: 'var(--bd-space-2)' }}>Financial Management</h1>
+                        <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-secondary)' }}>Fund campaigns and manage payouts securely.</p>
+                    </div>
+                    <button
+                        onClick={() => setIsAddFundsOpen(true)}
+                        style={{
+                            padding: '12px 28px', borderRadius: 'var(--bd-radius-lg)',
+                            background: 'var(--bd-primary)', color: 'var(--bd-primary-fg)',
+                            fontWeight: 700, fontSize: 'var(--bd-font-size-md)',
+                            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                            boxShadow: 'var(--bd-shadow-primary-btn)', transition: 'all 150ms ease'
+                        }}
+                    >
+                        <Plus style={{ width: 20, height: 20 }} />
+                        Add Funds
+                    </button>
                 </div>
 
-                <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8">
-                    {/* Left Side */}
-                    <div className="space-y-6 max-w-xl">
-                        <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight">
-                            Secure Your Campaigns.<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Add Funds Instantly</span>
-                        </h1>
-                        <button
-                            onClick={() => setIsAddFundsOpen(true)}
-                            className="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 hover:shadow-indigo-500/50 flex items-center gap-3"
-                        >
-                            <Plus className="w-6 h-6" />
-                            Add Funds Now
-                            <div className="absolute inset-0 rounded-2xl ring-2 ring-white/20 group-hover:ring-white/40 transition-all"></div>
-                        </button>
+                {/* KPIs */}
+                <div className="trust-strip" style={{ marginTop: 'var(--bd-space-6)' }}>
+                    <div className="trust-strip__card">
+                        <p className="trust-strip__label">Current Balance</p>
+                        <p className="trust-strip__value"><CountUp value="12450.00" prefix="$" /></p>
+                        <span className="kpi-card-polished__delta kpi-card-polished__delta--up" style={{ marginTop: 6, display: 'inline-flex' }}>
+                            <ArrowUpRight style={{ width: 12, height: 12 }} /> +3.2% Today
+                        </span>
                     </div>
-
-                    {/* Right Side - Wallet Stats */}
-                    <div className="flex gap-6 md:gap-12 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
-                        <div>
-                            <p className="text-sm font-medium text-slate-400 mb-1">Current Balance</p>
-                            <div className="text-3xl font-bold text-white flex items-end gap-2">
-                                <CountUp value="12450.00" prefix="$" />
-                            </div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-green-400 mt-2 bg-green-400/10 px-2 py-1 rounded-full w-fit">
-                                <ArrowUpRight className="w-3 h-3" />
-                                +3.2% Today
-                            </div>
-                        </div>
-                        <div className="w-px bg-white/10"></div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-400 mb-1">Pending Payouts</p>
-                            <div className="text-3xl font-bold text-white/80">
-                                $850.00
-                            </div>
-                        </div>
+                    <div className="trust-strip__card">
+                        <p className="trust-strip__label">Pending Payouts</p>
+                        <p className="trust-strip__value">$850.00</p>
+                    </div>
+                    <div className="trust-strip__card">
+                        <p className="trust-strip__label">This Month</p>
+                        <p className="trust-strip__value">$8,200</p>
+                        <p className="trust-strip__sub">Across 3 campaigns</p>
+                    </div>
+                    <div className="trust-strip__card">
+                        <p className="trust-strip__label">Total Funded</p>
+                        <p className="trust-strip__value">$48,500</p>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* 2. Financial Performance Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-slate-800">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Financial Performance</h2>
-                        <div className="relative">
-                            <select className="appearance-none bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium px-4 py-2 pr-10 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer">
+                <div className="lg:col-span-2 surface-card" style={{ padding: 'var(--bd-space-6)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--bd-space-6)' }}>
+                        <h2 className="section-header__title">Financial Performance</h2>
+                        <div style={{ position: 'relative' }}>
+                            <select style={{
+                                appearance: 'none', background: 'var(--bd-bg-secondary)',
+                                border: '1px solid var(--bd-border-default)', borderRadius: 'var(--bd-radius-lg)',
+                                fontSize: 'var(--bd-font-size-sm)', fontWeight: 500, padding: '8px 36px 8px 16px',
+                                color: 'var(--bd-text-primary)', cursor: 'pointer', outline: 'none'
+                            }}>
                                 <option>Last 30 Days</option>
                                 <option>Last Quarter</option>
                                 <option>Year to Date</option>
                             </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                            <ChevronDown style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: 'var(--bd-text-muted)', pointerEvents: 'none' }} />
                         </div>
                     </div>
-                    <div className="h-[300px] w-full">
+                    <div style={{ height: 300, width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={CHART_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
@@ -470,8 +482,8 @@ const FinancialManagementPanel = () => {
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(value) => `$${value}`} />
                                 <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" opacity={0.1} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    itemStyle={{ color: '#fff', fontWeight: 600 }}
+                                    contentStyle={{ backgroundColor: 'var(--bd-surface-elevated)', border: '1px solid var(--bd-border-default)', borderRadius: 12, boxShadow: 'var(--bd-shadow-lg)' }}
+                                    itemStyle={{ fontWeight: 600 }}
                                 />
                                 <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" />
                                 <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSpend)" name="Spend" />
@@ -480,55 +492,52 @@ const FinancialManagementPanel = () => {
                     </div>
                 </div>
 
-                {/* 4. Quick Actions */}
-                <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-slate-800">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
-                    <div className="space-y-4">
-                        <button className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group text-left">
-                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                                <Globe className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white">Meet portal</h3>
-                                <p className="text-xs text-gray-500 dark:text-slate-400">Manage meetings</p>
-                            </div>
-                        </button>
-
-                        <button
-                            onClick={() => setIsAddFundsOpen(true)}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group text-left"
-                        >
-                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                                <CreditCard className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white">Visa & PayPal</h3>
-                                <p className="text-xs text-gray-500 dark:text-slate-400">Manage cards</p>
-                            </div>
-                        </button>
-
-                        <button
-                            onClick={() => setIsAddFundsOpen(true)}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group text-left"
-                        >
-                            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                                <Building className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white">Bank Transfer</h3>
-                                <p className="text-xs text-gray-500 dark:text-slate-400">Direct deposit</p>
-                            </div>
-                        </button>
-
-                        <div className="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
-                            <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
-                                        <Wallet className="w-4 h-4" />
-                                    </div>
-                                    <span className="font-bold text-sm text-green-700 dark:text-green-400">Payment Methods</span>
+                {/* Quick Actions */}
+                <div className="lg:col-span-1 surface-card" style={{ padding: 'var(--bd-space-6)' }}>
+                    <h2 className="section-header__title" style={{ marginBottom: 'var(--bd-space-5)' }}>Quick Actions</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bd-space-3)' }}>
+                        {[
+                            { icon: Globe, name: 'Meet Portal', desc: 'Manage meetings', onClick: null },
+                            { icon: CreditCard, name: 'Visa & PayPal', desc: 'Manage cards', onClick: () => setIsAddFundsOpen(true) },
+                            { icon: Building, name: 'Bank Transfer', desc: 'Direct deposit', onClick: () => setIsAddFundsOpen(true) },
+                        ].map((action) => (
+                            <button
+                                key={action.name}
+                                onClick={action.onClick}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                                    padding: 'var(--bd-space-4)', borderRadius: 'var(--bd-radius-xl)',
+                                    background: 'var(--bd-bg-secondary)', border: '1px solid transparent',
+                                    cursor: 'pointer', textAlign: 'left', transition: 'all 150ms ease'
+                                }}
+                            >
+                                <div style={{
+                                    padding: 10, background: 'var(--bd-surface)', borderRadius: 'var(--bd-radius-lg)',
+                                    boxShadow: 'var(--bd-shadow-sm)', color: 'var(--bd-accent)', display: 'flex'
+                                }}>
+                                    <action.icon style={{ width: 20, height: 20 }} />
                                 </div>
-                                <CheckCircle className="w-5 h-5 text-green-500" />
+                                <div>
+                                    <h3 style={{ fontWeight: 700, color: 'var(--bd-text-primary)', fontSize: 'var(--bd-font-size-sm)' }}>{action.name}</h3>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>{action.desc}</p>
+                                </div>
+                            </button>
+                        ))}
+
+                        <div style={{ paddingTop: 'var(--bd-space-4)', marginTop: 'var(--bd-space-2)', borderTop: '1px solid var(--bd-border-muted)' }}>
+                            <button style={{
+                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: 'var(--bd-space-4)', borderRadius: 'var(--bd-radius-xl)',
+                                background: 'var(--bd-success-muted)', border: '1px solid var(--bd-success-border)',
+                                cursor: 'pointer'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{ padding: 8, background: 'var(--bd-success-muted)', borderRadius: 'var(--bd-radius-lg)', color: 'var(--bd-success)', display: 'flex' }}>
+                                        <Wallet style={{ width: 16, height: 16 }} />
+                                    </div>
+                                    <span style={{ fontWeight: 700, fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-success)' }}>Payment Methods</span>
+                                </div>
+                                <CheckCircle style={{ width: 20, height: 20, color: 'var(--bd-success)' }} />
                             </button>
                         </div>
                     </div>
@@ -536,41 +545,41 @@ const FinancialManagementPanel = () => {
             </div>
 
             {/* 3. Transaction History */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-slate-800">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Transaction History</h2>
-                    <div className="flex bg-gray-100 dark:bg-slate-800/50 p-1 rounded-xl">
+            <div className="surface-card" style={{ padding: 'var(--bd-space-6)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--bd-space-4)', marginBottom: 'var(--bd-space-6)' }}>
+                    <h2 className="section-header__title">Transaction History</h2>
+                    <div style={{ display: 'flex', background: 'var(--bd-bg-secondary)', padding: 3, borderRadius: 'var(--bd-radius-lg)', border: '1px solid var(--bd-border-subtle)' }}>
                         {["All", "Deposit", "Payment"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`relative px-6 py-2 rounded-lg text-sm font-bold transition-colors z-10 ${activeTab === tab ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"}`}
+                                style={{
+                                    position: 'relative', padding: '8px 20px', borderRadius: 'var(--bd-radius-md)',
+                                    fontSize: 'var(--bd-font-size-sm)', fontWeight: 700, border: 'none', cursor: 'pointer',
+                                    transition: 'all 200ms', zIndex: 1,
+                                    background: activeTab === tab ? 'var(--bd-surface)' : 'transparent',
+                                    color: activeTab === tab ? 'var(--bd-text-primary)' : 'var(--bd-text-muted)',
+                                    boxShadow: activeTab === tab ? 'var(--bd-shadow-sm)' : 'none'
+                                }}
                             >
-                                {activeTab === tab && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute inset-0 bg-white dark:bg-slate-700 shadow-sm rounded-lg -z-10"
-                                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                                    />
-                                )}
                                 {tab}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="table-polished">
                         <thead>
-                            <tr className="border-b border-gray-100 dark:border-slate-800 text-xs uppercase tracking-wider text-gray-400 dark:text-slate-500">
-                                <th className="px-6 py-4 font-bold">Description</th>
-                                <th className="px-6 py-4 font-bold">Date</th>
-                                <th className="px-6 py-4 font-bold">Amount</th>
-                                <th className="px-6 py-4 font-bold">Status</th>
-                                <th className="px-6 py-4"></th>
+                            <tr className="table-polished__header">
+                                <th className="table-polished__th" style={{ paddingLeft: 24 }}>Description</th>
+                                <th className="table-polished__th">Date</th>
+                                <th className="table-polished__th">Amount</th>
+                                <th className="table-polished__th">Status</th>
+                                <th className="table-polished__th" style={{ width: 48 }}></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
+                        <tbody>
                             {TRANSACTION_HISTORY.filter(t => activeTab === "All" || t.type === activeTab).map((txn) => (
                                 <TransactionRow key={txn.id} txn={txn} />
                             ))}

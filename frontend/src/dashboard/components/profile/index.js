@@ -1,5 +1,11 @@
-// Profile components barrel export
-export { default as TrustSnapshot } from './TrustSnapshot';
-export { default as ProfileCTA, StickyMobileCTA } from './ProfileCTA';
-export { default as ServiceModal } from './ServiceModal';
-
+export { default as SectionCard } from "./SectionCard";
+export { default as SettingsField } from "./SettingsField";
+export { default as EmptyState } from "./EmptyState";
+export { default as StatCard } from "./StatCard";
+export { default as BrandProfileHeader } from "./BrandProfileHeader";
+export { default as ProfileTabs } from "./ProfileTabs";
+export { default as IdentityTab } from "./IdentityTab";
+export { default as PerformanceTab } from "./PerformanceTab";
+export { default as SecurityBillingTab } from "./SecurityBillingTab";
+export { default as TeamTab } from "./TeamTab";
+export { default as IntegrationsTab } from "./IntegrationsTab";

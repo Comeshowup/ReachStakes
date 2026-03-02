@@ -35,49 +35,31 @@ import AICampaignBuilder from '../components/AICampaignBuilder';
 
 // 1. KPI Card: "Big Bold Numbers" + Glass + Thin Borders
 const KPICard = ({ title, value, change, trend, icon: Icon, color, delay }) => {
-    // Subtle gradients, but mostly relying on darkness and thin borders
-    const colors = {
-        indigo: "text-indigo-400 border-indigo-500/10 hover:border-indigo-500/20 bg-indigo-500/[0.02]",
-        emerald: "text-emerald-400 border-emerald-500/10 hover:border-emerald-500/20 bg-emerald-500/[0.02]",
-        amber: "text-amber-400 border-amber-500/10 hover:border-amber-500/20 bg-amber-500/[0.02]",
-        rose: "text-rose-400 border-rose-500/10 hover:border-rose-500/20 bg-rose-500/[0.02]",
-    };
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.4 }}
-            className={`group relative overflow-hidden rounded-3xl border ${colors[color]} p-8 backdrop-blur-2xl transition-all duration-500`}
+            className="kpi-card-polished group"
         >
-            <div className="flex flex-col justify-between h-full">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/40 font-mono">{title}</span>
-                    <div className={`p-2 rounded-full bg-white/5 border border-white/5 group-hover:scale-110 transition-transform duration-500`}>
-                        <Icon className="w-4 h-4 text-white/70" />
-                    </div>
-                </div>
-
-                {/* Big Bold Number */}
-                <div className="mb-4">
-                    <span className="text-[40px] font-bold text-white tracking-tighter block leading-none">
-                        {value}
-                    </span>
-                </div>
-
-                {/* Footer / Trend */}
-                <div className="flex items-center gap-3">
-                    <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${trend === 'up' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                        {trend === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {change}
-                    </span>
-                    <span className="text-xs text-white/30 font-medium">vs last month</span>
+            <div className="flex items-center justify-between" style={{ marginBottom: 'var(--bd-space-3)' }}>
+                <span className="kpi-card-polished__label">{title}</span>
+                <div className="kpi-card-polished__icon" style={{ background: 'var(--bd-bg-secondary)' }}>
+                    <Icon style={{ width: 16, height: 16, color: 'var(--bd-text-secondary)' }} />
                 </div>
             </div>
 
-            {/* Subtle Gradient Glow */}
-            <div className={`absolute -bottom-10 -right-10 w-32 h-32 rounded-full blur-[80px] opacity-20 ${color === 'indigo' ? 'bg-indigo-500' : color === 'emerald' ? 'bg-emerald-500' : color === 'amber' ? 'bg-amber-500' : 'bg-rose-500'} pointer-events-none group-hover:opacity-30 transition-opacity duration-1000`} />
+            <div style={{ marginBottom: 'var(--bd-space-2)' }}>
+                <span className="kpi-card-polished__value">{value}</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+                <span className={`kpi-card-polished__delta ${trend === 'up' ? 'kpi-card-polished__delta--up' : 'kpi-card-polished__delta--down'}`}>
+                    {trend === 'up' ? <ArrowUpRight style={{ width: 12, height: 12 }} /> : <ArrowDownRight style={{ width: 12, height: 12 }} />}
+                    {change}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>vs last month</span>
+            </div>
         </motion.div>
     );
 };
@@ -91,32 +73,31 @@ const LiveROIWidget = ({ todaySpend = 2840, todayRevenue = 8520 }) => {
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.02] p-5 overflow-hidden relative"
+            className="kpi-card-polished"
         >
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex items-center justify-between" style={{ marginBottom: 'var(--bd-space-3)' }}>
+                <span className="kpi-card-polished__label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--bd-success)', animation: 'pulse 2s infinite' }} />
                     Live Today
                 </span>
-                <Activity className="w-4 h-4 text-emerald-400" />
+                <Activity style={{ width: 16, height: 16, color: 'var(--bd-success)' }} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--bd-space-4)' }}>
                 <div>
-                    <p className="text-xs text-white/40 mb-1">Spend</p>
-                    <p className="text-xl font-bold text-rose-400">${todaySpend.toLocaleString()}</p>
+                    <p className="kpi-card-polished__label" style={{ marginBottom: 4 }}>Spend</p>
+                    <p className="financial-amount financial-amount--md" style={{ color: 'var(--bd-danger)' }}>${todaySpend.toLocaleString()}</p>
                 </div>
                 <div>
-                    <p className="text-xs text-white/40 mb-1">Revenue</p>
-                    <p className="text-xl font-bold text-emerald-400">${todayRevenue.toLocaleString()}</p>
+                    <p className="kpi-card-polished__label" style={{ marginBottom: 4 }}>Revenue</p>
+                    <p className="financial-amount financial-amount--md" style={{ color: 'var(--bd-success)' }}>${todayRevenue.toLocaleString()}</p>
                 </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-                <span className="text-xs text-white/40">ROI Today</span>
-                <span className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div style={{ marginTop: 'var(--bd-space-3)', paddingTop: 'var(--bd-space-3)', borderTop: '1px solid var(--bd-border-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>ROI Today</span>
+                <span className={`kpi-card-polished__delta ${isPositive ? 'kpi-card-polished__delta--up' : 'kpi-card-polished__delta--down'}`}>
                     {isPositive ? '+' : ''}{roi}%
                 </span>
             </div>
-            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-emerald-500 rounded-full blur-[60px] opacity-20" />
         </motion.div>
     );
 };
@@ -133,17 +114,18 @@ const HealthScoreGauge = ({ score = 78 }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className={`rounded-2xl border border-${color}-500/10 bg-${color}-500/[0.02] p-5 flex flex-col items-center justify-center relative overflow-hidden`}
+            className="kpi-card-polished"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
         >
-            <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 mb-3 flex items-center gap-2">
-                <Gauge className="w-3 h-3" /> Health Score
+            <span className="kpi-card-polished__label" style={{ marginBottom: 'var(--bd-space-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Gauge style={{ width: 12, height: 12 }} /> Health Score
             </span>
-            <div className="relative w-24 h-24">
-                <svg className="w-24 h-24 transform -rotate-90">
-                    <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
+            <div className="relative" style={{ width: 96, height: 96 }}>
+                <svg style={{ width: 96, height: 96, transform: 'rotate(-90deg)' }}>
+                    <circle cx="48" cy="48" r="40" stroke="var(--bd-border-subtle)" strokeWidth="8" fill="none" />
                     <motion.circle
                         cx="48" cy="48" r="40"
-                        stroke={color === 'emerald' ? '#10b981' : color === 'amber' ? '#f59e0b' : '#f43f5e'}
+                        stroke={color === 'emerald' ? 'var(--bd-success)' : color === 'amber' ? 'var(--bd-warning)' : 'var(--bd-danger)'}
                         strokeWidth="8" fill="none"
                         strokeLinecap="round"
                         strokeDasharray={circumference}
@@ -152,11 +134,11 @@ const HealthScoreGauge = ({ score = 78 }) => {
                         transition={{ duration: 1, ease: 'easeOut' }}
                     />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-2xl font-bold text-${color}-400`}>{score}</span>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="kpi-card-polished__value" style={{ fontSize: '1.5rem' }}>{score}</span>
                 </div>
             </div>
-            <p className={`text-xs mt-2 text-${color}-400`}>
+            <p style={{ fontSize: '0.75rem', marginTop: 'var(--bd-space-2)', color: color === 'emerald' ? 'var(--bd-success)' : color === 'amber' ? 'var(--bd-warning)' : 'var(--bd-danger)', fontWeight: 600 }}>
                 {score >= 80 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Attention'}
             </p>
         </motion.div>
@@ -174,32 +156,31 @@ const TimeToLaunchTracker = ({ campaigns = [] }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="rounded-2xl border border-violet-500/10 bg-violet-500/[0.02] p-5 relative overflow-hidden"
+            className="kpi-card-polished"
         >
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-[0.15em] text-white/40 flex items-center gap-2">
-                    <Clock className="w-3 h-3" /> Next Launch
+            <div className="flex items-center justify-between" style={{ marginBottom: 'var(--bd-space-3)' }}>
+                <span className="kpi-card-polished__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Clock style={{ width: 12, height: 12 }} /> Next Launch
                 </span>
             </div>
             {nextLaunch ? (
                 <>
-                    <p className="text-sm text-white/70 mb-2 truncate">{nextLaunch.name}</p>
+                    <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-secondary)', marginBottom: 'var(--bd-space-2)' }} className="truncate">{nextLaunch.name}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-violet-400">{daysRemaining}</span>
-                        <span className="text-sm text-white/40">days</span>
+                        <span className="kpi-card-polished__value" style={{ color: 'var(--bd-purple)' }}>{daysRemaining}</span>
+                        <span style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-muted)' }}>days</span>
                     </div>
-                    <div className="mt-3 h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div style={{ marginTop: 'var(--bd-space-3)', height: 6, background: 'var(--bd-bg-tertiary)', borderRadius: 3, overflow: 'hidden' }}>
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.max(10, 100 - daysRemaining * 10)}%` }}
-                            className="h-full bg-gradient-to-r from-violet-500 to-brand-sky rounded-full"
+                            style={{ height: '100%', background: 'var(--bd-purple)', borderRadius: 3 }}
                         />
                     </div>
                 </>
             ) : (
-                <p className="text-sm text-white/40">No upcoming launches</p>
+                <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-muted)' }}>No upcoming launches</p>
             )}
-            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-violet-500 rounded-full blur-[60px] opacity-20" />
         </motion.div>
     );
 };
@@ -313,32 +294,32 @@ const CMODashboard = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#09090B] text-slate-200 font-sans selection:bg-indigo-500/30 p-8 lg:p-12">
+        <div className="min-h-screen font-sans p-8 lg:p-12" style={{ background: 'var(--bd-bg-primary)', color: 'var(--bd-text-primary)' }}>
 
             {/* 1. Header Section: The "Cockpit" feel */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-emerald-500/80">System Operational</span>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--bd-success)', animation: 'pulse 2s infinite' }} />
+                        <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--bd-success)' }}>System Operational</span>
                     </div>
-                    <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">
+                    <h1 className="page-title" style={{ fontSize: '2.25rem' }}>
                         Executive Overview
                     </h1>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="h-10 px-6 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium text-white transition-all">
+                    <button style={{ height: 40, padding: '0 24px', borderRadius: 'var(--bd-radius-lg)', border: '1px solid var(--bd-border-default)', background: 'var(--bd-surface)', color: 'var(--bd-text-primary)', fontSize: 'var(--bd-font-size-sm)', fontWeight: 500, cursor: 'pointer', transition: 'all 150ms ease' }}>
                         Export Data
                     </button>
                     <button
                         onClick={() => setShowAIBuilder(true)}
-                        className="h-10 px-6 rounded-full bg-gradient-to-r from-brand-sky to-violet-500 hover:opacity-90 text-sm font-bold text-black shadow-[0_0_20px_-5px_rgba(56,189,248,0.5)] transition-all flex items-center gap-2"
+                        style={{ height: 40, padding: '0 24px', borderRadius: 'var(--bd-radius-lg)', background: 'var(--bd-accent)', color: 'var(--bd-primary-fg)', fontSize: 'var(--bd-font-size-sm)', fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 150ms ease', boxShadow: 'var(--bd-shadow-primary-btn)' }}
                     >
                         <Sparkles className="w-4 h-4" />
                         AI Campaign Builder
                     </button>
-                    <button className="h-10 px-6 rounded-full bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white shadow-[0_0_20px_-5px_rgba(79,70,229,0.5)] transition-all">
+                    <button style={{ height: 40, padding: '0 24px', borderRadius: 'var(--bd-radius-lg)', background: 'var(--bd-primary)', color: 'var(--bd-primary-fg)', fontSize: 'var(--bd-font-size-sm)', fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'all 150ms ease', boxShadow: 'var(--bd-shadow-primary-btn)' }}>
                         + New Campaign
                     </button>
                 </div>
@@ -399,17 +380,17 @@ const CMODashboard = () => {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="lg:col-span-2 rounded-[32px] border border-white/5 bg-[#0e0e11] p-8 relative overflow-hidden"
+                    className="lg:col-span-2 surface-card p-8 relative overflow-hidden"
                 >
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-xl font-bold text-white mb-1">Financial Performance</h3>
-                            <p className="text-sm text-slate-500">Revenue attribution vs. Spend velocity</p>
+                            <h3 className="section-header__title">Financial Performance</h3>
+                            <p className="section-header__subtitle">Revenue attribution vs. Spend velocity</p>
                         </div>
                         {/* Tech-luxe switcher */}
-                        <div className="flex bg-black/40 rounded-full p-1 border border-white/5">
+                        <div style={{ display: 'flex', background: 'var(--bd-bg-secondary)', borderRadius: 9999, padding: 3, border: '1px solid var(--bd-border-subtle)' }}>
                             {['7D', '30D', 'YTD'].map((period, i) => (
-                                <button key={period} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${i === 1 ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                                <button key={period} style={{ padding: '6px 16px', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 150ms', background: i === 1 ? 'var(--bd-surface)' : 'transparent', color: i === 1 ? 'var(--bd-text-primary)' : 'var(--bd-text-muted)', boxShadow: i === 1 ? 'var(--bd-shadow-sm)' : 'none' }}>
                                     {period}
                                 </button>
                             ))}
@@ -463,38 +444,38 @@ const CMODashboard = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.6 }}
-                    className="rounded-[32px] border border-white/5 bg-[#0e0e11] p-8 flex flex-col"
+                    className="surface-card p-8 flex flex-col"
                 >
                     <div className="mb-6 flex items-center justify-between">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Zap className="w-5 h-5 text-amber-400" />
+                        <h3 className="section-header__title flex items-center gap-2">
+                            <Zap style={{ width: 20, height: 20, color: 'var(--bd-warning)' }} />
                             Campaigns
                         </h3>
-                        <span className="text-xs font-mono text-slate-500">{campaigns.length} TOTAL</span>
+                        <span style={{ fontSize: '0.75rem', fontFamily: 'var(--bd-font-mono)', color: 'var(--bd-text-muted)' }}>{campaigns.length} TOTAL</span>
                     </div>
 
 
                     <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
                         {isLoading ? (
-                            <div className="text-center text-slate-500 py-10">Loading campaigns...</div>
+                            <div style={{ textAlign: 'center', color: 'var(--bd-text-muted)', padding: '40px 0' }}>Loading campaigns...</div>
                         ) : campaigns.length === 0 ? (
-                            <div className="text-center text-slate-500 py-10">No campaigns found.</div>
+                            <div style={{ textAlign: 'center', color: 'var(--bd-text-muted)', padding: '40px 0' }}>No campaigns found.</div>
                         ) : campaigns.map((campaign, idx) => (
-                            <div key={campaign.id} className="group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all cursor-pointer">
-                                <div className="flex justify-between items-start mb-4">
+                            <div key={campaign.id} className="group" style={{ padding: 'var(--bd-space-5)', borderRadius: 'var(--bd-radius-xl)', background: 'var(--bd-surface)', border: '1px solid var(--bd-border-subtle)', transition: 'all 180ms ease', cursor: 'pointer' }}>
+                                <div className="flex justify-between items-start" style={{ marginBottom: 'var(--bd-space-4)' }}>
                                     <div onClick={() => window.location.href = `/brand/workspace/${campaign.id}`}>
-                                        <h4 className="font-bold text-white text-base mb-1 group-hover:text-indigo-400 transition-colors">{campaign.name}</h4>
-                                        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                                        <h4 style={{ fontWeight: 700, color: 'var(--bd-text-primary)', fontSize: 'var(--bd-font-size-md)', marginBottom: 4, transition: 'color 150ms' }}>{campaign.name}</h4>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.6875rem', color: 'var(--bd-text-muted)', fontWeight: 500 }}>
                                             <span>{campaign.creators} Creators</span>
-                                            <span className="w-1 h-1 rounded-full bg-slate-700" />
+                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--bd-border-default)' }} />
                                             <span>{campaign.budget ? `$${campaign.budget.min || 0} - $${campaign.budget.max || 0}` : '$0'}</span>
                                         </div>
                                     </div>
-                                    <div className={`w-2 h-2 rounded-full ${campaign.status === 'Active' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-indigo-500'}`} />
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: campaign.status === 'Active' ? 'var(--bd-success)' : 'var(--bd-accent)' }} />
                                 </div>
 
-                                <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold ${campaign.status === 'Active' ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 bg-slate-800'}`}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 'var(--bd-space-4)', borderTop: '1px solid var(--bd-border-muted)' }}>
+                                    <span className={`status-pill ${campaign.status === 'Active' ? 'status-pill--success' : 'status-pill--neutral'}`}>
                                         {campaign.status}
                                     </span>
 
@@ -509,15 +490,16 @@ const CMODashboard = () => {
                                                     alert("Funding failed to initialize");
                                                 }
                                             }}
-                                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20"
+                                            className="status-pill status-pill--success"
+                                            style={{ cursor: 'pointer', border: '1px solid var(--bd-success-border)', transition: 'all 150ms', display: 'flex', alignItems: 'center', gap: 4 }}
                                         >
                                             Fund Escrow
-                                            <ArrowUpRight className="w-3 h-3" />
+                                            <ArrowUpRight style={{ width: 12, height: 12 }} />
                                         </button>
                                     ) : (
-                                        <span className="text-xs font-bold text-white flex items-center gap-1">
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--bd-text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                             View Details
-                                            <ArrowUpRight className="w-3 h-3 text-slate-600 group-hover:text-white transition-colors" />
+                                            <ArrowUpRight style={{ width: 12, height: 12, color: 'var(--bd-text-muted)' }} />
                                         </span>
                                     )}
                                 </div>
@@ -526,7 +508,7 @@ const CMODashboard = () => {
                     </div>
 
                     {/* Quick Action */}
-                    <button className="mt-6 w-full py-4 rounded-2xl border border-dashed border-white/10 text-slate-400 text-xs font-bold uppercase tracking-wider hover:bg-white/5 hover:text-white hover:border-white/20 transition-all">
+                    <button style={{ marginTop: 'var(--bd-space-6)', width: '100%', padding: '16px 0', borderRadius: 'var(--bd-radius-xl)', border: '1px dashed var(--bd-border-default)', background: 'transparent', color: 'var(--bd-text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 150ms' }}>
                         Initialize New Workflow
                     </button>
                 </motion.div>

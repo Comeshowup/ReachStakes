@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useLocation } from "react-router-dom";
 import {
     MessageSquare,
-    UserPlus,
     CheckCircle,
     MapPin,
     Globe,
@@ -18,204 +17,106 @@ import {
     Mail,
     Phone,
     ArrowRight,
-    Image as ImageIcon,
-    Video,
     Trash2,
-    Heart,
-    MessageCircle,
     Calendar,
     Award,
-    Info,
     Link as LinkIcon,
-    MoreHorizontal,
     Settings,
-    AlertCircle
+    AlertCircle,
+    DollarSign,
+    Clock,
+    Target,
+    Shield,
+    BarChart3,
+    ExternalLink,
+    Zap
 } from "lucide-react";
 import { deleteAccount } from "../../api/userService";
 import { BRAND_PROFILE, CREATOR_PROFILE, BRAND_POSTS, CREATOR_POSTS, CAMPAIGNS_DATA } from "../data";
 import EditProfileModal from "../components/EditProfileModal";
 
-// --- Helper Components ---
+/* ─────────────────────────────────────────────────────────
+   HELPER COMPONENTS — Token-driven, fintech minimal
+   ───────────────────────────────────────────────────────── */
 
-const SocialLink = ({ icon: Icon, href, colorClass }) => (
-    <motion.a
+const SocialLink = ({ icon: Icon, href, label }) => (
+    <a
         href={href}
-        whileHover={{ scale: 1.1, y: -2 }}
-        whileTap={{ scale: 0.95 }}
-        className={`p-2 rounded-lg bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all ${colorClass}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+            padding: '8px',
+            borderRadius: 'var(--bd-radius-lg)',
+            background: 'var(--bd-bg-tertiary)',
+            color: 'var(--bd-text-secondary)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid transparent',
+            transition: 'all 150ms ease',
+        }}
+        title={label}
     >
-        <Icon className="w-4 h-4" />
-    </motion.a>
+        <Icon style={{ width: 16, height: 16 }} />
+    </a>
 );
 
-const CountUp = ({ value, className }) => {
-    const [count, setCount] = useState(0);
-    const numericValue = parseInt(value.replace(/[^0-9]/g, '')) || 0;
-    const suffix = value.replace(/[0-9]/g, '');
-
-    useEffect(() => {
-        let start = 0;
-        const end = numericValue;
-        const duration = 1500;
-        const increment = end / (duration / 16);
-
-        const timer = setInterval(() => {
-            start += increment;
-            if (start >= end) {
-                setCount(end);
-                clearInterval(timer);
-            } else {
-                setCount(Math.floor(start));
-            }
-        }, 16);
-
-        return () => clearInterval(timer);
-    }, [numericValue]);
-
-    return <span className={className}>{count}{suffix}</span>;
-};
-
-const MetricItem = ({ label, value, icon: Icon, colorClass, delay, fullValue }) => {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, type: "spring", stiffness: 100 }}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors cursor-default group relative"
+const TrustCard = ({ label, value, icon: Icon, subValue, delay = 0 }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="trust-strip__card"
+    >
+        <div
+            className="kpi-card-polished__icon"
+            style={{ background: 'var(--bd-bg-secondary)', marginBottom: 'var(--bd-space-3)' }}
         >
-            <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10`}>
-                <Icon className={`w-5 h-5 ${colorClass.replace("bg-", "text-")}`} />
-            </div>
-            <div>
-                <div className="text-xl font-bold text-gray-900 dark:text-white leading-none">
-                    <CountUp value={value} />
-                </div>
-                <div className="text-xs font-medium text-gray-500 dark:text-slate-400 mt-0.5">{label}</div>
-            </div>
-
-            {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl z-20">
-                {fullValue || value}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-white"></div>
-            </div>
-        </motion.div>
-    );
-};
+            <Icon style={{ width: 16, height: 16, color: 'var(--bd-text-secondary)' }} />
+        </div>
+        <p className="trust-strip__label">{label}</p>
+        <p className="trust-strip__value">{value}</p>
+        {subValue && <p className="trust-strip__sub">{subValue}</p>}
+    </motion.div>
+);
 
 const TabButton = ({ active, onClick, children }) => (
     <button
         onClick={onClick}
-        className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 relative ${active
-            ? "text-gray-900 dark:text-white bg-white dark:bg-slate-800 shadow-sm ring-1 ring-gray-200 dark:ring-slate-700"
-            : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/50"
-            }`}
+        style={{
+            padding: '10px 20px',
+            fontSize: 'var(--bd-font-size-sm)',
+            fontWeight: 600,
+            borderRadius: 'var(--bd-radius-lg)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+            background: active ? 'var(--bd-surface)' : 'transparent',
+            color: active ? 'var(--bd-text-primary)' : 'var(--bd-text-secondary)',
+            boxShadow: active ? 'var(--bd-shadow-sm)' : 'none',
+            ...(active ? { border: '1px solid var(--bd-border-subtle)' } : { border: '1px solid transparent' }),
+        }}
     >
         {children}
     </button>
 );
 
-const CampaignCard = ({ campaign }) => (
-    <motion.div
-        whileHover={{ y: -4 }}
-        className="group bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-all"
-    >
-        <div className="h-48 bg-gray-100 dark:bg-slate-800 relative overflow-hidden">
-            <img
-                src={`https://source.unsplash.com/random/800x600?${campaign.name.split(' ')[0]}`}
-                alt={campaign.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-            <div className="absolute top-3 right-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/90 dark:bg-slate-900/90 text-gray-900 dark:text-white backdrop-blur-sm shadow-sm">
-                    {campaign.status}
-                </span>
-            </div>
-        </div>
-        <div className="p-5">
-            <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-2">{campaign.name}</h3>
-            <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400 mb-4">
-                <span className="flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    {campaign.roi} ROI
-                </span>
-                <span className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-blue-500" />
-                    {campaign.creators} Creators
-                </span>
-            </div>
-            <button className="w-full py-2.5 rounded-lg bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white text-sm font-semibold group-hover:bg-indigo-600 group-hover:text-white transition-colors flex items-center justify-center gap-2">
-                View Details <ArrowRight className="w-4 h-4" />
-            </button>
-        </div>
-    </motion.div>
-);
-
-const PostCard = ({ post, profile, onDelete }) => (
-    <motion.div
-        layout
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-800"
-    >
-        <div className="flex items-start gap-4 mb-4">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                {profile.name.charAt(0)}
-            </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">{profile.name}</h4>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">{post.date}</p>
-                    </div>
-                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
-                        <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <p className="text-gray-700 dark:text-slate-300 mb-4 text-sm leading-relaxed">
-            {typeof post.content === 'string' ? post.content : post.content?.text || ''}
-        </p>
-
-        {post.mediaType && (
-            <div className="mb-4 h-56 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-gray-400 overflow-hidden">
-                {post.mediaType === 'image' ? (
-                    <img src={`https://source.unsplash.com/random/800x600?${post.content.split(' ')[0]}`} alt="Post" className="w-full h-full object-cover" />
-                ) : (
-                    <Video className="w-8 h-8" />
-                )}
-            </div>
-        )}
-
-        <div className="flex items-center gap-6 pt-4 border-t border-gray-100 dark:border-slate-800">
-            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors">
-                <Heart className="w-4 h-4" /> {post.likes}
-            </button>
-            <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-500 transition-colors">
-                <MessageCircle className="w-4 h-4" /> {post.comments}
-            </button>
-        </div>
-    </motion.div>
-);
-
-// --- Main Component ---
+/* ─────────────────────────────────────────────────────────
+   MAIN COMPONENT
+   ───────────────────────────────────────────────────────── */
 
 const ProfilePage = ({ type: propType }) => {
     const { id, type: routeType } = useParams();
     const location = useLocation();
 
-    // Determine context
     const isPublic = !!id || location.pathname.includes("/profile/");
     const type = propType || routeType || (location.pathname.includes("brand") ? "brand" : "creator");
-    const isSelf = !isPublic; // Simplified logic for demo
+    const isSelf = !isPublic;
 
-    // State
     const [activeTab, setActiveTab] = useState("overview");
     const [isFollowing, setIsFollowing] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    // Handle account deletion
     const handleDeleteAccount = async () => {
         if (window.confirm("Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently removed.")) {
             try {
@@ -230,7 +131,6 @@ const ProfilePage = ({ type: propType }) => {
         }
     };
 
-    // Data Loading (Mock)
     const [profile, setProfile] = useState(() => {
         const initialProfile = type === "brand" ? BRAND_PROFILE : CREATOR_PROFILE;
         return {
@@ -238,95 +138,139 @@ const ProfilePage = ({ type: propType }) => {
             skills: initialProfile.skills || ["Marketing", "Content Creation", "Video Editing", "Social Media", "Branding"]
         };
     });
-    const [posts, setPosts] = useState(type === "brand" ? BRAND_POSTS : CREATOR_POSTS);
 
-    // Dynamic Stats
-    const stats = type === "brand"
-        ? [
-            { label: "Active Campaigns", value: profile.stats.campaigns.toString(), fullValue: "12 Active Campaigns", icon: Briefcase, colorClass: "bg-blue-500" },
-            { label: "Hiring Since", value: profile.stats.hiringSince, fullValue: `Hiring since ${profile.stats.hiringSince}`, icon: Calendar, colorClass: "bg-green-500" },
-            { label: "Creator Rating", value: profile.stats.rating, fullValue: "4.8/5.0 Rating", icon: Star, colorClass: "bg-yellow-500" },
-            { label: "Total Hires", value: "150+", fullValue: "156 Total Hires", icon: Users, colorClass: "bg-purple-500" },
-        ]
-        : [
-            { label: "Campaigns", value: profile.stats.campaigns.toString(), fullValue: "45 Campaigns Completed", icon: Award, colorClass: "bg-blue-500" },
-            { label: "Engagement", value: "8.5%", fullValue: "8.52% Avg. Engagement", icon: TrendingUp, colorClass: "bg-green-500" },
-            { label: "Rating", value: profile.stats.rating, fullValue: "4.9/5.0 Rating", icon: Star, colorClass: "bg-yellow-500" },
-            { label: "Followers", value: "1.2M", fullValue: "1,240,500 Followers", icon: Users, colorClass: "bg-purple-500" },
-        ];
+    /* ─── Trust Strip Data ─────────────────────────── */
+    const brandTrustCards = [
+        { label: "Campaigns Launched", value: profile.stats?.campaigns?.toString() || "12", icon: Briefcase },
+        { label: "Total Creator Payout", value: "$48,500", icon: DollarSign },
+        { label: "Avg Approval Time", value: "18h", icon: Clock, subValue: "Response time" },
+        { label: "Escrow Status", value: "Funded", icon: Shield, subValue: "3 active" },
+    ];
+
+    const creatorTrustCards = [
+        { label: "Campaigns Completed", value: profile.stats?.campaigns?.toString() || "45", icon: Award },
+        { label: "Revenue Generated", value: "$12,400", icon: DollarSign },
+        { label: "Avg Conversion Rate", value: "8.5%", icon: Target },
+        { label: "On-time Delivery", value: "96%", icon: Clock, subValue: "Reliable" },
+    ];
+
+    const trustCards = type === "brand" ? brandTrustCards : creatorTrustCards;
+
+    /* ─── Performance Data ──────────────────────────── */
+    const brandPerfData = [
+        { label: "Average ROAS", value: "3.2x", icon: TrendingUp },
+        { label: "Repeat Creator Rate", value: "68%", icon: Users },
+        { label: "Campaign Completion", value: "94%", icon: BarChart3 },
+        { label: "Creator Rating", value: profile.stats?.rating || "4.8", icon: Star },
+    ];
+
+    const creatorPerfData = [
+        { label: "Engagement Rate", value: "8.5%", icon: TrendingUp },
+        { label: "Avg Views", value: "45K", icon: BarChart3 },
+        { label: "Niche Category", value: profile.industry || "Tech", icon: Zap },
+        { label: "Creator Rating", value: profile.stats?.rating || "4.9", icon: Star },
+    ];
+
+    const perfData = type === "brand" ? brandPerfData : creatorPerfData;
 
     return (
-        <div className="min-h-screen bg-gray-50/50 dark:bg-slate-950 font-sans pb-20">
+        <div style={{ minHeight: '100vh', background: 'var(--bd-bg-primary)', fontFamily: 'var(--bd-font-body)', paddingBottom: 'var(--bd-space-12)' }}>
 
-            {/* Header Section */}
-            <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
-                {/* Banner */}
-                <div className="h-64 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-900 to-slate-900">
-                        {profile.banner && (
-                            <img src={profile.banner} alt="Banner" className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay" />
-                        )}
-                    </div>
+            {/* ─── HEADER SECTION ──────────────────────────── */}
+            <div className="profile-header-refined">
+                {/* Banner — reduced, supportive */}
+                <div className="profile-header-refined__banner">
+                    <div className="profile-header-refined__banner-overlay" />
+                    {profile.banner && (
+                        <img src={profile.banner} alt="Banner" />
+                    )}
                 </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
-                    <div className="relative -mt-20 flex flex-col md:flex-row items-end gap-6">
+                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 var(--bd-space-6) var(--bd-space-5)' }}>
+                    <div style={{ position: 'relative', marginTop: -48, display: 'flex', alignItems: 'flex-end', gap: 'var(--bd-space-5)' }}>
 
                         {/* Avatar */}
-                        <div className="relative z-10">
-                            <div className="w-40 h-40 rounded-full bg-white dark:bg-slate-900 p-1.5 shadow-xl ring-1 ring-gray-100 dark:ring-slate-800">
+                        <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
+                            <div style={{
+                                width: 96, height: 96, borderRadius: '50%',
+                                background: 'var(--bd-surface)', padding: 3,
+                                boxShadow: 'var(--bd-shadow-lg)',
+                                border: '1px solid var(--bd-border-subtle)'
+                            }}>
                                 <img
-                                    src={type === "brand" ? "https://ui-avatars.com/api/?name=Acme+Co&background=6366f1&color=fff&size=256" : "https://i.pravatar.cc/300?u=a042581f4e29026704d"}
+                                    src={type === "brand"
+                                        ? "https://ui-avatars.com/api/?name=Acme+Co&background=6366f1&color=fff&size=256"
+                                        : "https://i.pravatar.cc/300?u=a042581f4e29026704d"
+                                    }
                                     alt={profile.name}
-                                    className="w-full h-full object-cover rounded-full bg-gray-100 dark:bg-slate-800"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                                 />
                             </div>
-                            <div className="absolute bottom-3 right-3 w-6 h-6 bg-green-500 border-4 border-white dark:border-slate-900 rounded-full shadow-sm" title="Online Now"></div>
                         </div>
 
-                        {/* Profile Info */}
-                        <div className="flex-1 pb-2 w-full md:w-auto text-center md:text-left">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        {/* Info */}
+                        <div style={{ flex: 1, paddingBottom: 'var(--bd-space-1)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--bd-space-4)' }}>
                                 <div>
-                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center md:justify-start gap-2">
-                                        {profile.name}
-                                        <CheckCircle className="w-6 h-6 text-blue-500 fill-blue-500/10" />
-                                    </h1>
-                                    <p className="text-lg text-gray-500 dark:text-slate-400 font-medium">{profile.tagline}</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-2)' }}>
+                                        <h1 className="page-title" style={{ fontSize: 'var(--bd-font-size-2xl)' }}>{profile.name}</h1>
+                                        <span className="verified-badge">
+                                            <CheckCircle style={{ width: 12, height: 12 }} /> Verified
+                                        </span>
+                                    </div>
+                                    <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-secondary)', marginTop: 2 }}>{profile.tagline}</p>
 
-                                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-3 text-sm text-gray-500 dark:text-slate-400">
-                                        <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {profile.location}</span>
-                                        <span className="hidden md:inline text-gray-300 dark:text-slate-700">•</span>
-                                        <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4" /> {profile.industry}</span>
-                                        {type === "creator" && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--bd-space-4)', marginTop: 'var(--bd-space-2)', fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-muted)' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin style={{ width: 14, height: 14 }} /> {profile.location}</span>
+                                        <span style={{ color: 'var(--bd-border-default)' }}>•</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Briefcase style={{ width: 14, height: 14 }} /> {profile.industry}</span>
+                                        {profile.socials?.website && (
                                             <>
-                                                <span className="hidden md:inline text-gray-300 dark:text-slate-700">•</span>
-                                                <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> 1.2M Followers</span>
+                                                <span style={{ color: 'var(--bd-border-default)' }}>•</span>
+                                                <a href={profile.socials.website} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--bd-accent)', textDecoration: 'none' }}>
+                                                    <Globe style={{ width: 14, height: 14 }} /> Website
+                                                    <ExternalLink style={{ width: 10, height: 10 }} />
+                                                </a>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex items-center justify-center gap-3 mt-4 md:mt-0">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-3)', flexShrink: 0 }}>
                                     {isSelf ? (
                                         <button
                                             onClick={() => setIsEditModalOpen(true)}
-                                            className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-lg font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2"
+                                            style={{
+                                                padding: '10px 20px', borderRadius: 'var(--bd-radius-lg)',
+                                                border: '1px solid var(--bd-border-default)', background: 'var(--bd-surface)',
+                                                color: 'var(--bd-text-primary)', fontSize: 'var(--bd-font-size-sm)',
+                                                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                                                transition: 'all 150ms ease', boxShadow: 'var(--bd-shadow-sm)'
+                                            }}
                                         >
-                                            <Edit className="w-4 h-4" /> Edit
+                                            <Edit style={{ width: 16, height: 16 }} /> Edit Profile
                                         </button>
                                     ) : (
                                         <>
-                                            <button className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-lg font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-all">
-                                                <MessageSquare className="w-4 h-4" />
+                                            <button style={{
+                                                padding: '10px', borderRadius: 'var(--bd-radius-lg)',
+                                                border: '1px solid var(--bd-border-default)', background: 'var(--bd-surface)',
+                                                color: 'var(--bd-text-secondary)', cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                <MessageSquare style={{ width: 16, height: 16 }} />
                                             </button>
                                             <button
                                                 onClick={() => setIsFollowing(!isFollowing)}
-                                                className={`px-6 py-2.5 rounded-lg font-semibold shadow-sm flex items-center gap-2 transition-all ${isFollowing
-                                                    ? "bg-green-600 text-white hover:bg-green-700"
-                                                    : "bg-indigo-600 text-white hover:bg-indigo-700"
-                                                    }`}
+                                                style={{
+                                                    padding: '10px 24px', borderRadius: 'var(--bd-radius-lg)',
+                                                    fontWeight: 600, fontSize: 'var(--bd-font-size-sm)', cursor: 'pointer',
+                                                    border: 'none', transition: 'all 150ms ease',
+                                                    background: isFollowing ? 'var(--bd-success)' : 'var(--bd-primary)',
+                                                    color: 'var(--bd-primary-fg)',
+                                                    boxShadow: 'var(--bd-shadow-primary-btn)'
+                                                }}
                                             >
                                                 {isFollowing ? "Following" : "Follow"}
                                             </button>
@@ -337,186 +281,315 @@ const ProfilePage = ({ type: propType }) => {
                         </div>
                     </div>
 
-                    {/* Divider */}
-                    <div className="h-px bg-gray-100 dark:bg-slate-800 my-6"></div>
-
-                    {/* Stats & Social Row */}
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex flex-wrap justify-center md:justify-start gap-2 md:gap-6">
-                            {stats.map((stat, index) => (
-                                <MetricItem key={index} {...stat} delay={index * 0.1} />
-                            ))}
-                        </div>
-
-                        <div className="flex gap-2">
-                            <SocialLink icon={Instagram} href="#" colorClass="hover:text-pink-500" />
-                            <SocialLink icon={Twitter} href="#" colorClass="hover:text-blue-400" />
-                            <SocialLink icon={Linkedin} href="#" colorClass="hover:text-blue-700" />
-                            <SocialLink icon={Globe} href="#" colorClass="hover:text-indigo-500" />
-                        </div>
+                    {/* Social Links */}
+                    <div style={{ display: 'flex', gap: 'var(--bd-space-2)', marginTop: 'var(--bd-space-4)' }}>
+                        <SocialLink icon={Instagram} href="#" label="Instagram" />
+                        <SocialLink icon={Twitter} href="#" label="Twitter" />
+                        <SocialLink icon={Linkedin} href="#" label="LinkedIn" />
+                        <SocialLink icon={Globe} href="#" label="Website" />
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* ─── TRUST SUMMARY STRIP ─────────────────────── */}
+            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 var(--bd-space-6)' }}>
+                <div className="trust-strip" style={{ marginTop: 'var(--bd-space-5)' }}>
+                    {trustCards.map((card, i) => (
+                        <TrustCard key={card.label} {...card} delay={i * 0.05} />
+                    ))}
+                </div>
+            </div>
 
-                    {/* Sidebar (Left) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        {/* About Card */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">About</h3>
-                            <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-                                {profile.about}
-                            </p>
+            {/* ─── MAIN CONTENT ─────────────────────────────── */}
+            <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'var(--bd-space-6)' }}>
 
-                            <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-slate-800">
-                                <div className="flex items-center gap-3 text-sm">
-                                    <Mail className="w-4 h-4 text-gray-400" />
-                                    <span className="text-gray-900 dark:text-white font-medium">{profile.contact.email}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm">
-                                    <Phone className="w-4 h-4 text-gray-400" />
-                                    <span className="text-gray-900 dark:text-white font-medium">{profile.contact.phone}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm">
-                                    <LinkIcon className="w-4 h-4 text-gray-400" />
-                                    <a href={profile.socials?.website || "#"} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate max-w-[200px]">
-                                        {profile.socials?.website || "Add Website"}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                {/* Tabs */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-2)', marginBottom: 'var(--bd-space-6)' }}>
+                    <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>Overview</TabButton>
+                    <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")}>{type === "brand" ? "Campaigns" : "Portfolio"}</TabButton>
+                    {isSelf && (
+                        <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>Settings</TabButton>
+                    )}
+                </div>
 
-                        {/* Skills/Tags */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Skills & Interests</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {profile.skills && profile.skills.map((tag) => (
-                                    <span key={tag} className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-xs font-medium">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                <AnimatePresence mode="wait">
+                    {/* ─── OVERVIEW TAB ─────────────────────── */}
+                    {activeTab === "overview" && (
+                        <motion.div
+                            key="overview"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--bd-space-6)' }}
+                        >
+                            {/* LEFT SIDEBAR */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bd-space-5)' }}>
+                                {/* About */}
+                                <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                    <h3 className="section-header__title" style={{ marginBottom: 'var(--bd-space-4)' }}>About</h3>
+                                    <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-text-secondary)', lineHeight: 1.6, marginBottom: 'var(--bd-space-5)' }}>
+                                        {profile.about}
+                                    </p>
 
-                    {/* Feed (Right) */}
-                    <div className="lg:col-span-8">
-                        {/* Tabs */}
-                        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                            <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>Overview</TabButton>
-                            <TabButton active={activeTab === "posts"} onClick={() => setActiveTab("posts")}>{type === "brand" ? "Updates" : "Posts"}</TabButton>
-                            <TabButton active={activeTab === "portfolio"} onClick={() => setActiveTab("portfolio")}>{type === "brand" ? "Campaigns" : "Portfolio"}</TabButton>
-                            {isSelf && (
-                                <TabButton active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>Settings</TabButton>
-                            )}
-                        </div>
-
-                        <AnimatePresence mode="wait">
-                            {activeTab === "overview" && (
-                                <motion.div
-                                    key="overview"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="space-y-6"
-                                >
-                                    {/* Featured / Pinned Post */}
-                                    <div className="bg-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
-                                        <div className="relative z-10">
-                                            <div className="flex items-center gap-2 mb-4 opacity-80">
-                                                <Star className="w-4 h-4" />
-                                                <span className="text-xs font-bold uppercase tracking-wider">Featured</span>
-                                            </div>
-                                            <h3 className="text-2xl font-bold mb-2">Welcome to our official profile!</h3>
-                                            <p className="text-indigo-100 mb-6 max-w-lg">
-                                                We are excited to connect with creators and brands. Check out our latest campaigns and updates below.
-                                            </p>
-                                            <button className="px-4 py-2 bg-white text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-50 transition-colors">
-                                                Learn More
-                                            </button>
+                                    <div style={{ borderTop: '1px solid var(--bd-border-muted)', paddingTop: 'var(--bd-space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--bd-space-3)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-3)', fontSize: 'var(--bd-font-size-sm)' }}>
+                                            <Mail style={{ width: 16, height: 16, color: 'var(--bd-text-muted)' }} />
+                                            <span style={{ color: 'var(--bd-text-primary)', fontWeight: 500 }}>{profile.contact.email}</span>
                                         </div>
-                                        <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
-                                            <Award className="w-64 h-64" />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-3)', fontSize: 'var(--bd-font-size-sm)' }}>
+                                            <Phone style={{ width: 16, height: 16, color: 'var(--bd-text-muted)' }} />
+                                            <span style={{ color: 'var(--bd-text-primary)', fontWeight: 500 }}>{profile.contact.phone}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bd-space-3)', fontSize: 'var(--bd-font-size-sm)' }}>
+                                            <LinkIcon style={{ width: 16, height: 16, color: 'var(--bd-text-muted)' }} />
+                                            <a href={profile.socials?.website || "#"} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--bd-accent)', textDecoration: 'none', fontWeight: 500 }}>
+                                                {profile.socials?.website || "Add Website"}
+                                            </a>
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* Recent Activity Preview */}
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-8 mb-4">Recent Activity</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {posts.slice(0, 2).map((post) => (
-                                            <PostCard key={post.id} post={post} profile={profile} />
+                                {/* Skills */}
+                                <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                    <h3 style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--bd-text-primary)', marginBottom: 'var(--bd-space-4)' }}>
+                                        {type === "brand" ? "Focus Areas" : "Skills & Interests"}
+                                    </h3>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--bd-space-2)' }}>
+                                        {profile.skills?.map((tag) => (
+                                            <span key={tag} style={{
+                                                padding: '4px 12px', borderRadius: 9999,
+                                                background: 'var(--bd-bg-tertiary)',
+                                                color: 'var(--bd-text-secondary)',
+                                                fontSize: '0.75rem', fontWeight: 500,
+                                                border: '1px solid var(--bd-border-subtle)'
+                                            }}>
+                                                {tag}
+                                            </span>
                                         ))}
                                     </div>
-                                </motion.div>
-                            )}
+                                </div>
 
-                            {activeTab === "posts" && (
-                                <motion.div
-                                    key="posts"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="space-y-6"
-                                >
-                                    {posts.map((post) => (
-                                        <PostCard key={post.id} post={post} profile={profile} onDelete={isSelf ? (id) => setPosts(posts.filter(p => p.id !== id)) : null} />
-                                    ))}
-                                </motion.div>
-                            )}
-
-                            {activeTab === "portfolio" && (
-                                <motion.div
-                                    key="portfolio"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="grid grid-cols-1 sm:grid-cols-2 gap-6"
-                                >
-                                    {CAMPAIGNS_DATA.map((campaign) => (
-                                        <CampaignCard key={campaign.id} campaign={campaign} />
-                                    ))}
-                                </motion.div>
-                            )}
-
-                            {activeTab === "settings" && isSelf && (
-                                <motion.div
-                                    key="settings"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm"
-                                >
-                                    <div className="max-w-2xl">
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                                            <Settings className="w-5 h-5" />
-                                            Account Settings
+                                {/* Audience Overview (Creator only) */}
+                                {type === "creator" && (
+                                    <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                        <h3 style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--bd-text-primary)', marginBottom: 'var(--bd-space-4)' }}>
+                                            Audience Overview
                                         </h3>
-
-                                        <div className="p-6 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
-                                            <h4 className="font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
-                                                <AlertCircle className="w-5 h-5" />
-                                                Danger Zone
-                                            </h4>
-                                            <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-6">
-                                                Once you delete your account, there is no going back. All your data including profile information, campaigns, and posts will be permanently removed.
-                                            </p>
-                                            <button
-                                                onClick={handleDeleteAccount}
-                                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                                Delete Account
-                                            </button>
+                                        <div className="audience-grid">
+                                            <div className="audience-grid__item">
+                                                <p className="audience-grid__label">Primary Geo</p>
+                                                <p className="audience-grid__value">United States</p>
+                                            </div>
+                                            <div className="audience-grid__item">
+                                                <p className="audience-grid__label">Engagement</p>
+                                                <p className="audience-grid__value">8.5%</p>
+                                            </div>
+                                            <div className="audience-grid__item">
+                                                <p className="audience-grid__label">Niche</p>
+                                                <p className="audience-grid__value">{profile.industry}</p>
+                                            </div>
+                                            <div className="audience-grid__item">
+                                                <p className="audience-grid__label">Avg Views</p>
+                                                <p className="audience-grid__value">45K</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                                )}
+                            </div>
+
+                            {/* RIGHT CONTENT */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bd-space-5)' }}>
+                                {/* Performance Section */}
+                                <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                    <div className="section-header" style={{ marginBottom: 'var(--bd-space-5)' }}>
+                                        <div>
+                                            <h2 className="section-header__title">Performance Overview</h2>
+                                            <p className="section-header__subtitle">Key performance metrics</p>
+                                        </div>
+                                    </div>
+                                    <div className="perf-grid">
+                                        {perfData.map((item, i) => (
+                                            <TrustCard key={item.label} {...item} delay={i * 0.05} />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Campaign History Table */}
+                                <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                    <div className="section-header" style={{ marginBottom: 'var(--bd-space-5)' }}>
+                                        <div>
+                                            <h2 className="section-header__title">Campaign History</h2>
+                                            <p className="section-header__subtitle">
+                                                {type === "brand" ? "Recent campaigns launched" : "Completed collaborations"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {CAMPAIGNS_DATA.length > 0 ? (
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table className="campaign-history-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'left' }}>Campaign</th>
+                                                        <th style={{ textAlign: 'left' }}>Status</th>
+                                                        <th style={{ textAlign: 'right' }}>Budget</th>
+                                                        <th style={{ textAlign: 'right' }}>ROAS</th>
+                                                        <th style={{ textAlign: 'right' }}>Completion</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {CAMPAIGNS_DATA.map((campaign) => (
+                                                        <tr key={campaign.id} style={{ cursor: 'pointer' }}>
+                                                            <td style={{ fontWeight: 600, color: 'var(--bd-text-primary)' }}>
+                                                                {campaign.name}
+                                                            </td>
+                                                            <td>
+                                                                <span className={`status-pill ${campaign.status === 'Active' ? 'status-pill--success' : campaign.status === 'Completed' ? 'status-pill--info' : 'status-pill--neutral'}`}>
+                                                                    {campaign.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="col-numeric" style={{ fontFamily: 'var(--bd-font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                                                                ${campaign.budget || '—'}
+                                                            </td>
+                                                            <td className="col-numeric" style={{ fontFamily: 'var(--bd-font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--bd-success)' }}>
+                                                                {campaign.roi || '—'}
+                                                            </td>
+                                                            <td style={{ textAlign: 'right' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                                                                    <div style={{ width: 60, height: 4, borderRadius: 2, background: 'var(--bd-bg-tertiary)', overflow: 'hidden' }}>
+                                                                        <div style={{ width: '85%', height: '100%', borderRadius: 2, background: 'var(--bd-success)' }} />
+                                                                    </div>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)', fontVariantNumeric: 'tabular-nums' }}>85%</span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="empty-state-guided">
+                                            <div className="empty-state-guided__icon">
+                                                <Briefcase style={{ width: 24, height: 24 }} />
+                                            </div>
+                                            <h4 className="empty-state-guided__title">No campaigns yet</h4>
+                                            <p className="empty-state-guided__text">
+                                                {type === "brand"
+                                                    ? "Launch your first campaign to start building your performance history."
+                                                    : "Complete your first campaign to build your portfolio."
+                                                }
+                                            </p>
+                                            <button className="empty-state-guided__cta">
+                                                <ArrowRight style={{ width: 16, height: 16 }} />
+                                                {type === "brand" ? "Create Campaign" : "Browse Opportunities"}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ─── CAMPAIGNS / PORTFOLIO TAB ───────── */}
+                    {activeTab === "campaigns" && (
+                        <motion.div
+                            key="campaigns"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                        >
+                            <div className="surface-card" style={{ padding: 'var(--bd-space-5)' }}>
+                                <div className="section-header" style={{ marginBottom: 'var(--bd-space-5)' }}>
+                                    <div>
+                                        <h2 className="section-header__title">
+                                            {type === "brand" ? "All Campaigns" : "Full Portfolio"}
+                                        </h2>
+                                        <p className="section-header__subtitle">
+                                            {type === "brand"
+                                                ? `${CAMPAIGNS_DATA.length} campaigns total`
+                                                : `${CAMPAIGNS_DATA.length} collaborations completed`
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="campaign-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left' }}>Campaign</th>
+                                                <th style={{ textAlign: 'left' }}>Status</th>
+                                                <th style={{ textAlign: 'right' }}>Budget</th>
+                                                <th style={{ textAlign: 'right' }}>ROAS</th>
+                                                <th style={{ textAlign: 'right' }}>
+                                                    {type === "brand" ? "Creators" : "Revenue"}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {CAMPAIGNS_DATA.map((campaign) => (
+                                                <tr key={campaign.id} style={{ cursor: 'pointer' }}>
+                                                    <td style={{ fontWeight: 600, color: 'var(--bd-text-primary)' }}>
+                                                        {campaign.name}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`status-pill ${campaign.status === 'Active' ? 'status-pill--success' : campaign.status === 'Completed' ? 'status-pill--info' : 'status-pill--neutral'}`}>
+                                                            {campaign.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="col-numeric">${campaign.budget || '—'}</td>
+                                                    <td className="col-numeric" style={{ color: 'var(--bd-success)' }}>{campaign.roi || '—'}</td>
+                                                    <td className="col-numeric">{campaign.creators || '—'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ─── SETTINGS TAB ─────────────────────── */}
+                    {activeTab === "settings" && isSelf && (
+                        <motion.div
+                            key="settings"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                        >
+                            <div className="surface-card" style={{ padding: 'var(--bd-space-6)', maxWidth: 640 }}>
+                                <h3 className="section-header__title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--bd-space-6)' }}>
+                                    <Settings style={{ width: 20, height: 20 }} /> Account Settings
+                                </h3>
+
+                                <div style={{
+                                    padding: 'var(--bd-space-5)', borderRadius: 'var(--bd-radius-xl)',
+                                    border: '1px solid var(--bd-danger-border)',
+                                    background: 'var(--bd-danger-muted)'
+                                }}>
+                                    <h4 style={{ fontWeight: 700, color: 'var(--bd-danger)', marginBottom: 'var(--bd-space-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <AlertCircle style={{ width: 20, height: 20 }} /> Danger Zone
+                                    </h4>
+                                    <p style={{ fontSize: 'var(--bd-font-size-sm)', color: 'var(--bd-danger)', opacity: 0.8, marginBottom: 'var(--bd-space-5)', lineHeight: 1.5 }}>
+                                        Once you delete your account, there is no going back. All your data including profile information, campaigns, and posts will be permanently removed.
+                                    </p>
+                                    <button
+                                        onClick={handleDeleteAccount}
+                                        style={{
+                                            padding: '10px 20px', borderRadius: 'var(--bd-radius-lg)',
+                                            background: 'var(--bd-danger)', color: '#fff',
+                                            fontWeight: 700, fontSize: 'var(--bd-font-size-sm)',
+                                            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                                            transition: 'all 150ms ease'
+                                        }}
+                                    >
+                                        <Trash2 style={{ width: 16, height: 16 }} /> Delete Account
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Edit Modal */}
