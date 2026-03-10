@@ -1,5 +1,6 @@
 import { tazapayService, TazapayError } from '../services/tazapayService.js';
 import { PrismaClient } from '@prisma/client';
+import { createNotification } from '../services/notificationService.js';
 
 const prisma = new PrismaClient();
 
@@ -327,6 +328,15 @@ export const verifyPayment = async (req, res) => {
                 }
             }
 
+            // Notify brand of successful payment
+            createNotification(
+                transaction.userId,
+                'payment_received',
+                'Campaign Funded Successfully',
+                `Your campaign escrow was funded. Amount: $${parseFloat(transaction.netAmount || transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                { campaignId: transaction.campaignId, transactionId: transaction.id }
+            );
+
             return res.json({ status: 'Completed', message: 'Payment verified and confirmed!' });
 
         } else if (isFailed) {
@@ -470,6 +480,15 @@ export const handleWebhook = async (req, res) => {
                 }
 
                 console.log(`✅ Webhook: Transaction ${transaction.id} completed`);
+
+                // Notify brand of successful payment via webhook
+                createNotification(
+                    transaction.userId,
+                    'payment_received',
+                    'Campaign Funded Successfully',
+                    `Your campaign escrow was funded. Amount: $${parseFloat(transaction.netAmount || transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    { campaignId: transaction.campaignId, transactionId: transaction.id }
+                );
             } else {
                 console.warn(`⚠️ Webhook: No transaction found for reference ${referenceId}`);
             }

@@ -43,6 +43,7 @@ model User {
   documents           Document[]
   meetings            Meeting[]
   escrowLedgerEntries EscrowLedger[]
+  notifications       Notification[]
 
   @@index([email])
   @@index([role])
@@ -59,6 +60,11 @@ model BrandProfile {
   about        String?       @db.Text
   logoUrl      String?       @map("logo_url") @db.LongText
   bannerUrl    String?       @map("banner_url") @db.LongText
+
+  // Brand documents & assets
+  brandGuidelines String?    @map("brand_guidelines") @db.VarChar(500)
+  mediaKit        String?    @map("media_kit") @db.VarChar(500)
+  profileStrength Int        @default(0) @map("profile_strength")
   companySize  CompanySize?  @default(Startup) @map("company_size")
   hiringStatus HiringStatus? @default(Active) @map("hiring_status")
   hiringSince  Int?          @map("hiring_since")
@@ -707,4 +713,32 @@ enum EscrowLedgerStatus {
   Completed
   Pending
   Failed
+}
+
+// 16. Notifications
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  type      NotificationType
+  title     String           @db.VarChar(150)
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  campaign_invite
+  content_submitted
+  content_approved
+  content_revision
+  creator_applied
+  payment_received
+  payment_pending
+  general
 }

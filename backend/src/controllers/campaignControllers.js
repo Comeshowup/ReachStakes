@@ -1,4 +1,5 @@
 import { prisma } from "../config/db.js";
+import { createNotification } from "../services/notificationService.js";
 
 // @desc    Create a new campaign
 // @route   POST /api/campaigns
@@ -111,6 +112,15 @@ export const applyToCampaign = async (req, res) => {
                 }
             }
         });
+
+        // Notify the brand that a new creator has applied
+        createNotification(
+            campaign.brandId,
+            'creator_applied',
+            'New Creator Application',
+            `A creator applied to your campaign "${campaign.title}"`,
+            { campaignId, collaborationId: collaboration.id }
+        );
 
         res.status(201).json({
             status: 'success',

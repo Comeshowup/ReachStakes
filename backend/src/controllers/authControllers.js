@@ -88,9 +88,9 @@ const register = async (req, res) => {
 
     try {
         // Use transaction to ensure both user and profile are created or neither
-        const result = await prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (tx) => {
             // 1. Create User
-            const user = await prisma.user.create({
+            const user = await tx.user.create({
                 data: {
                     name: name, // This acts as "Full Name" for creators or "Contact Name" for brands initially
                     email: email,
@@ -102,7 +102,7 @@ const register = async (req, res) => {
 
             // 2. Create Profile based on role
             if (role === 'brand') {
-                await prisma.brandProfile.create({
+                await tx.brandProfile.create({
                     data: {
                         userId: user.id,
                         companyName: name, // Using the provided name as Company Name initially
@@ -113,7 +113,7 @@ const register = async (req, res) => {
                 if (!handle) {
                     throw new Error("Handle is required for creators");
                 }
-                await prisma.creatorProfile.create({
+                await tx.creatorProfile.create({
                     data: {
                         userId: user.id,
                         fullName: name,
@@ -127,7 +127,7 @@ const register = async (req, res) => {
 
                 // Phase 3: Increment referrer's count
                 if (referrerUserId) {
-                    await prisma.creatorProfile.update({
+                    await tx.creatorProfile.update({
                         where: { userId: referrerUserId },
                         data: { referralCount: { increment: 1 } }
                     });
@@ -135,6 +135,9 @@ const register = async (req, res) => {
             }
 
             return user;
+        }, {
+            maxWait: 5000,
+            timeout: 10000
         });
 
         //generate token
@@ -254,8 +257,10 @@ const googleLogin = async (req, res) => {
             // Defaulting role to "brand" if not provided, though typically role should be selected on frontend
             const userRole = role || "brand";
 
-            const result = await prisma.$transaction(async (prisma) => {
-                const newUser = await prisma.user.create({
+            // Use a specific transaction object 'tx' to avoid shadowing the global 'prisma' client
+            // Increased timeout and maxWait to handle database latency on Railway
+            const result = await prisma.$transaction(async (tx) => {
+                const newUser = await tx.user.create({
                     data: {
                         name,
                         email,
@@ -266,18 +271,18 @@ const googleLogin = async (req, res) => {
 
                 // Create Profile based on role
                 if (userRole === 'brand') {
-                    await prisma.brandProfile.create({
+                    await tx.brandProfile.create({
                         data: {
                             userId: newUser.id,
                             companyName: name,
                             contactEmail: email,
-                            onboardingCompleted: false // Explicitly set false
+                            onboardingCompleted: false
                         }
                     });
                 } else if (userRole === 'creator') {
-                    // Generater a placeholder handle
+                    // Generate a placeholder handle
                     const handle = email.split('@')[0] + Math.floor(Math.random() * 1000);
-                    await prisma.creatorProfile.create({
+                    await tx.creatorProfile.create({
                         data: {
                             userId: newUser.id,
                             fullName: name,
@@ -289,12 +294,15 @@ const googleLogin = async (req, res) => {
                 }
 
                 return newUser;
+            }, {
+                maxWait: 5000, // default is 2000
+                timeout: 10000 // default is 5000
             });
 
             // Re-fetch user with profile to ensure we return consistent structure
             user = await prisma.user.findUnique({
                 where: { id: result.id },
-                include: { brandProfile: true }
+                include: { brandProfile: true, creatorProfile: true }
             });
         }
 

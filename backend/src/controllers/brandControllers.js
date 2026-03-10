@@ -1,6 +1,23 @@
 import { prisma } from "../config/db.js";
+import { calculateProfileStrength, recalculateAndPersist } from "../services/brandProfile.service.js";
 
-// Get authenticated brand's profile
+// ─── URL validator ───
+function isValidUrl(str) {
+    if (!str) return true;
+    try { new URL(str); return true; } catch { return false; }
+}
+
+// ─── Resolve file URL (prefix relative /uploads paths with backend origin) ───
+function resolveFileUrl(req, urlOrPath) {
+    if (!urlOrPath) return null;
+    // Already a full URL or base64 data URI — return as is
+    if (urlOrPath.startsWith('http') || urlOrPath.startsWith('data:')) return urlOrPath;
+    // Relative path like /uploads/... — prefix with backend origin
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return `${baseUrl}${urlOrPath}`;
+}
+
+// ─── Get authenticated brand's profile ───
 export const getBrandProfile = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -10,10 +27,7 @@ export const getBrandProfile = async (req, res) => {
             include: {
                 brandProfile: true,
                 brandCampaigns: {
-                    select: {
-                        id: true,
-                        status: true
-                    }
+                    select: { id: true, status: true }
                 }
             }
         });
@@ -26,40 +40,54 @@ export const getBrandProfile = async (req, res) => {
             return res.status(404).json({ status: "error", message: "Brand profile not found" });
         }
 
+        const bp = user.brandProfile;
+        const socialLinks = bp.socialLinks || {};
+
         // Calculate stats
         const totalCampaigns = user.brandCampaigns.length;
         const activeCampaigns = user.brandCampaigns.filter(c => c.status === 'Active').length;
 
+        // Profile strength
+        const { score, checklist } = calculateProfileStrength(bp);
+
         // Format response to match frontend expectations
         const profileData = {
             id: user.id,
-            name: user.brandProfile.companyName,
+            name: bp.companyName,
             email: user.email,
-            tagline: user.brandProfile.tagline || '',
-            industry: user.brandProfile.industry || '',
-            location: user.brandProfile.location || '',
-            about: user.brandProfile.about || '',
-            logo: user.brandProfile.logoUrl || null,
-            banner: user.brandProfile.bannerUrl || null,
-            companySize: user.brandProfile.companySize || 'Startup',
-            hiringStatus: user.brandProfile.hiringStatus || 'Active',
-            websiteUrl: user.brandProfile.websiteUrl || '',
-            socials: user.brandProfile.socialLinks || {},
+            tagline: bp.tagline || '',
+            industry: bp.industry || '',
+            location: bp.location || '',
+            about: bp.about || '',
+            logo: resolveFileUrl(req, bp.logoUrl),
+            banner: resolveFileUrl(req, bp.bannerUrl),
+            companySize: bp.companySize || 'Startup',
+            hiringStatus: bp.hiringStatus || 'Active',
+            websiteUrl: bp.websiteUrl || '',
+            brandGuidelines: resolveFileUrl(req, bp.brandGuidelines),
+            mediaKit: resolveFileUrl(req, bp.mediaKit),
+            socials: {
+                website: bp.websiteUrl || '',
+                instagram: socialLinks.instagram || '',
+                linkedin: socialLinks.linkedin || '',
+                twitter: socialLinks.twitter || '',
+            },
             contact: {
-                email: user.brandProfile.contactEmail || user.email,
-                phone: '' // Can be added to schema if needed
+                email: bp.contactEmail || user.email,
             },
             stats: {
                 campaigns: totalCampaigns,
                 activeCampaigns: activeCampaigns,
-                hiringSince: user.brandProfile.hiringSince || new Date().getFullYear(),
-                rating: 'N/A' // Default to N/A until collaborations exist
+                hiringSince: bp.hiringSince || new Date().getFullYear(),
+                rating: 'N/A'
             },
+            profileStrength: score,
+            completionChecklist: checklist,
             onboarding: {
-                primaryGoal: user.brandProfile.primaryGoal || '',
-                budgetRange: user.brandProfile.budgetRange || '',
-                launchTimeline: user.brandProfile.launchTimeline || '',
-                teamEmails: user.brandProfile.teamEmails || []
+                primaryGoal: bp.primaryGoal || '',
+                budgetRange: bp.budgetRange || '',
+                launchTimeline: bp.launchTimeline || '',
+                teamEmails: bp.teamEmails || []
             }
         };
 
@@ -71,7 +99,7 @@ export const getBrandProfile = async (req, res) => {
     }
 };
 
-// Update brand profile
+// ─── Update brand profile ───
 export const updateBrandProfile = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -88,7 +116,6 @@ export const updateBrandProfile = async (req, res) => {
             websiteUrl,
             socials,
             contact,
-            skills
         } = req.body;
 
         // Verify user is a brand
@@ -101,42 +128,70 @@ export const updateBrandProfile = async (req, res) => {
             return res.status(403).json({ status: "error", message: "Access denied. Brand account required." });
         }
 
-        // Update brand profile
-        const updatedProfile = await prisma.brandProfile.update({
-            where: { userId: userId },
-            data: {
-                companyName: name || undefined,
-                tagline: tagline || undefined,
-                industry: industry || undefined,
-                location: location || undefined,
-                about: about || undefined,
-                logoUrl: logo || undefined,
-                bannerUrl: banner || undefined,
-                companySize: companySize || undefined,
-                hiringStatus: hiringStatus || undefined,
-                websiteUrl: websiteUrl || undefined,
-                socialLinks: socials || undefined,
-                contactEmail: contact?.email || undefined,
-                onboardingCompleted: req.body.onboardingCompleted !== undefined ? req.body.onboardingCompleted : undefined,
-                primaryGoal: req.body.primaryGoal || undefined,
-                budgetRange: req.body.budgetRange || undefined,
-                launchTimeline: req.body.launchTimeline || undefined,
-                teamEmails: req.body.teamEmails || undefined
+        // Validate social URLs
+        const socialFields = ['website', 'instagram', 'linkedin', 'twitter'];
+        for (const field of socialFields) {
+            const url = socials?.[field];
+            if (url && !isValidUrl(url)) {
+                return res.status(400).json({
+                    status: "error",
+                    message: `Invalid ${field} URL`
+                });
             }
+        }
+
+        // Build social links JSON
+        const existingSocials = user.brandProfile?.socialLinks || {};
+        const updatedSocials = socials ? {
+            ...existingSocials,
+            instagram: socials.instagram ?? existingSocials.instagram,
+            linkedin: socials.linkedin ?? existingSocials.linkedin,
+            twitter: socials.twitter ?? existingSocials.twitter,
+        } : undefined;
+
+        // Build update data — only include fields that were sent
+        const updateData = {};
+        if (name !== undefined) updateData.companyName = name;
+        if (tagline !== undefined) updateData.tagline = tagline;
+        if (industry !== undefined) updateData.industry = industry;
+        if (location !== undefined) updateData.location = location;
+        if (about !== undefined) updateData.about = about;
+        if (logo !== undefined) updateData.logoUrl = logo;
+        if (banner !== undefined) updateData.bannerUrl = banner;
+        if (companySize !== undefined) updateData.companySize = companySize;
+        if (hiringStatus !== undefined) updateData.hiringStatus = hiringStatus;
+        if (socials?.website !== undefined) updateData.websiteUrl = socials.website;
+        if (updatedSocials) updateData.socialLinks = updatedSocials;
+        if (contact?.email !== undefined) updateData.contactEmail = contact.email;
+
+        // Onboarding fields
+        if (req.body.onboardingCompleted !== undefined) updateData.onboardingCompleted = req.body.onboardingCompleted;
+        if (req.body.primaryGoal !== undefined) updateData.primaryGoal = req.body.primaryGoal;
+        if (req.body.budgetRange !== undefined) updateData.budgetRange = req.body.budgetRange;
+        if (req.body.launchTimeline !== undefined) updateData.launchTimeline = req.body.launchTimeline;
+        if (req.body.teamEmails !== undefined) updateData.teamEmails = req.body.teamEmails;
+
+        // Update brand profile
+        await prisma.brandProfile.update({
+            where: { userId },
+            data: updateData,
         });
 
         // Also update user name if provided
         if (name) {
             await prisma.user.update({
                 where: { id: userId },
-                data: { name: name }
+                data: { name }
             });
         }
+
+        // Recalculate and persist profile strength
+        const { score, checklist } = await recalculateAndPersist(userId);
 
         res.json({
             status: "success",
             message: "Profile updated successfully",
-            data: updatedProfile
+            data: { profileStrength: score, completionChecklist: checklist }
         });
 
     } catch (error) {
@@ -145,7 +200,102 @@ export const updateBrandProfile = async (req, res) => {
     }
 };
 
-// Get brand's community posts
+// ─── Upload brand logo ───
+export const uploadBrandLogo = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        if (!req.file) {
+            return res.status(400).json({ status: "error", message: "No file uploaded" });
+        }
+
+        const logoUrl = `/uploads/brands/logos/${req.file.filename}`;
+
+        await prisma.brandProfile.update({
+            where: { userId },
+            data: { logoUrl },
+        });
+
+        const { score } = await recalculateAndPersist(userId);
+
+        res.json({
+            status: "success",
+            message: "Logo uploaded successfully",
+            data: { logoUrl, profileStrength: score }
+        });
+
+    } catch (error) {
+        console.error("Error uploading logo:", error);
+        res.status(500).json({ status: "error", message: "Failed to upload logo" });
+    }
+};
+
+// ─── Upload brand cover image ───
+export const uploadBrandCover = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        if (!req.file) {
+            return res.status(400).json({ status: "error", message: "No file uploaded" });
+        }
+
+        const bannerUrl = `/uploads/brands/covers/${req.file.filename}`;
+
+        await prisma.brandProfile.update({
+            where: { userId },
+            data: { bannerUrl },
+        });
+
+        const { score } = await recalculateAndPersist(userId);
+
+        res.json({
+            status: "success",
+            message: "Cover image uploaded successfully",
+            data: { coverImageUrl: bannerUrl, profileStrength: score }
+        });
+
+    } catch (error) {
+        console.error("Error uploading cover:", error);
+        res.status(500).json({ status: "error", message: "Failed to upload cover image" });
+    }
+};
+
+// ─── Upload brand document (guidelines or media kit) ───
+export const uploadBrandDocument = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { type } = req.body; // 'brandGuidelines' or 'mediaKit'
+
+        if (!req.file) {
+            return res.status(400).json({ status: "error", message: "No file uploaded" });
+        }
+
+        if (!['brandGuidelines', 'mediaKit'].includes(type)) {
+            return res.status(400).json({ status: "error", message: "Invalid document type. Use 'brandGuidelines' or 'mediaKit'" });
+        }
+
+        const fileUrl = `/uploads/brands/documents/${req.file.filename}`;
+
+        await prisma.brandProfile.update({
+            where: { userId },
+            data: { [type]: fileUrl },
+        });
+
+        const { score } = await recalculateAndPersist(userId);
+
+        res.json({
+            status: "success",
+            message: `${type === 'brandGuidelines' ? 'Brand guidelines' : 'Media kit'} uploaded successfully`,
+            data: { fileUrl, type, profileStrength: score }
+        });
+
+    } catch (error) {
+        console.error("Error uploading document:", error);
+        res.status(500).json({ status: "error", message: "Failed to upload document" });
+    }
+};
+
+// ─── Get brand's community posts ───
 export const getBrandPosts = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -168,7 +318,6 @@ export const getBrandPosts = async (req, res) => {
             }
         });
 
-        // Format posts for frontend
         const formattedPosts = posts.map(post => ({
             id: post.id,
             content: post.contentText || '',
@@ -176,8 +325,8 @@ export const getBrandPosts = async (req, res) => {
             mediaType: post.mediaType !== 'none' ? post.mediaType : null,
             mediaUrl: post.mediaUrl || null,
             type: post.type,
-            likes: 0, // Can be extended with likes table
-            comments: 0 // Can be extended with comments table
+            likes: 0,
+            comments: 0
         }));
 
         res.json({ status: "success", data: formattedPosts });
@@ -188,7 +337,7 @@ export const getBrandPosts = async (req, res) => {
     }
 };
 
-// Create a new community post
+// ─── Create a new community post ───
 export const createBrandPost = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -228,13 +377,12 @@ export const createBrandPost = async (req, res) => {
     }
 };
 
-// Delete a community post
+// ─── Delete a community post ───
 export const deleteBrandPost = async (req, res) => {
     try {
         const userId = req.user.id;
         const postId = parseInt(req.params.id);
 
-        // Verify the post belongs to the user
         const post = await prisma.communityPost.findUnique({
             where: { id: postId }
         });
@@ -259,17 +407,15 @@ export const deleteBrandPost = async (req, res) => {
     }
 };
 
-// Get brand's campaigns with stats
+// ─── Get brand's campaigns with stats ───
 export const getBrandCampaigns = async (req, res) => {
     try {
         const userId = req.user.id;
-        console.log(`[DEBUG] getBrandCampaigns - UserID: ${userId}`);
 
         const campaigns = await prisma.campaign.findMany({
             where: { brandId: userId },
             include: {
                 collaborations: {
-
                     select: {
                         id: true,
                         status: true,
@@ -280,11 +426,9 @@ export const getBrandCampaigns = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        // Format campaigns for frontend
         const formattedCampaigns = campaigns.map(campaign => {
             const creatorCount = campaign.collaborations.length;
 
-            // Calculate total views from video stats
             let totalViews = 0;
             campaign.collaborations.forEach(collab => {
                 if (collab.videoStats) {
@@ -295,7 +439,6 @@ export const getBrandCampaigns = async (req, res) => {
                 }
             });
 
-            // Calculate simple ROI estimate
             const roi = totalViews > 0 ? `${((totalViews / 1000) * 2.5).toFixed(1)}x` : '-';
 
             return {
@@ -327,7 +470,7 @@ export const getBrandCampaigns = async (req, res) => {
     }
 };
 
-// Helper function to format date
+// ─── Helper: format date ───
 function formatDate(date) {
     const now = new Date();
     const postDate = new Date(date);

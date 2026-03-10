@@ -33,6 +33,56 @@ export const updateBrandProfile = async (profileData) => {
 };
 
 /**
+ * Upload brand logo (multipart/form-data)
+ * @param {File} file - Image file (jpg, png, webp — max 2MB)
+ */
+export const uploadLogo = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/brands/profile/logo', formData, {
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+};
+
+/**
+ * Upload brand cover image (multipart/form-data)
+ * @param {File} file - Image file (jpg, png, webp — max 5MB)
+ */
+export const uploadCover = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/brands/profile/cover', formData, {
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+};
+
+/**
+ * Upload brand document (brand guidelines or media kit)
+ * @param {File} file - PDF file (max 10MB)
+ * @param {string} type - 'brandGuidelines' or 'mediaKit'
+ */
+export const uploadDocument = async (file, type) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    const response = await api.post('/brands/profile/documents', formData, {
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+};
+
+/**
  * Fetch the brand's community posts
  */
 export const getBrandPosts = async () => {
@@ -84,7 +134,6 @@ export const deleteAccount = async () => {
     return response.data;
 };
 
-
 /**
  * Create a new campaign
  * @param {Object} campaignData - Campaign data
@@ -99,6 +148,9 @@ export const createCampaign = async (campaignData) => {
 export default {
     getBrandProfile,
     updateBrandProfile,
+    uploadLogo,
+    uploadCover,
+    uploadDocument,
     getBrandPosts,
     createBrandPost,
     deleteBrandPost,

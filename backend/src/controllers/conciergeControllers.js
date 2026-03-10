@@ -152,6 +152,9 @@ export const executePayout = async (collaborationId, userId) => {
             amountReleased: payoutAmount,
             newEscrowBalance: Number(collab.campaign.escrowBalance) - Number(payoutAmount)
         };
+    }, {
+        maxWait: 5000,
+        timeout: 15000 // Higher timeout for financial operations
     });
 };
 

@@ -7,7 +7,7 @@ import {
     Briefcase,
     Globe,
     ExternalLink,
-    Edit
+    ListChecks
 } from "lucide-react";
 
 const VERIFICATION_STATES = {
@@ -16,7 +16,7 @@ const VERIFICATION_STATES = {
     unverified: { label: "Not Verified", className: "bp-badge--unverified", Icon: AlertCircle },
 };
 
-const computeCompleteness = (profile) => {
+export const computeCompleteness = (profile) => {
     const fields = [
         profile?.name,
         profile?.tagline,
@@ -26,21 +26,22 @@ const computeCompleteness = (profile) => {
         profile?.logo,
         profile?.banner,
         profile?.contact?.email,
-        profile?.contact?.phone,
         profile?.socials?.website,
-        profile?.socials?.instagram,
-        profile?.socials?.linkedin,
+        profile?.socials?.instagram || profile?.socials?.linkedin || profile?.socials?.twitter,
+        profile?.mediaKit || profile?.brandGuidelines,
+        profile?.kycStatus === "verified",
     ];
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
 };
 
-const BrandProfileHeader = ({ profile, onEditProfile }) => {
+const BrandProfileHeader = ({ profile, onCompleteProfile }) => {
     if (!profile) return null;
 
     const verification = profile.verificationStatus || "verified";
     const verState = VERIFICATION_STATES[verification] || VERIFICATION_STATES.unverified;
-    const completeness = computeCompleteness(profile);
+    const completeness = profile.profileStrength ?? computeCompleteness(profile);
+    const isIncomplete = completeness < 100;
 
     return (
         <div className="bp-header">
@@ -63,7 +64,16 @@ const BrandProfileHeader = ({ profile, onEditProfile }) => {
                     <div className="bp-header__info">
                         <div className="bp-header__name-row">
                             <h1 className="bp-header__name">{profile.name}</h1>
-                            <span className={`bp-badge ${verState.className}`}>
+                            <span
+                                className={`bp-badge ${verState.className}`}
+                                title={
+                                    verification === "verified"
+                                        ? "Identity has been verified by ReachStakes"
+                                        : verification === "pending"
+                                            ? "Verification documents are under review"
+                                            : "Complete KYC to verify your account"
+                                }
+                            >
                                 <verState.Icon style={{ width: 11, height: 11 }} />
                                 {verState.label}
                             </span>
@@ -104,22 +114,42 @@ const BrandProfileHeader = ({ profile, onEditProfile }) => {
                     </div>
 
                     <div className="bp-header__actions">
-                        <button
-                            className="bp-btn bp-btn--secondary"
-                            onClick={onEditProfile}
-                            aria-label="Edit Profile"
-                        >
-                            <Edit style={{ width: 14, height: 14 }} />
-                            Edit Profile
-                        </button>
+                        {isIncomplete && (
+                            <button
+                                className="bp-btn bp-btn--secondary"
+                                onClick={onCompleteProfile}
+                                aria-label="Complete profile checklist"
+                                title="See steps to complete your profile"
+                            >
+                                <ListChecks style={{ width: 14, height: 14 }} />
+                                Complete Profile
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 <div className="bp-header__bottom">
-                    <div className="bp-completeness" role="progressbar" aria-valuenow={completeness} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completeness">
-                        <span className="bp-completeness__label">Profile Completeness</span>
+                    <div
+                        className="bp-completeness"
+                        role="progressbar"
+                        aria-valuenow={completeness}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Profile ${completeness}% complete`}
+                    >
+                        <span className="bp-completeness__label">Profile Strength</span>
                         <div className="bp-completeness__track">
-                            <div className="bp-completeness__fill" style={{ width: `${completeness}%` }} />
+                            <div
+                                className="bp-completeness__fill"
+                                style={{
+                                    width: `${completeness}%`,
+                                    background: completeness === 100
+                                        ? "var(--bd-success)"
+                                        : completeness >= 60
+                                            ? "var(--bd-accent)"
+                                            : "var(--bd-warning)"
+                                }}
+                            />
                         </div>
                         <span className="bp-completeness__value">{completeness}%</span>
                     </div>

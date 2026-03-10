@@ -1,0 +1,499 @@
+/* ============================================================
+   Toast Notification System
+   ============================================================ */
+.bp-toast-container {
+    position: fixed;
+    bottom: var(--bd-space-6);
+    right: var(--bd-space-6);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-2);
+    pointer-events: none;
+}
+
+.bp-toast {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-3);
+    padding: var(--bd-space-3) var(--bd-space-4);
+    background: var(--bd-surface);
+    border: 1px solid var(--bd-border-default);
+    border-radius: var(--bd-radius-xl);
+    box-shadow: var(--bd-shadow-xl);
+    min-width: 280px;
+    max-width: 380px;
+    pointer-events: all;
+}
+
+.bp-toast--success {
+    border-left: 3px solid var(--bd-success);
+}
+
+.bp-toast--error {
+    border-left: 3px solid var(--bd-danger);
+}
+
+.bp-toast--warning {
+    border-left: 3px solid var(--bd-warning);
+}
+
+.bp-toast--info {
+    border-left: 3px solid var(--bd-accent);
+}
+
+.bp-toast__icon {
+    flex-shrink: 0;
+}
+
+.bp-toast__text {
+    flex: 1;
+    font-size: var(--bd-font-size-sm);
+    font-weight: var(--bd-font-weight-medium);
+    color: var(--bd-text-primary);
+    line-height: 1.4;
+}
+
+.bp-toast__close {
+    flex-shrink: 0;
+    padding: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--bd-text-muted);
+    border-radius: var(--bd-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 150ms ease, background 150ms ease;
+}
+
+.bp-toast__close:hover {
+    color: var(--bd-text-primary);
+    background: var(--bd-bg-tertiary);
+}
+
+/* ============================================================
+   Sticky Save Bar
+   ============================================================ */
+.bp-save-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--bd-space-4);
+    padding: var(--bd-space-3) var(--bd-space-5);
+    background: var(--bd-surface);
+    border-top: 1px solid var(--bd-border-default);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    border-radius: var(--bd-radius-2xl) var(--bd-radius-2xl) 0 0;
+    backdrop-filter: blur(8px);
+}
+
+.bp-save-bar__message {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-2);
+    font-size: var(--bd-font-size-sm);
+    color: var(--bd-warning);
+    font-weight: var(--bd-font-weight-medium);
+}
+
+.bp-save-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-3);
+}
+
+/* ============================================================
+   Profile Completion Checklist
+   ============================================================ */
+.bp-checklist {
+    background: var(--bd-surface);
+    border: 1px solid var(--bd-border-subtle);
+    border-radius: var(--bd-radius-2xl);
+    overflow: hidden;
+}
+
+.bp-checklist__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--bd-space-4) var(--bd-space-5);
+    border-bottom: 1px solid var(--bd-border-muted);
+    background: var(--bd-bg-tertiary);
+}
+
+.bp-checklist__title {
+    font-size: var(--bd-font-size-sm);
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-2);
+}
+
+.bp-checklist__progress {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-2);
+}
+
+.bp-checklist__count {
+    font-size: var(--bd-font-size-xs);
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.bp-checklist__body {
+    padding: var(--bd-space-2) 0;
+}
+
+.bp-checklist__item {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-3);
+    padding: var(--bd-space-3) var(--bd-space-5);
+    cursor: pointer;
+    transition: background 120ms ease;
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.bp-checklist__item:hover {
+    background: var(--bd-surface-hover);
+}
+
+.bp-checklist__dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1.5px solid var(--bd-border-default);
+    background: var(--bd-surface);
+}
+
+.bp-checklist__dot--done {
+    background: var(--bd-success);
+    border-color: var(--bd-success);
+}
+
+.bp-checklist__item-label {
+    flex: 1;
+    font-size: var(--bd-font-size-sm);
+    color: var(--bd-text-secondary);
+}
+
+.bp-checklist__item-label--done {
+    color: var(--bd-text-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--bd-border-default);
+}
+
+.bp-checklist__item-action {
+    font-size: var(--bd-font-size-xs);
+    font-weight: var(--bd-font-weight-medium);
+    color: var(--bd-accent);
+    white-space: nowrap;
+}
+
+/* ============================================================
+   Brand Story Modal
+   ============================================================ */
+.bp-story-modal {
+    width: min(560px, 95vw);
+}
+
+.bp-story-modal textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    padding: 10px 12px;
+    font-size: var(--bd-font-size-sm);
+    font-family: var(--bd-font-body);
+    color: var(--bd-text-primary);
+    background: var(--bd-surface-input);
+    border: 1px solid var(--bd-border-default);
+    border-radius: var(--bd-radius-lg);
+    outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    line-height: 1.5;
+}
+
+.bp-story-modal textarea:focus {
+    border-color: var(--bd-accent);
+    box-shadow: 0 0 0 3px var(--bd-focus-ring);
+}
+
+.bp-story-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-4);
+}
+
+.bp-story-field__label {
+    font-size: var(--bd-font-size-xs);
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: var(--bd-space-2);
+}
+
+.bp-story-field__hint {
+    font-size: var(--bd-font-size-xs);
+    color: var(--bd-text-muted);
+    margin-top: var(--bd-space-1);
+}
+
+/* ============================================================
+   Upload Card with Drag & Drop
+   ============================================================ */
+.bp-upload-card {
+    border: 2px dashed var(--bd-border-default);
+    border-radius: var(--bd-radius-xl);
+    background: var(--bd-bg-tertiary);
+    transition: border-color 150ms ease, background 150ms ease;
+    overflow: hidden;
+}
+
+.bp-upload-card--dragging {
+    border-color: var(--bd-accent);
+    background: var(--bd-surface-hover);
+}
+
+.bp-upload-card__preview {
+    position: relative;
+    overflow: hidden;
+}
+
+.bp-upload-card__preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.bp-upload-card__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.bp-upload-card__preview:hover .bp-upload-card__overlay {
+    opacity: 1;
+}
+
+.bp-upload-card__drop-zone {
+    padding: var(--bd-space-6) var(--bd-space-4);
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--bd-space-2);
+}
+
+.bp-upload-card__progress {
+    height: 3px;
+    background: var(--bd-bg-secondary);
+    border-radius: 9999px;
+    margin: 0 var(--bd-space-4) var(--bd-space-4);
+    overflow: hidden;
+}
+
+.bp-upload-card__progress-fill {
+    height: 100%;
+    background: var(--bd-accent);
+    border-radius: 9999px;
+    transition: width 300ms ease;
+}
+
+.bp-upload-card__hint {
+    font-size: var(--bd-font-size-xs);
+    color: var(--bd-text-muted);
+    margin-top: var(--bd-space-1);
+}
+
+.bp-upload-card__usage {
+    font-size: 0.625rem;
+    color: var(--bd-text-muted);
+    margin-top: 2px;
+    opacity: 0.7;
+}
+
+/* ============================================================
+   Social Row table-style layout
+   ============================================================ */
+.bp-social-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.bp-social-table th {
+    font-size: 0.6875rem;
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 var(--bd-space-3) var(--bd-space-3);
+    text-align: left;
+    border-bottom: 1px solid var(--bd-border-muted);
+}
+
+.bp-social-table td {
+    padding: var(--bd-space-3);
+    border-bottom: 1px solid var(--bd-border-muted);
+    font-size: var(--bd-font-size-sm);
+    color: var(--bd-text-primary);
+    vertical-align: middle;
+}
+
+.bp-social-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================================================
+   2FA Confirmation Modal specific
+   ============================================================ */
+.bp-2fa-illustration {
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    background: var(--bd-warning-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--bd-space-4);
+    color: var(--bd-warning);
+}
+
+/* ============================================================
+   Section Card — Fintech Variant (stronger borders for Security tab)
+   ============================================================ */
+.bp-section--fintech {
+    border-color: var(--bd-border-default);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.bp-section--fintech .bp-section__header {
+    background: var(--bd-bg-tertiary);
+}
+
+/* ============================================================
+   Status Badge (inline version)
+   ============================================================ */
+.bp-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: var(--bd-font-weight-semibold);
+    white-space: nowrap;
+}
+
+.bp-status--connected {
+    color: var(--bd-success);
+    background: var(--bd-success-muted);
+}
+
+.bp-status--disconnected {
+    color: var(--bd-text-muted);
+    background: var(--bd-bg-secondary);
+}
+
+.bp-status--pending {
+    color: var(--bd-warning);
+    background: var(--bd-warning-muted);
+}
+
+.bp-status__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: currentColor;
+}
+
+/* ============================================================
+   Inline tooltip
+   ============================================================ */
+.bp-tooltip-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.bp-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: var(--bd-text-primary);
+    color: var(--bd-surface);
+    font-size: 0.6875rem;
+    padding: 4px 8px;
+    border-radius: var(--bd-radius-md);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms ease;
+    z-index: 200;
+}
+
+.bp-tooltip-wrap:hover .bp-tooltip {
+    opacity: 1;
+}
+
+.bp-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: var(--bd-text-primary);
+}
+
+/* ============================================================
+   Spin animation for loader icons
+   ============================================================ */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================================
+   Success button variant
+   ============================================================ */
+.bp-btn--success {
+    background: var(--bd-success);
+    color: #fff;
+    box-shadow: none;
+}
+
+.bp-btn--success:hover {
+    opacity: 0.9;
+}

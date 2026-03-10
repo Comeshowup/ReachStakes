@@ -20,6 +20,7 @@ import referralRoutes from './routes/referralRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import brandCampaignRoutes from './routes/campaign.routes.js';
 import escrowRoutes from './routes/escrowRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 import { validateTazapayConfig } from './services/tazapayService.js';
 import cron from 'node-cron';
@@ -65,6 +66,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Serve uploaded files (brand logos, covers, documents)
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename_server = fileURLToPath(import.meta.url);
+const __dirname_server = path.dirname(__filename_server);
+app.use('/uploads', express.static(path.join(__dirname_server, '../uploads')));
+
 // Health Check
 app.get('/', (req, res) => {
     res.json({ message: 'Backend is running!' });
@@ -89,6 +97,7 @@ app.use('/api/referrals', referralRoutes); // Phase 3: Referral System
 app.use('/api/dashboard', dashboardRoutes); // Brand Dashboard API
 app.use('/api/v1/brand/campaigns', brandCampaignRoutes); // Campaign Wizard & Detail
 app.use('/api/escrow', escrowRoutes); // Escrow Vault
+app.use('/api/notifications', notificationRoutes); // In-App Notifications
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {

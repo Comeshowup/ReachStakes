@@ -684,29 +684,35 @@ export const sendEmail = async (to, template, data) => {
  */
 export const createInAppNotification = async (userId, type, title, message, metadata = {}) => {
     try {
-        // Check if Notification model exists - this may need to be added to schema
         const notification = await prisma.notification.create({
             data: {
                 userId,
                 type,
                 title,
                 message,
-                metadata: JSON.stringify(metadata),
-                read: false
+                metadata: Object.keys(metadata).length ? metadata : undefined,
+                isRead: false
             }
         });
         console.log(`[NotificationService] In-app notification created for user ${userId}`);
         return notification;
     } catch (error) {
-        // If Notification model doesn't exist, log warning
-        if (error.code === 'P2021' || error.message.includes('does not exist')) {
-            console.warn('[NotificationService] Notification model not found in schema');
-            return null;
-        }
         console.error('[NotificationService] In-app notification failed:', error);
         return null;
     }
 };
+
+/**
+ * Convenience alias used by controllers/event hooks.
+ * @param {number} userId
+ * @param {string} type  - NotificationType enum value
+ * @param {string} title
+ * @param {string} message
+ * @param {object} [metadata]
+ */
+export const createNotification = (userId, type, title, message, metadata = null) =>
+    createInAppNotification(userId, type, title, message, metadata || {});
+
 
 // ============================================
 // MANAGED APPROVAL NOTIFICATIONS

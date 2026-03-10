@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { NAV_GROUPS } from "../data";
 import {
@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import NotificationDropdown from "../components/NotificationDropdown";
 import { ThemeProvider, useTheme } from "../../contexts/ThemeProvider";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { getUnreadCount } from "../../api/notificationService";
 
 // ===========================
 // SIDEBAR — Semantic tokens only
@@ -197,7 +198,15 @@ const Sidebar = ({ isOpen, onClose }) => {
 const Topbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // Fetch unread count on mount
+    useEffect(() => {
+        getUnreadCount()
+            .then(res => setUnreadCount(res.data?.count || 0))
+            .catch(() => { }); // Fail silently
+    }, []);
 
     return (
         <header
@@ -258,15 +267,18 @@ const Topbar = ({ onMenuClick }) => {
                         aria-label="View notifications"
                     >
                         <Bell className="w-5 h-5" strokeWidth={1.5} />
-                        <span className="absolute top-2 right-2 w-2 h-2 rounded-full"
-                            style={{
-                                background: 'var(--bd-danger)',
-                                border: '2px solid var(--bd-bg-primary)'
-                            }} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                                style={{
+                                    background: 'var(--bd-danger)',
+                                    border: '2px solid var(--bd-bg-primary)'
+                                }} />
+                        )}
                     </button>
                     <NotificationDropdown
                         isOpen={isNotificationsOpen}
                         onClose={() => setIsNotificationsOpen(false)}
+                        onUnreadCountChange={setUnreadCount}
                     />
                 </div>
 
