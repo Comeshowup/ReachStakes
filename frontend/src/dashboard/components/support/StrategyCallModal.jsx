@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Calendar, Clock, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackStrategyCallOpened } from './supportAnalytics';
+import { bookStrategyCall } from './supportApi';
 
 const CALL_TYPES = [
     {
@@ -34,6 +35,8 @@ const StrategyCallModal = ({ isOpen, onClose, tierLabel }) => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
     const modalRef = useRef(null);
     const closeRef = useRef(null);
     const [portalTarget, setPortalTarget] = useState(null);
@@ -49,6 +52,8 @@ const StrategyCallModal = ({ isOpen, onClose, tierLabel }) => {
         if (isOpen) {
             trackStrategyCallOpened(tierLabel);
             setSubmitted(false);
+            setIsSubmitting(false);
+            setSubmitError(null);
             setSelectedType(null);
             setSelectedDate('');
             setSelectedTime('');
@@ -96,9 +101,26 @@ const StrategyCallModal = ({ isOpen, onClose, tierLabel }) => {
         return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
 
-    const handleSubmit = useCallback(() => {
-        setSubmitted(true);
-    }, []);
+    const handleSubmit = useCallback(async () => {
+        if (!selectedType || isSubmitting) return;
+        setIsSubmitting(true);
+        setSubmitError(null);
+
+        try {
+            await bookStrategyCall({
+                callType: CALL_TYPES.find(ct => ct.id === selectedType)?.label || selectedType,
+                date: selectedDate,
+                timeSlot: selectedTime,
+                agenda: `Strategy call — ${selectedType}`,
+            });
+            setSubmitted(true);
+        } catch (err) {
+            console.error('Failed to book strategy call:', err);
+            setSubmitError('Failed to schedule call. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [selectedType, selectedDate, selectedTime, isSubmitting]);
 
     if (!isOpen || !portalTarget) return null;
 
@@ -404,23 +426,23 @@ const StrategyCallModal = ({ isOpen, onClose, tierLabel }) => {
                                 </button>
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={!selectedType}
+                                    disabled={!selectedType || isSubmitting}
                                     style={{
                                         height: 44, padding: '0 24px', borderRadius: 12,
                                         border: 'none',
-                                        background: selectedType
+                                        background: selectedType && !isSubmitting
                                             ? 'var(--bd-primary, #6366f1)'
                                             : 'var(--bd-muted, #1c1c26)',
-                                        color: selectedType
+                                        color: selectedType && !isSubmitting
                                             ? 'var(--bd-primary-fg, #fff)'
                                             : 'var(--bd-text-muted, rgba(152,152,168,0.5))',
-                                        fontSize: 14, fontWeight: 600, cursor: selectedType ? 'pointer' : 'not-allowed',
+                                        fontSize: 14, fontWeight: 600, cursor: selectedType && !isSubmitting ? 'pointer' : 'not-allowed',
                                         fontFamily: 'var(--bd-font-body, Inter, sans-serif)',
-                                        boxShadow: selectedType ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
+                                        boxShadow: selectedType && !isSubmitting ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
                                         transition: 'all 180ms ease-out',
                                     }}
                                 >
-                                    Schedule Call
+                                    {isSubmitting ? 'Scheduling...' : 'Schedule Call'}
                                 </button>
                             </div>
                         </>

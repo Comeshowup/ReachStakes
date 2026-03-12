@@ -24,6 +24,27 @@
             color-mix(in srgb, var(--bd-primary) 70%, var(--bd-accent)) 100%);
 }
 
+.bp-header__banner::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 55%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.52), transparent);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.bp-header__banner-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
 .bp-header__banner-pattern {
     position: absolute;
     inset: 0;

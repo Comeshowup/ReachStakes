@@ -21,6 +21,8 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import brandCampaignRoutes from './routes/campaign.routes.js';
 import escrowRoutes from './routes/escrowRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
+import { initSocketServer } from './socketServer.js';
 
 import { validateTazapayConfig } from './services/tazapayService.js';
 import cron from 'node-cron';
@@ -98,6 +100,7 @@ app.use('/api/dashboard', dashboardRoutes); // Brand Dashboard API
 app.use('/api/v1/brand/campaigns', brandCampaignRoutes); // Campaign Wizard & Detail
 app.use('/api/escrow', escrowRoutes); // Escrow Vault
 app.use('/api/notifications', notificationRoutes); // In-App Notifications
+app.use('/api/support', supportRoutes); // Support System
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
@@ -141,6 +144,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     validateTazapayConfig();
 });
+
+// Initialize Socket.io on the HTTP server
+const io = initSocketServer(server);
 
 
 // Handle unhandled promise rejections (e.g., database connection errors)

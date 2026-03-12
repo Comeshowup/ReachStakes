@@ -45,6 +45,10 @@ model User {
   escrowLedgerEntries EscrowLedger[]
   notifications       Notification[]
 
+  // Support System
+  supportTickets    SupportTicket[]    @relation("BrandTickets")
+  liveChatSessions  LiveChatSession[]  @relation("BrandChatSessions")
+
   @@index([email])
   @@index([role])
   @@map("users")
@@ -741,4 +745,146 @@ enum NotificationType {
   payment_received
   payment_pending
   general
+  // Support events
+  ticket_created
+  ticket_reply
+  chat_agent_joined
+  call_scheduled
+}
+
+// =============================================
+// SUPPORT SYSTEM MODELS
+// =============================================
+
+// 17. Support Agents (Internal Staff)
+model SupportAgent {
+  id                 Int      @id @default(autoincrement())
+  name               String   @db.VarChar(100)
+  email              String   @unique @db.VarChar(255)
+  role               String   @default("agent") @db.VarChar(50)
+  isOnline           Boolean  @default(false) @map("is_online")
+  maxConcurrentChats Int      @default(3) @map("max_concurrent_chats")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tickets      SupportTicket[]  @relation("AgentTickets")
+  chatSessions LiveChatSession[] @relation("AgentChatSessions")
+
+  @@map("support_agents")
+}
+
+// 18. Support Tickets
+model SupportTicket {
+  id              Int            @id @default(autoincrement())
+  brandId         Int            @map("brand_id")
+  subject         String         @db.VarChar(255)
+  category        TicketCategory @default(GENERAL)
+  priority        TicketPriority @default(NORMAL)
+  status          TicketStatus   @default(OPEN)
+  assignedAgentId Int?           @map("assigned_agent_id")
+  campaignId      Int?           @map("campaign_id")
+  escrowId        String?        @map("escrow_id") @db.VarChar(100)
+  closedAt        DateTime?      @map("closed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  brand         User             @relation("BrandTickets", fields: [brandId], references: [id], onDelete: Cascade)
+  assignedAgent SupportAgent?    @relation("AgentTickets", fields: [assignedAgentId], references: [id])
+  messages      SupportMessage[]
+  chatSession   LiveChatSession? @relation("ConvertedTicket")
+
+  @@index([brandId, status])
+  @@index([assignedAgentId])
+  @@map("support_tickets")
+}
+
+// 19. Support Ticket Messages
+model SupportMessage {
+  id          Int        @id @default(autoincrement())
+  ticketId    Int        @map("ticket_id")
+  senderId    Int        @map("sender_id")
+  senderType  SenderType @map("sender_type")
+  message     String     @db.Text
+  attachments Json?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("support_messages")
+}
+
+// 20. Live Chat Sessions
+model LiveChatSession {
+  id                Int               @id @default(autoincrement())
+  brandId           Int               @map("brand_id")
+  agentId           Int?              @map("agent_id")
+  status            ChatSessionStatus @default(WAITING)
+  convertedTicketId Int?              @unique @map("converted_ticket_id")
+  startedAt         DateTime          @default(now()) @map("started_at")
+  endedAt           DateTime?         @map("ended_at")
+
+  brand           User            @relation("BrandChatSessions", fields: [brandId], references: [id], onDelete: Cascade)
+  agent           SupportAgent?   @relation("AgentChatSessions", fields: [agentId], references: [id])
+  convertedTicket SupportTicket?  @relation("ConvertedTicket", fields: [convertedTicketId], references: [id])
+  messages        ChatMessage[]
+
+  @@index([brandId])
+  @@index([agentId])
+  @@map("live_chat_sessions")
+}
+
+// 21. Chat Messages (Real-time)
+model ChatMessage {
+  id         Int        @id @default(autoincrement())
+  sessionId  Int        @map("session_id")
+  senderId   Int        @map("sender_id")
+  senderType SenderType @map("sender_type")
+  message    String     @db.Text
+  attachments Json?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  session LiveChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+// --- SUPPORT ENUMS ---
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_BRAND
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  CAMPAIGN
+  ESCROW
+  CREATOR_DISPUTE
+  ROAS_REPORTING
+  BILLING
+  ONBOARDING
+  GENERAL
+}
+
+enum SenderType {
+  BRAND
+  AGENT
+  SYSTEM
+}
+
+enum ChatSessionStatus {
+  WAITING
+  ACTIVE
+  ENDED
 }

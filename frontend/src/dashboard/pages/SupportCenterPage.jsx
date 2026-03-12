@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { getTierConfig } from '../components/support/tierConfig';
 import { useSupportSession, SUPPORT_STATUS } from '../components/support/supportStateMachine';
-import { getSupportStatus } from '../components/support/supportApi';
+import { getSupportStatus, startChatSession } from '../components/support/supportApi';
 import { trackSupportPageViewed } from '../components/support/supportAnalytics';
+import { useSocket } from '../components/support/useSocket';
 import SupportHeader from '../components/support/SupportHeader';
 import TrustBar from '../components/support/TrustBar';
 import PrimaryActions from '../components/support/PrimaryActions';
@@ -18,6 +19,7 @@ import '../../styles/support-center.css';
  *   - Resolve user tier (auth context → localStorage fallback → starter default)
  *   - Initialize support session state machine
  *   - Fetch agent status on mount
+ *   - Manage socket lifecycle for live chat
  *   - Manage modal state
  *   - Wire all child components together
  */
@@ -39,9 +41,23 @@ const SupportCenterPage = () => {
     /* ── Session State Machine ──────────────────── */
     const session = useSupportSession();
 
+    /* ── Socket Hook ────────────────────────────── */
+    const {
+        isConnected: socketConnected,
+        messages: socketMessages,
+        typingState,
+        sessionId: socketSessionId,
+        joinSession,
+        sendMessage,
+        sendTyping,
+        setMessages,
+    } = useSocket();
+
     /* ── Loading & Modal State ──────────────────── */
     const [isLoading, setIsLoading] = useState(true);
     const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+    const [queuePosition, setQueuePosition] = useState(0);
+    const [isTicketMode, setIsTicketMode] = useState(false);
     const chatInputRef = useRef(null);
 
     /* ── Fetch Agent Status on Mount ────────────── */
@@ -92,12 +108,11 @@ const SupportCenterPage = () => {
     }, []);
 
     /* ── Handlers ───────────────────────────────── */
-    const handleStartChat = useCallback(() => {
+    const handleStartChat = useCallback(async () => {
         if (session.isWeekend) {
             // On weekend, still allow messaging but show notice
             if (session.status !== SUPPORT_STATUS.ACTIVE) {
                 session.connect();
-                // After connecting, set the agent info with weekend notice
                 setTimeout(() => {
                     session.setConnected({
                         ...session.agentInfo,
@@ -112,20 +127,48 @@ const SupportCenterPage = () => {
         if (session.status === SUPPORT_STATUS.IDLE ||
             session.status === SUPPORT_STATUS.OFFLINE) {
             session.connect();
-            // Simulate connection
-            setTimeout(() => {
+
+            try {
+                // Call real API to start a chat session
+                const result = await startChatSession();
+
+                if (result.status === 'ACTIVE') {
+                    // Agent assigned immediately
+                    session.setConnected({
+                        ...session.agentInfo,
+                        name: result.agentName || session.agentInfo?.name,
+                        role: result.agentRole || session.agentInfo?.role,
+                        isOnline: true,
+                    });
+                } else {
+                    // Waiting in queue
+                    setQueuePosition(result.queuePosition || 1);
+                    session.setConnected({
+                        ...session.agentInfo,
+                        isOnline: true,
+                        estimatedReplyTime: '~2 min',
+                    });
+                }
+
+                // Join the socket session room
+                if (result.sessionId) {
+                    joinSession(result.sessionId);
+                }
+            } catch (err) {
+                console.error('Failed to start chat:', err);
+                // Fallback: show connected state anyway for offline messaging
                 session.setConnected({
                     ...session.agentInfo,
                     isOnline: true,
                 });
-            }, 600);
+            }
         }
 
         // Focus chat input
         setTimeout(() => {
             chatInputRef.current?.focus();
         }, 100);
-    }, [session]);
+    }, [session, joinSession]);
 
     const handleRetry = useCallback(() => {
         setIsLoading(true);
@@ -156,14 +199,11 @@ const SupportCenterPage = () => {
     }, [session]);
 
     const handleSubmitTicket = useCallback(() => {
-        // Scroll to chat and show ticket-mode message
-        if (chatInputRef.current) {
-            chatInputRef.current.focus();
-            chatInputRef.current.setAttribute(
-                'placeholder',
-                'Describe your issue — this will be submitted as a support ticket...'
-            );
-        }
+        setIsTicketMode(true);
+        // Focus chat input — LiveChatPanel will show ticket placeholder
+        setTimeout(() => {
+            chatInputRef.current?.focus();
+        }, 100);
     }, []);
 
     return (
@@ -199,6 +239,13 @@ const SupportCenterPage = () => {
                     onRetry={handleRetry}
                     tierConfig={tierConfig}
                     chatInputRef={chatInputRef}
+                    socketMessages={socketMessages}
+                    socketTyping={typingState}
+                    onSendMessage={sendMessage}
+                    onTyping={sendTyping}
+                    queuePosition={queuePosition}
+                    hasActiveSession={!!socketSessionId}
+                    isTicketMode={isTicketMode}
                 />
 
                 <SupportSidebar

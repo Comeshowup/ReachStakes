@@ -6,7 +6,6 @@ import {
     Search,
     Menu,
     X,
-    Plus,
     LogOut,
     Calendar,
 } from "lucide-react";
@@ -15,11 +14,46 @@ import NotificationDropdown from "../components/NotificationDropdown";
 import { ThemeProvider, useTheme } from "../../contexts/ThemeProvider";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { getUnreadCount } from "../../api/notificationService";
+import { getBrandProfile } from "../../api/brandService";
+
+// ===========================
+// SHARED HOOK — fetch brand identity once
+// ===========================
+const useBrandIdentity = () => {
+    const [brand, setBrand] = useState({ companyName: '', email: '', logoUrl: null });
+
+    useEffect(() => {
+        // Seed from localStorage immediately so there's no blank flash
+        try {
+            const stored = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            const fallbackName = stored.brandProfile?.companyName || stored.name || stored.companyName || '';
+            if (fallbackName) setBrand(prev => ({ ...prev, companyName: fallbackName, email: stored.email || '' }));
+        } catch { }
+
+        // Then fetch fresh data from the API
+        getBrandProfile()
+            .then(res => {
+                const p = res?.data || res;
+                setBrand({
+                    companyName: p.companyName || p.name || 'Brand Account',
+                    email: p.contactEmail || p.email || '',
+                    logoUrl: p.logoUrl || null,
+                });
+            })
+            .catch(() => { }); // Fail silently — fallback stays
+    }, []);
+
+    return brand;
+};
 
 // ===========================
 // SIDEBAR — Semantic tokens only
 // ===========================
 const Sidebar = ({ isOpen, onClose }) => {
+    const brand = useBrandIdentity();
+    const brandName = brand.companyName || 'Brand Account';
+    const brandEmail = brand.email || '';
+    const avatarLetter = brandName.charAt(0).toUpperCase();
     const navigate = useNavigate();
 
     return (
@@ -145,21 +179,29 @@ const Sidebar = ({ isOpen, onClose }) => {
                     <div className="p-4 rounded-2xl"
                         style={{ background: 'var(--bd-surface-overlay)', border: '1px solid var(--bd-border-subtle)' }}>
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-                                style={{
-                                    background: 'var(--bd-sidebar-logo-bg)',
-                                    color: '#ffffff'
-                                }}>
-                                B
-                            </div>
+                            {brand.logoUrl ? (
+                                <img
+                                    src={brand.logoUrl}
+                                    alt={brandName}
+                                    className="w-10 h-10 rounded-xl object-cover shrink-0"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                                    style={{
+                                        background: 'var(--bd-sidebar-logo-bg)',
+                                        color: '#ffffff'
+                                    }}>
+                                    {avatarLetter}
+                                </div>
+                            )}
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold truncate"
                                     style={{ color: 'var(--bd-text-primary)' }}>
-                                    Brand Account
+                                    {brandName}
                                 </p>
                                 <p className="text-xs truncate"
                                     style={{ color: 'var(--bd-text-secondary)' }}>
-                                    brand@reachstakes.com
+                                    {brandEmail}
                                 </p>
                             </div>
                         </div>
@@ -200,6 +242,9 @@ const Topbar = ({ onMenuClick }) => {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const brand = useBrandIdentity();
+    const topbarName = brand.companyName || 'B';
+    const topbarLetter = topbarName.charAt(0).toUpperCase();
 
     // Fetch unread count on mount
     useEffect(() => {
@@ -282,26 +327,24 @@ const Topbar = ({ onMenuClick }) => {
                     />
                 </div>
 
+                {/* Profile Avatar */}
                 <button
-                    onClick={() => navigate('/brand/campaigns')}
-                    className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                    style={{
-                        background: 'var(--bd-primary)',
-                        color: 'var(--bd-primary-fg)',
-                        boxShadow: 'var(--bd-shadow-primary-btn)',
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.boxShadow = 'var(--bd-shadow-primary-btn-hover)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.boxShadow = 'var(--bd-shadow-primary-btn)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                    }}
+                    onClick={() => navigate('/brand/profile')}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-opacity hover:opacity-80 overflow-hidden"
+                    style={!brand.logoUrl ? {
+                        background: 'var(--bd-sidebar-logo-bg)',
+                        color: '#ffffff',
+                    } : {}}
+                    aria-label="Go to profile"
+                    title={topbarName}
                 >
-                    <Plus className="w-4 h-4" />
-                    Create Campaign
+                    {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={topbarName} className="w-full h-full object-cover" />
+                    ) : (
+                        topbarLetter
+                    )}
                 </button>
+
             </div>
         </header>
     );

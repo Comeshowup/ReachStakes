@@ -46,7 +46,15 @@ const BrandProfileHeader = ({ profile, onCompleteProfile }) => {
     return (
         <div className="bp-header">
             <div className="bp-header__banner">
-                <div className="bp-header__banner-pattern" />
+                {profile.banner ? (
+                    <img
+                        src={profile.banner}
+                        alt="Cover"
+                        className="bp-header__banner-img"
+                    />
+                ) : (
+                    <div className="bp-header__banner-pattern" />
+                )}
             </div>
 
             <div className="bp-header__content">
