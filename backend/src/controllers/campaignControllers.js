@@ -386,8 +386,13 @@ export const discoverCampaigns = async (req, res) => {
 // @access  Public (or Private)
 export const getCampaignById = async (req, res) => {
     try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid campaign ID' });
+        }
+
         const campaign = await prisma.campaign.findUnique({
-            where: { id: parseInt(req.params.id) },
+            where: { id },
             include: {
                 brand: {
                     select: {

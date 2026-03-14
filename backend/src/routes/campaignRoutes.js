@@ -34,6 +34,9 @@ router.post('/:id/invite', protect, authorize('brand'), inviteToCampaign);
 router.post('/:id/apply', protect, authorize('creator'), applyToCampaign);
 router.get('/creator/:creatorId', protect, getCreatorCampaigns);
 
+// GET /api/campaigns/recommended — static route, must be before /:id
+router.get('/recommended', protect, authorize('creator'), discoverCampaigns);
+
 // Dynamic :id route MUST come last to avoid catching static routes like /brand or /creator
 router.get('/:id', protect, getCampaignById);
 

@@ -205,7 +205,7 @@ export const CREATOR_NAV_GROUPS = [
     {
         title: "Overview",
         items: [
-            { label: "Dashboard", path: "/creator", icon: Home },
+            { label: "Overview", path: "/creator", icon: Home },
             { label: "Find Campaigns", path: "/creator/explore", icon: Compass },
             { label: "My Work", path: "/creator/submissions", icon: FolderOpen },
             { label: "Video Stats", path: "/creator/video-stats", icon: BarChart3 },

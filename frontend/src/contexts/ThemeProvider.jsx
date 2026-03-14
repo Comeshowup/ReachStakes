@@ -49,6 +49,16 @@ export function ThemeProvider({ children, defaultTheme }) {
         setTheme(theme === 'dark' ? 'light' : 'dark');
     }, [theme, setTheme]);
 
+    // Sync `dark` class on <html> so Tailwind dark: variants work
+    useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+    }, [theme]);
+
     // Listen for system preference changes (only when no stored preference)
     useEffect(() => {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
