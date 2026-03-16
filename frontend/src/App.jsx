@@ -17,17 +17,21 @@ import PaymentStatus from "./dashboard/pages/PaymentStatus";
 import MessagingPanel from "./dashboard/pages/MessagingPanel";
 import CreatorLayout from "./dashboard/layout/CreatorLayout";
 import CreatorDashboardHome from "./dashboard/pages/creator/CreatorDashboardHome";
-import ExploreCampaigns from "./dashboard/pages/creator/ExploreCampaigns";
-import CreatorFinancials from "./dashboard/pages/creator/CreatorFinancials";
-import DiscoveryHub from "./dashboard/pages/creator/DiscoveryHub";
+import CampaignsPage from "./dashboard/pages/creator/CampaignsPage";
+import CampaignWorkspacePage from "./dashboard/pages/creator/CampaignWorkspacePage";
 import MySubmissions from "./dashboard/pages/creator/MySubmissions";
-import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
+import ExploreCampaigns from "./dashboard/pages/creator/ExploreCampaigns";
+import AnalyticsPage from "./dashboard/pages/creator/AnalyticsPage";
+import EarningsPage from "./dashboard/pages/creator/EarningsPage";
+import CreatorFinancials from "./dashboard/pages/creator/CreatorFinancials";
 import InvoiceCenter from "./dashboard/pages/creator/InvoiceCenter";
-import VideoStatsPage from "./dashboard/pages/creator/VideoStatsPage";
-import DocumentsPage from "./dashboard/pages/creator/DocumentsPage";
+import TaxDocumentsPlaceholder from "./dashboard/pages/creator/TaxDocumentsPlaceholder";
+import SettingsPage from "./dashboard/pages/creator/SettingsPage";
+import CreatorProfile from "./dashboard/pages/creator/CreatorProfile";
+import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
+import SettingsPlaceholder from "./dashboard/pages/creator/SettingsPlaceholder";
 import OnboardingStatusPage from "./dashboard/pages/creator/OnboardingStatusPage";
 import BrandProfile from "./dashboard/pages/BrandProfile";
-import CreatorProfile from "./dashboard/pages/creator/CreatorProfile";
 import ProfilePage from "./dashboard/pages/ProfilePage";
 import AdminLayout from "./dashboard/layout/AdminLayout";
 import AdminDashboardHome from "./dashboard/pages/admin/AdminDashboardHome";
@@ -89,20 +93,49 @@ function App() {
         <Route path="content-hub" element={<ContentHub />} />
       </Route>
 
-      {/* Creator Dashboard Routes - Protected Layout */}
+      {/* Creator Dashboard Routes — Workflow-based architecture */}
       <Route path="/creator" element={<CreatorLayout />}>
         <Route index element={<CreatorDashboardHome />} />
-        <Route path="explore" element={<ExploreCampaigns />} />
-        <Route path="submissions" element={<MySubmissions />} />
-        <Route path="profile" element={<CreatorProfile />} />
-        <Route path="financials" element={<CreatorFinancials />} />
-        <Route path="invoices" element={<InvoiceCenter />} />
-        <Route path="social-accounts" element={<SocialAccounts />} />
-        <Route path="video-stats" element={<VideoStatsPage />} />
-        <Route path="documents" element={<DocumentsPage />} />
+
+        {/* Campaigns — flat layout (no nested tabs) */}
+        <Route path="campaigns" element={<CampaignsPage />} />
+        <Route path="campaigns/:campaignId" element={<CampaignWorkspacePage />} />
+
+        {/* Analytics */}
+        <Route path="analytics" element={<AnalyticsPage />} />
+
+        {/* Earnings — tabbed layout */}
+        <Route path="earnings" element={<EarningsPage />}>
+          <Route index element={<CreatorFinancials />} />
+          <Route path="payouts" element={<CreatorFinancials />} />
+          <Route path="invoices" element={<InvoiceCenter />} />
+          <Route path="tax" element={<TaxDocumentsPlaceholder />} />
+        </Route>
+
+        {/* Settings — tabbed layout */}
+        <Route path="settings" element={<SettingsPage />}>
+          <Route index element={<Navigate to="/creator/settings/profile" replace />} />
+          <Route path="profile" element={<CreatorProfile />} />
+          <Route path="social" element={<SocialAccounts />} />
+          <Route path="payments" element={<SettingsPlaceholder icon={() => <span />} title="Payment Methods" description="Payment method management is coming soon. You'll be able to add and manage your payout methods here." />} />
+          <Route path="notifications" element={<SettingsPlaceholder icon={() => <span />} title="Notifications" description="Notification preferences are coming soon. You'll be able to customize what alerts you receive." />} />
+          <Route path="security" element={<SettingsPlaceholder icon={() => <span />} title="Security" description="Security settings are coming soon. You'll be able to manage two-factor authentication and login sessions." />} />
+        </Route>
+
+        {/* Support */}
         <Route path="support" element={<SupportCenterPage />} />
-        <Route path="contact" element={<Navigate to="/creator/support" replace />} />
         <Route path="onboarding-status" element={<OnboardingStatusPage />} />
+
+        {/* Discovery & Navigation */}
+        <Route path="explore" element={<ExploreCampaigns />} />
+        <Route path="submissions" element={<Navigate to="/creator/campaigns" replace />} />
+        <Route path="financials" element={<Navigate to="/creator/earnings" replace />} />
+        <Route path="invoices" element={<Navigate to="/creator/earnings/invoices" replace />} />
+        <Route path="video-stats" element={<Navigate to="/creator/analytics" replace />} />
+        <Route path="profile" element={<Navigate to="/creator/settings/profile" replace />} />
+        <Route path="social-accounts" element={<Navigate to="/creator/settings/social" replace />} />
+        <Route path="documents" element={<Navigate to="/creator/campaigns" replace />} />
+        <Route path="contact" element={<Navigate to="/creator/support" replace />} />
       </Route>
 
       {/* Admin Dashboard Routes */}

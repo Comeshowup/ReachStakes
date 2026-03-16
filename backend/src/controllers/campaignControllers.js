@@ -433,10 +433,11 @@ export const getCampaignById = async (req, res) => {
 export const inviteToCampaign = async (req, res) => {
     try {
         const campaignId = parseInt(req.params.id);
-        const { creatorId } = req.body;
+        const { creatorId, agreedPrice, notes } = req.body;
 
         const campaign = await prisma.campaign.findUnique({
-            where: { id: campaignId }
+            where: { id: campaignId },
+            include: { brand: { include: { brandProfile: true } } }
         });
 
         if (!campaign) {
@@ -447,12 +448,22 @@ export const inviteToCampaign = async (req, res) => {
             return res.status(403).json({ status: 'error', message: 'Not authorized' });
         }
 
+        // Verify creator exists
+        const creator = await prisma.user.findUnique({ where: { id: parseInt(creatorId) } });
+        if (!creator) {
+            return res.status(404).json({ status: 'error', message: 'Creator not found' });
+        }
+
+        // No duplicate invites / applications
         const existingCollab = await prisma.campaignCollaboration.findFirst({
             where: { campaignId, creatorId: parseInt(creatorId) }
         });
 
         if (existingCollab) {
-            return res.status(400).json({ status: 'error', message: 'Already exists' });
+            return res.status(400).json({
+                status: 'error',
+                message: 'An invitation or application already exists for this creator'
+            });
         }
 
         const collaboration = await prisma.campaignCollaboration.create({
@@ -460,6 +471,8 @@ export const inviteToCampaign = async (req, res) => {
                 campaignId,
                 creatorId: parseInt(creatorId),
                 status: 'Invited',
+                agreedPrice: agreedPrice ? parseFloat(agreedPrice) : null,
+                feedbackNotes: notes || null,
                 milestones: {
                     "Concept": "pending",
                     "Script": "pending",
@@ -467,13 +480,30 @@ export const inviteToCampaign = async (req, res) => {
                     "Final": "pending",
                     "Live": "pending"
                 }
+            },
+            include: {
+                campaign: {
+                    include: {
+                        brand: { include: { brandProfile: true } }
+                    }
+                }
             }
         });
+
+        // Notify the creator about the invitation
+        const brandName = campaign.brand?.brandProfile?.companyName || 'A brand';
+        createNotification(
+            parseInt(creatorId),
+            'campaign_invite',
+            'Campaign Invitation',
+            `${brandName} invited you to collaborate on "${campaign.title}"`,
+            { campaignId, collaborationId: collaboration.id }
+        );
 
         res.status(201).json({ status: 'success', data: collaboration });
     } catch (error) {
         console.error("Error inviting:", error);
-        res.status(500).json({ status: 'error', message: 'Failed to invite' });
+        res.status(500).json({ status: 'error', message: 'Failed to send invitation' });
     }
 };
 
@@ -485,8 +515,15 @@ export const respondToInvite = async (req, res) => {
         const collabId = parseInt(req.params.collabId);
         const { action } = req.body; // 'accept' or 'decline'
 
+        if (!['accept', 'decline'].includes(action)) {
+            return res.status(400).json({ status: 'error', message: "action must be 'accept' or 'decline'" });
+        }
+
         const collaboration = await prisma.campaignCollaboration.findUnique({
-            where: { id: collabId }
+            where: { id: collabId },
+            include: {
+                campaign: true
+            }
         });
 
         if (!collaboration || collaboration.creatorId !== req.user.id) {
@@ -494,19 +531,39 @@ export const respondToInvite = async (req, res) => {
         }
 
         if (collaboration.status !== 'Invited') {
-            return res.status(400).json({ status: 'error', message: 'Not a pending invitation' });
+            return res.status(400).json({ status: 'error', message: 'This invitation is no longer pending' });
         }
 
-        const updatedStatus = action === 'accept' ? 'Applied' : 'Declined';
+        // Accept → In_Progress (brand already confirmed by inviting)
+        // Decline → Rejected
+        const newStatus = action === 'accept' ? 'In_Progress' : 'Rejected';
 
         const updated = await prisma.campaignCollaboration.update({
             where: { id: collabId },
-            data: { status: updatedStatus }
+            data: { status: newStatus },
+            include: {
+                campaign: {
+                    include: {
+                        brand: { include: { brandProfile: true } }
+                    }
+                }
+            }
         });
+
+        // Notify the brand about the creator's response
+        const statusLabel = action === 'accept' ? 'accepted' : 'declined';
+        createNotification(
+            collaboration.campaign.brandId,
+            action === 'accept' ? 'content_approved' : 'general',
+            `Invitation ${action === 'accept' ? 'Accepted' : 'Declined'}`,
+            `A creator ${statusLabel} your invitation to "${collaboration.campaign.title}"`,
+            { campaignId: collaboration.campaignId, collaborationId: collabId }
+        );
 
         res.json({ status: 'success', data: updated });
     } catch (error) {
-        console.error("Error responding:", error);
-        res.status(500).json({ status: 'error', message: 'Failed to respond' });
+        console.error("Error responding to invite:", error);
+        res.status(500).json({ status: 'error', message: 'Failed to respond to invitation' });
     }
 };
+

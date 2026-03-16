@@ -36,7 +36,7 @@ const useCreatorOverview = () => {
                     if (isNonCritical(err)) return null;
                     throw err;
                 }),
-                axiosInstance.get('/collaborations/my-campaigns?dashboard=true').catch(err => {
+                axiosInstance.get('/collaborations/my-submissions').catch(err => {
                     if (isNonCritical(err)) return null;
                     throw err;
                 }),
@@ -46,8 +46,12 @@ const useCreatorOverview = () => {
                 setRawStats(statsRes.data.data ?? {});
             }
 
-            if (campaignsRes?.data?.status === 'success') {
-                setRawCampaigns(campaignsRes.data.data ?? []);
+            // my-submissions returns a plain array, not {status, data}
+            if (campaignsRes) {
+                const all = Array.isArray(campaignsRes.data)
+                    ? campaignsRes.data
+                    : (campaignsRes.data?.data ?? []);
+                setRawCampaigns(all);
             }
         } catch (err) {
             console.error('[useCreatorOverview] critical fetch error:', err);

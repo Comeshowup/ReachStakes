@@ -45,7 +45,7 @@ const useCreatorDashboard = () => {
                     if (isAuthOrNotFound(err)) return null;
                     throw err;
                 }),
-                axiosInstance.get('/collaborations/my-campaigns?dashboard=true').catch(err => {
+                axiosInstance.get('/collaborations/my-submissions').catch(err => {
                     if (isAuthOrNotFound(err)) return null;
                     throw err;
                 }),
@@ -63,9 +63,11 @@ const useCreatorDashboard = () => {
                 setDeliverables(d.upcomingDeliverables ?? []);
             }
 
-            // --- Active Campaigns ---
-            if (campaignsRes?.data?.status === 'success') {
-                const all = campaignsRes.data.data ?? [];
+            // --- Active Campaigns --- (my-submissions returns a plain array)
+            if (campaignsRes) {
+                const all = Array.isArray(campaignsRes.data)
+                    ? campaignsRes.data
+                    : (campaignsRes.data?.data ?? []);
                 const active = all.filter(c =>
                     ['In_Progress', 'Applied', 'Invited', 'Approved'].includes(c.status)
                 );

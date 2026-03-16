@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { CREATOR_NAV_GROUPS } from "../data";
+import { CREATOR_NAV_CONFIG, CREATOR_FOOTER_NAV, SECTION_MAIN } from "../creatorNavigationConfig";
 import {
     Bell,
     Search,
@@ -58,7 +58,7 @@ const useCreatorIdentity = () => {
 };
 
 // ===========================
-// SIDEBAR — Semantic tokens only (mirrors DashboardLayout)
+// SIDEBAR — Workflow-based navigation (Stripe / Linear pattern)
 // ===========================
 const Sidebar = ({ isOpen, onClose }) => {
     const creator = useCreatorIdentity();
@@ -66,6 +66,18 @@ const Sidebar = ({ isOpen, onClose }) => {
     const creatorEmail = creator.email || '';
     const avatarLetter = displayName.charAt(0).toUpperCase();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Check if a nav item (or any of its children) matches the current path
+    const isItemActive = (item) => {
+        if (item.end) return location.pathname === item.path;
+        if (location.pathname === item.path) return true;
+        if (location.pathname.startsWith(item.path + '/')) return true;
+        if (item.children) {
+            return item.children.some(child => location.pathname === child.path || location.pathname.startsWith(child.path + '/'));
+        }
+        return false;
+    };
 
     return (
         <>
@@ -137,67 +149,103 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </button>
                 </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto px-5 py-2 space-y-6">
-                    {CREATOR_NAV_GROUPS.map((group) => (
-                        <div key={group.title}>
-                            <h3
-                                className="px-4 text-[11px] font-bold uppercase tracking-[0.1em] mb-2"
-                                style={{ color: 'var(--bd-text-muted)' }}
-                            >
-                                {group.title}
-                            </h3>
+                {/* Navigation — grouped by section */}
+                <nav className="flex-1 overflow-y-auto px-5 py-2 space-y-5">
+                    {CREATOR_NAV_CONFIG.map((group) => (
+                        <div key={group.section}>
+                            {/* Section header — hidden for MAIN to keep Overview clean */}
+                            {group.section !== SECTION_MAIN && (
+                                <h3
+                                    className="px-4 text-[11px] font-bold uppercase tracking-[0.1em] mb-2"
+                                    style={{ color: 'var(--bd-text-muted)' }}
+                                >
+                                    {group.section}
+                                </h3>
+                            )}
                             <div className="space-y-1">
-                                {group.items.map((item) => (
-                                    <NavLink
-                                        key={item.path}
-                                        to={item.path}
-                                        end={item.path === "/creator"}
-                                        onClick={() => window.innerWidth < 768 && onClose()}
-                                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative"
-                                        style={({ isActive }) => ({
-                                            ...(isActive ? {
-                                                background: 'var(--bd-sidebar-active)',
-                                                boxShadow: 'var(--bd-shadow-active-nav)',
-                                                color: 'var(--bd-text-primary)',
-                                            } : {
-                                                color: 'var(--bd-text-secondary)',
-                                            })
-                                        })}
-                                    >
-                                        {({ isActive }) => (
-                                            <>
-                                                <item.icon
-                                                    className="w-[18px] h-[18px] shrink-0"
+                                {group.items.map((item) => {
+                                    const active = isItemActive(item);
+                                    return (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            end={!!item.end}
+                                            onClick={() => window.innerWidth < 768 && onClose()}
+                                            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative"
+                                            style={() => ({
+                                                ...(active ? {
+                                                    background: 'var(--bd-sidebar-active)',
+                                                    boxShadow: 'var(--bd-shadow-active-nav)',
+                                                    color: 'var(--bd-text-primary)',
+                                                } : {
+                                                    color: 'var(--bd-text-secondary)',
+                                                })
+                                            })}
+                                        >
+                                            <item.icon
+                                                className="w-[18px] h-[18px] shrink-0"
+                                                style={{
+                                                    color: active ? 'var(--bd-text-primary)' : 'var(--bd-text-secondary)',
+                                                    strokeWidth: active ? 2 : 1.5,
+                                                }}
+                                            />
+                                            <span>{item.label}</span>
+                                            {item.badge && (
+                                                <span
+                                                    className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full text-[10px] font-bold"
                                                     style={{
-                                                        color: isActive ? 'var(--bd-text-primary)' : 'var(--bd-text-secondary)',
-                                                        strokeWidth: isActive ? 2 : 1.5,
+                                                        background: 'var(--bd-danger)',
+                                                        color: 'var(--bd-text-inverse)',
+                                                        boxShadow: 'var(--bd-shadow-badge)',
                                                     }}
-                                                />
-                                                <span>{item.label}</span>
-                                                {item.badge && (
-                                                    <span
-                                                        className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full text-[10px] font-bold"
-                                                        style={{
-                                                            background: 'var(--bd-danger)',
-                                                            color: 'var(--bd-text-inverse)',
-                                                            boxShadow: 'var(--bd-shadow-badge)',
-                                                        }}
-                                                    >
-                                                        {item.badge}
-                                                    </span>
-                                                )}
-                                            </>
-                                        )}
-                                    </NavLink>
-                                ))}
+                                                >
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </NavLink>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}
                 </nav>
 
-                {/* Creator Profile Card */}
-                <div className="px-5 pb-5 pt-3 shrink-0">
+                {/* Footer — Support + Profile Card + Logout */}
+                <div className="px-5 pb-5 pt-3 shrink-0 space-y-3">
+                    {/* Support Center link */}
+                    <div className="space-y-1">
+                        {CREATOR_FOOTER_NAV.map((item) => {
+                            const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                            return (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    onClick={() => window.innerWidth < 768 && onClose()}
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+                                    style={() => ({
+                                        ...(active ? {
+                                            background: 'var(--bd-sidebar-active)',
+                                            boxShadow: 'var(--bd-shadow-active-nav)',
+                                            color: 'var(--bd-text-primary)',
+                                        } : {
+                                            color: 'var(--bd-text-secondary)',
+                                        })
+                                    })}
+                                >
+                                    <item.icon
+                                        className="w-[18px] h-[18px] shrink-0"
+                                        style={{
+                                            color: active ? 'var(--bd-text-primary)' : 'var(--bd-text-secondary)',
+                                            strokeWidth: active ? 2 : 1.5,
+                                        }}
+                                    />
+                                    <span>{item.label}</span>
+                                </NavLink>
+                            );
+                        })}
+                    </div>
+
+                    {/* Creator Profile Card */}
                     <div
                         className="p-4 rounded-2xl"
                         style={{
@@ -369,7 +417,7 @@ const Topbar = ({ onMenuClick }) => {
 
                 {/* Profile Avatar */}
                 <button
-                    onClick={() => navigate('/creator/profile')}
+                    onClick={() => navigate('/creator/settings/profile')}
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-opacity hover:opacity-80 overflow-hidden"
                     style={!creator.avatarUrl ? {
                         background: 'var(--bd-sidebar-logo-bg)',

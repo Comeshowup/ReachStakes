@@ -3,6 +3,7 @@ import {
     updateCreatorProfile,
     getCreatorProfile
 } from '../controllers/userControllers.js';
+import { getCreatorAnalytics } from '../controllers/analyticsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -13,5 +14,6 @@ const router = express.Router();
 // Protected routes
 router.get('/profile', protect, getCreatorProfile);
 router.put('/profile', protect, updateCreatorProfile);
+router.get('/analytics', protect, getCreatorAnalytics);
 
 export default router;

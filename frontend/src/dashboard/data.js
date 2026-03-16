@@ -206,25 +206,25 @@ export const CREATOR_NAV_GROUPS = [
         title: "Overview",
         items: [
             { label: "Overview", path: "/creator", icon: Home },
-            { label: "Find Campaigns", path: "/creator/explore", icon: Compass },
-            { label: "My Work", path: "/creator/submissions", icon: FolderOpen },
-            { label: "Video Stats", path: "/creator/video-stats", icon: BarChart3 },
-            { label: "Documents", path: "/creator/documents", icon: FileText },
         ]
     },
     {
-        title: "Support",
+        title: "Work",
         items: [
-            { label: "Support Center", path: "/creator/support", icon: Headphones },
+            { label: "Campaigns", path: "/creator/campaigns", icon: FolderOpen },
+            { label: "Analytics", path: "/creator/analytics", icon: BarChart3 },
         ]
     },
     {
-        title: "Management",
+        title: "Finance",
         items: [
-            { label: "Earnings", path: "/creator/financials", icon: DollarIcon },
-            { label: "Invoices", path: "/creator/invoices", icon: FileText },
-            { label: "Social Accounts", path: "/creator/social-accounts", icon: Link },
-            { label: "Profile", path: "/creator/profile", icon: User },
+            { label: "Earnings", path: "/creator/earnings", icon: DollarIcon },
+        ]
+    },
+    {
+        title: "Account",
+        items: [
+            { label: "Settings", path: "/creator/settings", icon: Settings },
         ]
     }
 ];

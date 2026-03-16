@@ -22,7 +22,7 @@ export const getCreatorDashboardStats = async () => {
 
 // Get creator's active campaigns/collaborations
 export const getCreatorCampaigns = async () => {
-    const response = await axiosInstance.get('/collaborations/my-campaigns');
+    const response = await axiosInstance.get('/collaborations/my-submissions');
     return response.data;
 };
 
