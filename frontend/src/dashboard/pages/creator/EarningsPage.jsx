@@ -1,12 +1,11 @@
 import React from "react";
-import { NavLink, Outlet, useLocation, Navigate } from "react-router-dom";
-import { Wallet, CreditCard, Receipt, FileText } from "lucide-react";
+import { NavLink, Outlet } from "react-router-dom";
+import { LayoutDashboard, Receipt, Settings } from "lucide-react";
 
 const tabs = [
-  { label: "Balance", path: "/creator/earnings", icon: Wallet, end: true },
-  { label: "Payouts", path: "/creator/earnings/payouts", icon: CreditCard },
-  { label: "Invoices", path: "/creator/earnings/invoices", icon: Receipt },
-  { label: "Tax Documents", path: "/creator/earnings/tax", icon: FileText },
+  { label: "Overview",        path: "/creator/earnings",          icon: LayoutDashboard, end: true },
+  { label: "Transactions",    path: "/creator/earnings/transactions", icon: Receipt },
+  { label: "Payout Settings", path: "/creator/earnings/settings",    icon: Settings },
 ];
 
 const EarningsPage = () => {

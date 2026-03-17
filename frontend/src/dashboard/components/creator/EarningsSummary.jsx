@@ -88,7 +88,7 @@ const EarningsSummary = memo(({ earnings, loading = false }) => {
 
             {/* CTA */}
             <Link
-                to="/creator/financials"
+                to="/creator/earnings"
                 className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
             >
                 View Earnings

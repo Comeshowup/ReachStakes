@@ -1,3 +1,7 @@
+/**
+ * @deprecated Replaced by `features/earnings/pages/TransactionsPage.jsx`.
+ * Safe to delete after confirming no other references remain.
+ */
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

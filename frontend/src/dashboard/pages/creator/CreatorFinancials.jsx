@@ -1,3 +1,7 @@
+/**
+ * @deprecated This component has been replaced by `features/earnings/pages/EarningsOverview.jsx`.
+ * Safe to delete after confirming no other references remain.
+ */
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";

@@ -4,6 +4,11 @@ import {
     getCreatorProfile
 } from '../controllers/userControllers.js';
 import { getCreatorAnalytics } from '../controllers/analyticsController.js';
+import {
+    getEarningsSummary,
+    getCreatorTransactions,
+    requestWithdrawal,
+} from '../controllers/earningsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -16,4 +21,10 @@ router.get('/profile', protect, getCreatorProfile);
 router.put('/profile', protect, updateCreatorProfile);
 router.get('/analytics', protect, getCreatorAnalytics);
 
+// ── Earnings Module ──────────────────────────────────────────
+router.get('/earnings-summary', protect, getEarningsSummary);
+router.get('/transactions',     protect, getCreatorTransactions);
+router.post('/withdrawals',     protect, requestWithdrawal);
+
 export default router;
+

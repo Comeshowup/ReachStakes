@@ -54,8 +54,9 @@ export const CREATOR_NAV_CONFIG = [
                 path: '/creator/earnings',
                 icon: DollarSign,
                 children: [
-                    { label: 'Balance', path: '/creator/earnings/balance' },
-                    { label: 'Invoices', path: '/creator/earnings/invoices' },
+                    { label: 'Overview',        path: '/creator/earnings' },
+                    { label: 'Transactions',    path: '/creator/earnings/transactions' },
+                    { label: 'Payout Settings', path: '/creator/earnings/settings' },
                 ],
             },
         ],

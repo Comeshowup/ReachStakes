@@ -37,9 +37,20 @@ export const getRecommendedCampaigns = async () => {
     }
 };
 
+/**
+ * Get creator analytics data.
+ * @param {Object} params - Query params e.g. { range: '30d' | '7d' | '90d' | '12m' }
+ */
+export const getCreatorAnalytics = async (params = {}) => {
+    const response = await axiosInstance.get('/creators/analytics', { params });
+    return response.data;
+};
+
 export default {
     getCreatorProfile,
     getCreatorDashboardStats,
     getCreatorCampaigns,
-    getRecommendedCampaigns
+    getRecommendedCampaigns,
+    getCreatorAnalytics,
 };
+

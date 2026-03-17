@@ -23,9 +23,9 @@ import MySubmissions from "./dashboard/pages/creator/MySubmissions";
 import ExploreCampaigns from "./dashboard/pages/creator/ExploreCampaigns";
 import AnalyticsPage from "./dashboard/pages/creator/AnalyticsPage";
 import EarningsPage from "./dashboard/pages/creator/EarningsPage";
-import CreatorFinancials from "./dashboard/pages/creator/CreatorFinancials";
-import InvoiceCenter from "./dashboard/pages/creator/InvoiceCenter";
-import TaxDocumentsPlaceholder from "./dashboard/pages/creator/TaxDocumentsPlaceholder";
+import EarningsOverview from "./features/earnings/pages/EarningsOverview";
+import TransactionsPage from "./features/earnings/pages/TransactionsPage";
+import PayoutSettingsPage from "./features/earnings/pages/PayoutSettingsPage";
 import SettingsPage from "./dashboard/pages/creator/SettingsPage";
 import CreatorProfile from "./dashboard/pages/creator/CreatorProfile";
 import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
@@ -104,12 +104,16 @@ function App() {
         {/* Analytics */}
         <Route path="analytics" element={<AnalyticsPage />} />
 
-        {/* Earnings — tabbed layout */}
+        {/* Earnings — Overview / Transactions / Payout Settings */}
         <Route path="earnings" element={<EarningsPage />}>
-          <Route index element={<CreatorFinancials />} />
-          <Route path="payouts" element={<CreatorFinancials />} />
-          <Route path="invoices" element={<InvoiceCenter />} />
-          <Route path="tax" element={<TaxDocumentsPlaceholder />} />
+          <Route index element={<EarningsOverview />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="settings" element={<PayoutSettingsPage />} />
+          {/* Legacy redirects — keep so old bookmarks don't 404 */}
+          <Route path="payouts" element={<Navigate to="/creator/earnings" replace />} />
+          <Route path="invoices" element={<Navigate to="/creator/earnings/transactions" replace />} />
+          <Route path="tax" element={<Navigate to="/creator/earnings" replace />} />
+          <Route path="balance" element={<Navigate to="/creator/earnings" replace />} />
         </Route>
 
         {/* Settings — tabbed layout */}
@@ -130,7 +134,7 @@ function App() {
         <Route path="explore" element={<ExploreCampaigns />} />
         <Route path="submissions" element={<Navigate to="/creator/campaigns" replace />} />
         <Route path="financials" element={<Navigate to="/creator/earnings" replace />} />
-        <Route path="invoices" element={<Navigate to="/creator/earnings/invoices" replace />} />
+        <Route path="invoices" element={<Navigate to="/creator/earnings/transactions" replace />} />
         <Route path="video-stats" element={<Navigate to="/creator/analytics" replace />} />
         <Route path="profile" element={<Navigate to="/creator/settings/profile" replace />} />
         <Route path="social-accounts" element={<Navigate to="/creator/settings/social" replace />} />
