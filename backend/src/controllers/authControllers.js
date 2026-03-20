@@ -176,7 +176,7 @@ const login = async (req, res) => {
         where: {
             email: email
         },
-        include: { brandProfile: true }
+        include: { brandProfile: true, creatorProfile: true }
     });
 
     if (!user) {

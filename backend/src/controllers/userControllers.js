@@ -1,5 +1,13 @@
 import { prisma } from "../config/db.js";
 
+// ─── Resolve file URL (prefix relative /uploads paths with backend origin) ───
+function resolveFileUrl(req, urlOrPath) {
+    if (!urlOrPath) return null;
+    if (urlOrPath.startsWith('http') || urlOrPath.startsWith('data:')) return urlOrPath;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return `${baseUrl}${urlOrPath}`;
+}
+
 export const getPublicProfile = async (req, res) => {
     try {
         const { handle } = req.params;
@@ -36,8 +44,9 @@ export const getPublicProfile = async (req, res) => {
             fullName: creatorProfile.fullName,
             handle: creatorProfile.handle,
             tagline: creatorProfile.tagline,
-            avatarUrl: creatorProfile.avatarUrl,
+            avatarUrl: resolveFileUrl(req, creatorProfile.avatarUrl),
             about: creatorProfile.about,
+
             location: creatorProfile.location,
             nicheTags: creatorProfile.nicheTags,
             stats: {
@@ -146,6 +155,7 @@ export const getMyProfile = async (req, res) => {
             email: user.email,
             name: user.name,
             ...user.creatorProfile,
+            avatarUrl: resolveFileUrl(req, user.creatorProfile.avatarUrl),
             socialAccounts: user.socialAccounts
         };
 
@@ -155,6 +165,85 @@ export const getMyProfile = async (req, res) => {
         res.status(500).json({ status: "error", message: "Failed to fetch profile" });
     }
 };
+
+// PUT /api/users/me/profile - Update authenticated creator's profile
+export const updateMyProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const {
+            displayName,
+            username,
+            bio,
+            location,
+            avatarUrl,
+            email,
+            primaryNiche,
+            secondaryNiche,
+            handle,
+            name
+        } = req.body;
+
+        // Update User
+        const userUpdateData = {};
+        if (email) userUpdateData.email = email;
+        if (displayName || name) userUpdateData.name = displayName || name;
+
+        if (Object.keys(userUpdateData).length > 0) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: userUpdateData
+            });
+        }
+
+        // Update CreatorProfile
+        const profileUpdateData = {};
+        if (displayName || name) profileUpdateData.fullName = displayName || name;
+        if (username || handle) profileUpdateData.handle = username || handle;
+        if (bio !== undefined) profileUpdateData.about = bio; // Allow empty
+        if (location !== undefined) profileUpdateData.location = location;
+        if (avatarUrl !== undefined) profileUpdateData.avatarUrl = avatarUrl;
+        
+        let nicheTags = [];
+        if (primaryNiche) nicheTags.push(primaryNiche);
+        if (secondaryNiche) nicheTags.push(secondaryNiche);
+        if (nicheTags.length > 0) {
+            profileUpdateData.nicheTags = nicheTags;
+        }
+
+        if (Object.keys(profileUpdateData).length > 0) {
+            await prisma.creatorProfile.update({
+                where: { userId },
+                data: profileUpdateData
+            });
+        }
+
+        // Fetch the updated profile to return
+        const updatedUser = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                creatorProfile: true,
+                socialAccounts: {
+                    select: { id: true, platform: true, username: true, handle: true, profileUrl: true }
+                }
+            }
+        });
+
+        const profile = {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            ...updatedUser.creatorProfile,
+            avatarUrl: resolveFileUrl(req, updatedUser.creatorProfile.avatarUrl),
+            socialAccounts: updatedUser.socialAccounts
+        };
+
+        res.json({ status: "success", data: profile, message: "Profile updated successfully" });
+    } catch (error) {
+        console.error("Error updating my profile:", error);
+        res.status(500).json({ status: "error", message: "Failed to update profile" });
+    }
+};
+
 
 // GET /api/users/me/earnings - Get creator's financial summary and transactions
 export const getMyEarnings = async (req, res) => {
@@ -530,6 +619,8 @@ export const getCreatorProfile = async (req, res) => {
             return res.status(404).json({ status: "error", message: "Creator profile not found" });
         }
 
+        profile.avatarUrl = resolveFileUrl(req, profile.avatarUrl);
+
         res.json({ status: "success", data: profile });
     } catch (error) {
         console.error("Error fetching creator profile:", error);
@@ -557,6 +648,8 @@ export const updateCreatorProfile = async (req, res) => {
             data: updateData
         });
 
+        updatedProfile.avatarUrl = resolveFileUrl(req, updatedProfile.avatarUrl);
+
         res.json({
             status: "success",
             data: updatedProfile,
@@ -565,5 +658,33 @@ export const updateCreatorProfile = async (req, res) => {
     } catch (error) {
         console.error("Error updating creator profile:", error);
         res.status(500).json({ status: "error", message: "Failed to update profile" });
+    }
+};
+
+// POST /api/users/me/avatar - Upload creator avatar
+export const uploadCreatorAvatar = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        if (!req.file) {
+            return res.status(400).json({ status: "error", message: "No file uploaded" });
+        }
+
+        const avatarUrl = `/uploads/creators/avatars/${req.file.filename}`;
+
+        await prisma.creatorProfile.update({
+            where: { userId },
+            data: { avatarUrl },
+        });
+
+        res.json({
+            status: "success",
+            message: "Avatar uploaded successfully",
+            data: { avatarUrl: resolveFileUrl(req, avatarUrl) }
+        });
+
+    } catch (error) {
+        console.error("Error uploading avatar:", error);
+        res.status(500).json({ status: "error", message: "Failed to upload avatar" });
     }
 };

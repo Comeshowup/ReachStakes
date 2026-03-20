@@ -4,14 +4,17 @@ import {
     discoverCreators,
     deleteUser,
     getMyProfile,
+    updateMyProfile,
     getMyEarnings,
     getMyPosts,
     createPost,
     deletePost,
     getMyDashboardStats,
-    updateOnboardingProgress
+    updateOnboardingProgress,
+    uploadCreatorAvatar
 } from '../controllers/userControllers.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { uploadAvatar } from '../config/upload.js';
 
 const router = express.Router();
 
@@ -23,6 +26,8 @@ router.get('/profile/public/:handle', getPublicProfile);
 
 // Authenticated routes
 router.get('/me/profile', protect, getMyProfile);
+router.put('/me/profile', protect, updateMyProfile);
+router.post('/me/avatar', protect, uploadAvatar.single('file'), uploadCreatorAvatar);
 router.get('/me/earnings', protect, getMyEarnings);
 router.get('/me/dashboard-stats', protect, getMyDashboardStats);
 router.put('/me/onboarding', protect, updateOnboardingProgress);

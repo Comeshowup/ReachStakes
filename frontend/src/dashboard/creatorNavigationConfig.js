@@ -71,6 +71,7 @@ export const CREATOR_NAV_CONFIG = [
                 children: [
                     { label: 'Profile', path: '/creator/settings/profile' },
                     { label: 'Social Accounts', path: '/creator/settings/social' },
+                    { label: 'Payouts', path: '/creator/settings/payouts' },
                 ],
             },
         ],

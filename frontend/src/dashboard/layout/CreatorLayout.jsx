@@ -27,6 +27,7 @@ const useCreatorIdentity = () => {
         try {
             const stored = JSON.parse(localStorage.getItem('userInfo') || '{}');
             const fallbackName =
+                stored.creatorProfile?.fullName ||
                 stored.creatorProfile?.displayName ||
                 stored.creatorProfile?.name ||
                 stored.name ||
@@ -46,7 +47,7 @@ const useCreatorIdentity = () => {
             .then(res => {
                 const p = res?.data || res;
                 setCreator({
-                    displayName: p.displayName || p.name || 'Creator Account',
+                    displayName: p.fullName || p.displayName || p.name || 'Creator Account',
                     email: p.email || p.contactEmail || '',
                     avatarUrl: p.avatarUrl || p.profilePicture || null,
                 });

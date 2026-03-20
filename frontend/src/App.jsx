@@ -26,10 +26,10 @@ import EarningsPage from "./dashboard/pages/creator/EarningsPage";
 import EarningsOverview from "./features/earnings/pages/EarningsOverview";
 import TransactionsPage from "./features/earnings/pages/TransactionsPage";
 import PayoutSettingsPage from "./features/earnings/pages/PayoutSettingsPage";
-import SettingsPage from "./dashboard/pages/creator/SettingsPage";
-import CreatorProfile from "./dashboard/pages/creator/CreatorProfile";
-import SocialAccounts from "./dashboard/pages/creator/SocialAccounts";
-import SettingsPlaceholder from "./dashboard/pages/creator/SettingsPlaceholder";
+import SettingsLayout from "./features/settings/components/SettingsLayout";
+import SettingsProfilePage from "./features/settings/pages/ProfilePage";
+import SocialAccountsPage from "./features/settings/pages/SocialAccountsPage";
+import PayoutsPage from "./features/settings/pages/PayoutsPage";
 import OnboardingStatusPage from "./dashboard/pages/creator/OnboardingStatusPage";
 import BrandProfile from "./dashboard/pages/BrandProfile";
 import ProfilePage from "./dashboard/pages/ProfilePage";
@@ -117,13 +117,11 @@ function App() {
         </Route>
 
         {/* Settings — tabbed layout */}
-        <Route path="settings" element={<SettingsPage />}>
+        <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="/creator/settings/profile" replace />} />
-          <Route path="profile" element={<CreatorProfile />} />
-          <Route path="social" element={<SocialAccounts />} />
-          <Route path="payments" element={<SettingsPlaceholder icon={() => <span />} title="Payment Methods" description="Payment method management is coming soon. You'll be able to add and manage your payout methods here." />} />
-          <Route path="notifications" element={<SettingsPlaceholder icon={() => <span />} title="Notifications" description="Notification preferences are coming soon. You'll be able to customize what alerts you receive." />} />
-          <Route path="security" element={<SettingsPlaceholder icon={() => <span />} title="Security" description="Security settings are coming soon. You'll be able to manage two-factor authentication and login sessions." />} />
+          <Route path="profile" element={<SettingsProfilePage />} />
+          <Route path="social" element={<SocialAccountsPage />} />
+          <Route path="payouts" element={<PayoutsPage />} />
         </Route>
 
         {/* Support */}

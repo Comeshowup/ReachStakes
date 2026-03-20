@@ -5,12 +5,12 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const UPLOAD_ROOT = path.join(__dirname, "../../uploads/brands");
+const UPLOAD_ROOT = path.join(__dirname, "../../uploads");
 
 /**
  * Ensure upload directories exist
  */
-const dirs = ["logos", "covers", "documents"];
+const dirs = ["brands/logos", "brands/covers", "brands/documents", "creators/avatars"];
 for (const dir of dirs) {
     const fullPath = path.join(UPLOAD_ROOT, dir);
     if (!fs.existsSync(fullPath)) {
@@ -62,21 +62,27 @@ function documentFilter(_req, file, cb) {
  * Multer instances for each upload type
  */
 export const uploadLogo = multer({
-    storage: createStorage("logos"),
+    storage: createStorage("brands/logos"),
     fileFilter: imageFilter,
     limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 });
 
 export const uploadCover = multer({
-    storage: createStorage("covers"),
+    storage: createStorage("brands/covers"),
     fileFilter: imageFilter,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
 export const uploadDoc = multer({
-    storage: createStorage("documents"),
+    storage: createStorage("brands/documents"),
     fileFilter: documentFilter,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-export default { uploadLogo, uploadCover, uploadDoc };
+export const uploadAvatar = multer({
+    storage: createStorage("creators/avatars"),
+    fileFilter: imageFilter,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+});
+
+export default { uploadLogo, uploadCover, uploadDoc, uploadAvatar };
