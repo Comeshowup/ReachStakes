@@ -1,5 +1,6 @@
 import axios from 'axios';
 import crypto from 'crypto';
+import { safeLog, safeError } from '../utils/logMasker.js';
 
 // ============================================
 // CONFIGURATION
@@ -431,18 +432,57 @@ export const tazapayService = {
 
     regenerateOnboardingLink: async (entityId) => {
         try {
+            // Step 1: Check if the entity already has an onboarding URL via GET
             const getResult = await tazapayApiRequest('get', `/v3/entity/${entityId}`);
             const entityData = getResult?.data || getResult;
 
             if (entityData?.onboarding_package_url) {
+                console.log('Found existing onboarding URL on entity GET');
                 return { data: entityData };
             }
 
-            console.log('No onboarding URL found, attempting to update entity...');
-            const updateResult = await tazapayApiRequest('put', `/v3/entity/${entityId}`, {
-                purpose_of_use: ['payout']
-            });
-            return updateResult;
+            // Step 2: Try the dedicated onboarding link generation endpoint
+            // Tazapay: POST /v3/entity/{id}/onboarding  — generates/refreshes the hosted KYB link
+            console.log('Attempting to generate onboarding link via POST /v3/entity/{id}/onboarding ...');
+            try {
+                const onboardingResult = await tazapayApiRequest('post', `/v3/entity/${entityId}/onboarding`, {});
+                console.log('Onboarding POST result:', JSON.stringify(onboardingResult, null, 2));
+
+                const url = onboardingResult?.data?.onboarding_package_url ||
+                    onboardingResult?.data?.url ||
+                    onboardingResult?.data?.link ||
+                    onboardingResult?.onboarding_package_url ||
+                    onboardingResult?.url;
+
+                if (url) {
+                    return { data: { ...entityData, onboarding_package_url: url } };
+                }
+            } catch (onboardingErr) {
+                console.warn('POST /onboarding endpoint not available:', onboardingErr.message);
+            }
+
+            // Step 3: Try with a PUT update to trigger URL generation (some Tazapay versions)
+            console.log('Attempting PUT entity update to trigger onboarding URL generation...');
+            try {
+                const updateResult = await tazapayApiRequest('put', `/v3/entity/${entityId}`, {
+                    purpose_of_use: ['payout']
+                });
+                console.log('PUT entity result:', JSON.stringify(updateResult, null, 2));
+
+                const putUrl = updateResult?.data?.onboarding_package_url ||
+                    updateResult?.data?.url ||
+                    updateResult?.onboarding_package_url;
+
+                if (putUrl) {
+                    return { data: { ...entityData, onboarding_package_url: putUrl } };
+                }
+                return updateResult;
+            } catch (putErr) {
+                console.warn('PUT entity update failed:', putErr.message);
+            }
+
+            // Step 4: Return entity data as-is (caller will detect no URL and use manual fallback)
+            return { data: entityData };
         } catch (error) {
             throw parseTazapayApiError(error, 'regenerating onboarding link');
         }
@@ -483,34 +523,45 @@ export const tazapayService = {
 
     createBeneficiary: async ({
         name, email, type = 'individual', country, currency,
-        accountNumber, bankName, bankCode, bankCodeType, iban, pixKey
+        accountNumber, bankName, bankCode, bankCodeType, iban, pixKey,
+        addressLine1, addressCity, addressState, addressPostalCode
     }) => {
-        const bank_codes = {};
-        if (bankCode && bankCodeType) {
-            bank_codes[bankCodeType] = bankCode;
-        }
-
         let destinationDetails;
         if (pixKey) {
             destinationDetails = { type: 'pix_brl', pix_brl: { key: pixKey } };
         } else {
-            destinationDetails = {
-                type: 'bank',
-                bank: { country, currency, bank_name: bankName, bank_codes, firc_required: false }
-            };
+            const bankObj = { country, currency, firc_required: false };
+            if (bankName) bankObj.bank_name = bankName;
             if (iban) {
-                destinationDetails.bank.iban = iban;
-            } else {
-                destinationDetails.bank.account_number = accountNumber;
+                bankObj.iban = iban;
+            } else if (accountNumber) {
+                bankObj.account_number = accountNumber;
             }
+            // Only add bank_codes if we have a code — empty object causes validation error
+            if (bankCode && bankCodeType) {
+                bankObj.bank_codes = { [bankCodeType]: bankCode };
+            }
+            destinationDetails = { type: 'bank', bank: bankObj };
         }
 
+        // Address goes at TOP LEVEL of payload (not inside bank) — Tazapay error 20320
+        const address = (addressLine1 || addressCity) ? {
+            line1: addressLine1 || '',
+            city: addressCity || '',
+            state: addressState || '',
+            postal_code: addressPostalCode || '',
+        } : undefined;
+
         const payload = { type, name, email, destination_details: destinationDetails };
-        console.log('Creating Tazapay beneficiary for:', name);
+        if (address) payload.address = address;
+
+        // DIAGNOSTIC — remove after fix
+        console.log('[Tazapay] Payload:', JSON.stringify(payload, null, 2));
 
         try {
             return await tazapayApiRequest('post', '/v3/beneficiary', payload);
         } catch (error) {
+            console.error('[Tazapay] Errors:', JSON.stringify(error?.response?.data?.errors ?? error?.response?.data ?? error.message, null, 2));
             throw parseTazapayApiError(error, 'creating beneficiary');
         }
     },
@@ -531,7 +582,7 @@ export const tazapayService = {
             reference_id: referenceId || `payout_${Date.now()}`
         };
 
-        console.log('Creating Tazapay payout:', { beneficiaryId, amount, currency });
+        safeLog('Creating Tazapay payout:', { beneficiaryId: '***' + beneficiaryId?.slice(-6), amount, currency });
 
         try {
             return await tazapayApiRequest('post', '/v3/payout', payload);

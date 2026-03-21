@@ -1,6 +1,9 @@
 import { tazapayService } from '../services/tazapayService.js';
 import { applyReferralBonus } from './referralController.js';
 import { PrismaClient } from '@prisma/client';
+import { safeLog, safeError } from '../utils/logMasker.js';
+import { logAudit, logBankAudit, logPayoutAudit, logWebhookAudit, AuditActions } from '../utils/auditLogger.js';
+import { sanitize } from '../utils/validator.js';
 
 const prisma = new PrismaClient();
 
@@ -350,31 +353,142 @@ export const regenerateOnboardingLink = async (req, res) => {
     }
 };
 
-// ============================================
-// LEGACY: DIRECT API (DEPRECATED - SECURITY CONCERN)
-// ============================================
+// ── In-memory rate limiter for bank connection attempts ──
+const bankConnectAttempts = new Map(); // userId → { count, resetAt }
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+const checkBankConnectRateLimit = (userId) => {
+    const now = Date.now();
+    const entry = bankConnectAttempts.get(userId);
+
+    if (!entry || now > entry.resetAt) {
+        bankConnectAttempts.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+        return true;
+    }
+
+    if (entry.count >= RATE_LIMIT_MAX) {
+        return false;
+    }
+
+    entry.count++;
+    return true;
+};
+
+// ── Input sanitization helpers ──
+const sanitizeString = (str) => {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[<>"'&;(){}]/g, '').trim();
+};
+
+const isValidCountryCode = (code) => /^[A-Z]{2}$/.test(code);
+const isValidCurrencyCode = (code) => /^[A-Z]{3}$/.test(code);
+const isValidAccountNumber = (num) => /^[0-9]{4,34}$/.test(num);
+const isValidIBAN = (iban) => /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(iban.replace(/\s/g, ''));
+const isValidBankCode = (code) => /^[A-Z0-9]{3,11}$/.test(code.replace(/[-\s]/g, ''));
+const isValidBankName = (name) => /^[a-zA-Z0-9\s.&'-]{2,100}$/.test(name);
+const isValidPixKey = (key) => {
+    // PIX: email, phone (+55...), CPF (11 digits), CNPJ (14 digits), or random key (UUID)
+    return /^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\+\d{10,15}|\d{11,14}|[0-9a-f-]{32,36})$/.test(key);
+};
 
 /**
- * @deprecated Use initiateOnboarding instead for secure hosted onboarding
- * Connect bank account (create Tazapay beneficiary directly)
- * WARNING: This passes PII through your servers - use hosted onboarding instead
+ * Connect bank account securely
  * POST /api/payouts/connect-bank
+ *
+ * Security measures:
+ * - Rate limited: 5 attempts per 15 minutes per user
+ * - All inputs validated and sanitized
+ * - PII (account numbers) are ONLY sent to Tazapay, never stored in our DB
+ * - Only metadata (last 4 digits, bank name) is persisted
  */
 export const connectBank = async (req, res) => {
     try {
         const userId = req.user.id;
-        const {
-            country,
-            currency,
-            accountNumber,
-            bankName,
-            bankCode,
-            bankCodeType,
-            iban,
-            pixKey
-        } = req.body;
 
-        // Get user and creator profile
+        // ── Rate limiting ──
+        if (!checkBankConnectRateLimit(userId)) {
+            return res.status(429).json({
+                success: false,
+                message: 'Too many bank connection attempts. Please wait 15 minutes before trying again.'
+            });
+        }
+
+        // ── Extract and sanitize inputs ──
+        const country = sanitizeString(req.body.country).toUpperCase();
+        const currency = sanitizeString(req.body.currency).toUpperCase();
+        const bankName = sanitizeString(req.body.bankName);
+        const accountNumber = sanitizeString(req.body.accountNumber);
+        const bankCode = sanitizeString(req.body.bankCode).toUpperCase();
+        const bankCodeType = sanitizeString(req.body.bankCodeType);
+        const iban = sanitizeString(req.body.iban).toUpperCase().replace(/\s/g, '');
+        const pixKey = sanitizeString(req.body.pixKey);
+        const addressLine1 = sanitizeString(req.body.addressLine1);
+        const addressCity = sanitizeString(req.body.addressCity);
+        const addressState = sanitizeString(req.body.addressState);
+        const addressPostalCode = sanitizeString(req.body.addressPostalCode);
+
+        // ── Validate required fields ──
+        if (!country || !isValidCountryCode(country)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid country code. Must be a 2-letter ISO country code (e.g. US, GB, IN).'
+            });
+        }
+
+        if (!currency || !isValidCurrencyCode(currency)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid currency code. Must be a 3-letter ISO currency code (e.g. USD, GBP).'
+            });
+        }
+
+        // ── Validate bank-specific fields based on type ──
+        const isPix = bankCodeType === 'pix_brl' || country === 'BR';
+        const isIban = iban && iban.length > 0;
+
+        if (isPix) {
+            if (!pixKey || !isValidPixKey(pixKey)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid PIX key. Must be a valid email, phone number, CPF, or random key.'
+                });
+            }
+        } else if (isIban) {
+            if (!isValidIBAN(iban)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid IBAN format. Please check and try again.'
+                });
+            }
+            if (!bankName || !isValidBankName(bankName)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid bank name. Must be 2-100 characters, letters, numbers, spaces, periods, and hyphens only.'
+                });
+            }
+        } else {
+            if (!accountNumber || !isValidAccountNumber(accountNumber)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid account number. Must be 4-34 digits only.'
+                });
+            }
+            if (!bankName || !isValidBankName(bankName)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid bank name. Must be 2-100 characters, letters, numbers, spaces, periods, and hyphens only.'
+                });
+            }
+            if (bankCode && !isValidBankCode(bankCode)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid ${bankCodeType || 'bank code'}. Must be 3-11 alphanumeric characters.`
+                });
+            }
+        }
+
+        // ── Get user and creator profile ──
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { creatorProfile: true }
@@ -388,16 +502,16 @@ export const connectBank = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Creator profile not found' });
         }
 
-        // Validate email format before sending to Tazapay
+        // Validate email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!user.email || !emailRegex.test(user.email)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid email address. Please update your email in your profile settings before connecting a bank account.'
+                message: 'Invalid email address. Please update your email in settings before connecting a bank account.'
             });
         }
 
-        // If already has a beneficiary, return error (should disconnect first)
+        // Check if already connected
         if (user.creatorProfile.tazapayBeneficiaryId) {
             return res.status(400).json({
                 success: false,
@@ -405,19 +519,23 @@ export const connectBank = async (req, res) => {
             });
         }
 
-        // Create beneficiary in Tazapay
+        // ── Create beneficiary in Tazapay (PII is sent ONLY here) ──
         const beneficiaryResult = await tazapayService.createBeneficiary({
             name: user.creatorProfile.fullName || user.name,
             email: user.email,
             type: 'individual',
             country,
             currency,
-            accountNumber,
-            bankName,
-            bankCode,
-            bankCodeType,
-            iban,
-            pixKey
+            accountNumber: isPix ? undefined : (isIban ? undefined : accountNumber),
+            bankName: isPix ? undefined : bankName,
+            bankCode: bankCode || undefined,
+            bankCodeType: bankCodeType || undefined,
+            iban: isIban ? iban : undefined,
+            pixKey: isPix ? pixKey : undefined,
+            addressLine1,
+            addressCity,
+            addressState,
+            addressPostalCode,
         });
 
         if (beneficiaryResult.status !== 'success') {
@@ -426,17 +544,12 @@ export const connectBank = async (req, res) => {
 
         const beneficiaryId = beneficiaryResult.data.id;
 
-        // Extract last 4 digits of account for display
+        // ── Store ONLY metadata — no raw account numbers ──
         let lastFour = null;
-        if (accountNumber) {
-            lastFour = accountNumber.slice(-4);
-        } else if (iban) {
-            lastFour = iban.slice(-4);
-        } else if (pixKey) {
-            lastFour = pixKey.slice(-4);
-        }
+        if (accountNumber) lastFour = accountNumber.slice(-4);
+        else if (iban) lastFour = iban.slice(-4);
+        else if (pixKey) lastFour = pixKey.slice(-4);
 
-        // Update creator profile with beneficiary info
         await prisma.creatorProfile.update({
             where: { userId },
             data: {
@@ -444,18 +557,46 @@ export const connectBank = async (req, res) => {
                 payoutStatus: 'Active',
                 bankCountry: country,
                 bankCurrency: currency,
-                bankName: bankName || (pixKey ? 'PIX' : null),
+                bankName: bankName || (isPix ? 'PIX' : null),
                 bankLastFour: lastFour,
-                bankingSetupAt: new Date()
+                bankingSetupAt: new Date(),
+                // Clear any pending onboarding state
+                onboardingStatus: 'Complete',
+                onboardingLinkUrl: null,
+                onboardingExpiresAt: null,
             }
         });
+
+        console.log(`✅ Bank connected for user ${userId}: ${country}/${currency}, last4: ${lastFour}`);
+
+        // Audit trail
+        await logBankAudit({ userId, action: AuditActions.BANK_CONNECTED, country, lastFour, req });
+
+        // Create Beneficiary record
+        try {
+            await prisma.beneficiary.create({
+                data: {
+                    creatorId: userId,
+                    tazapayBeneficiaryId: beneficiaryId,
+                    bankName: bankName || (isPix ? 'PIX' : null),
+                    lastFour,
+                    country,
+                    currency,
+                    status: 'Active',
+                    isPrimary: true,
+                },
+            });
+        } catch (beneficiaryErr) {
+            // Non-fatal — beneficiary record is supplementary
+            console.warn('Failed to create Beneficiary record:', beneficiaryErr.message);
+        }
 
         return res.json({
             success: true,
             message: 'Bank account connected successfully',
             data: {
                 beneficiaryId,
-                bankName,
+                bankName: bankName || (isPix ? 'PIX' : null),
                 bankLastFour: lastFour,
                 country,
                 currency,
@@ -465,7 +606,7 @@ export const connectBank = async (req, res) => {
 
     } catch (error) {
         console.error('Connect Bank Error:', error);
-        return res.status(500).json({
+        return res.status(error.statusCode || 500).json({
             success: false,
             message: error.message || 'Failed to connect bank account'
         });
@@ -728,12 +869,44 @@ export const handlePayoutWebhook = async (req, res) => {
     try {
         // Verify webhook signature
         if (!tazapayService.verifyWebhook(req)) {
+            await logWebhookAudit({ eventType: 'unknown', eventId: null, status: 'rejected', req });
             return res.status(401).json({ message: 'Invalid webhook signature' });
         }
 
         const { event, data } = req.body;
+        const webhookEventId = data?.id || data?.reference_id || `${event}_${Date.now()}`;
 
-        console.log('Tazapay webhook received:', event, JSON.stringify(data, null, 2));
+        safeLog('Tazapay webhook received:', { event, id: webhookEventId });
+
+        // ── Idempotency check ──
+        try {
+            const existing = await prisma.webhookEvent.findUnique({
+                where: { eventId: webhookEventId },
+            });
+
+            if (existing?.status === 'processed') {
+                safeLog(`Webhook already processed, skipping: ${webhookEventId}`);
+                await logWebhookAudit({ eventType: event, eventId: webhookEventId, status: 'duplicate', req });
+                return res.json({ received: true, duplicate: true });
+            }
+
+            // Record the event
+            await prisma.webhookEvent.upsert({
+                where: { eventId: webhookEventId },
+                create: {
+                    eventId: webhookEventId,
+                    eventType: event,
+                    status: 'received',
+                    payload: { event, dataKeys: Object.keys(data || {}) }, // Non-sensitive
+                },
+                update: {
+                    status: 'received',
+                },
+            });
+        } catch (idempotencyErr) {
+            // Non-fatal — continue processing even if idempotency check fails
+            console.warn('Webhook idempotency check error:', idempotencyErr.message);
+        }
 
         // ============================================
         // ENTITY ONBOARDING EVENTS
@@ -909,11 +1082,23 @@ export const handlePayoutWebhook = async (req, res) => {
             }
         }
 
+        // ── Mark webhook as processed ──
+        try {
+            await prisma.webhookEvent.update({
+                where: { eventId: webhookEventId },
+                data: { status: 'processed', processedAt: new Date() },
+            });
+        } catch (updateErr) {
+            console.warn('Failed to mark webhook as processed:', updateErr.message);
+        }
+
+        await logWebhookAudit({ eventType: event, eventId: webhookEventId, status: 'processed', req });
+
         return res.json({ received: true });
 
     } catch (error) {
-        console.error('Webhook Error:', error);
+        safeError('Webhook Error:', error);
         // Still return 200 to acknowledge receipt (prevents Tazapay retry floods)
-        return res.json({ received: true, error: error.message });
+        return res.json({ received: true, error: 'Internal processing error' });
     }
 };

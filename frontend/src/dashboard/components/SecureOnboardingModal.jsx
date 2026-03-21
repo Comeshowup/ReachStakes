@@ -11,6 +11,7 @@ import {
     ArrowRight
 } from "lucide-react";
 import payoutService from "../../api/payoutService";
+import OnboardingWizard from "../../features/settings/components/OnboardingWizard";
 
 /**
  * SecureOnboardingModal - Initiates secure hosted onboarding via Tazapay
@@ -20,10 +21,10 @@ import payoutService from "../../api/payoutService";
  * - Generates a secure redirect URL to Tazapay's hosted onboarding
  * - User enters bank/KYC info directly on Tazapay's secure servers
  * - Only receives status updates via webhooks
- * - Falls back to manual entry if hosted onboarding is unavailable
+ * - Falls back to inline manual entry wizard if hosted onboarding is unavailable
  */
 const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry }) => {
-    const [step, setStep] = useState(1); // 1: Info, 2: Redirecting, 3: Error, 4: Manual Entry Fallback
+    const [step, setStep] = useState(1); // 1: Info, 2: Redirecting, 3: Error, 4: Manual Entry Fallback, 5: Inline Manual Wizard
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [onboardingUrl, setOnboardingUrl] = useState(null);
@@ -74,6 +75,17 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry })
         onClose();
     };
 
+    const handleManualEntry = () => {
+        // If parent provided a handler, use it (e.g., to navigate to settings)
+        if (onUseManualEntry) {
+            handleClose();
+            onUseManualEntry();
+        } else {
+            // Otherwise, show inline wizard (Step 5)
+            setStep(5);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -97,36 +109,40 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry })
                         borderRadius: '24px',
                         boxShadow: '0 30px 100px -20px rgba(0, 255, 136, 0.2)',
                         backdropFilter: 'blur(20px)',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
                     }}
                     className="w-full max-w-md overflow-hidden"
                 >
-                    {/* Header */}
-                    <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div
-                                className="p-3 rounded-xl"
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.1))',
-                                    boxShadow: '0 0 20px rgba(0, 255, 136, 0.1)'
-                                }}
+                    {/* Header — only show for steps 1-4, wizard has its own */}
+                    {step !== 5 && (
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="p-3 rounded-xl"
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.1))',
+                                        boxShadow: '0 0 20px rgba(0, 255, 136, 0.1)'
+                                    }}
+                                >
+                                    <Shield size={24} style={{ color: '#00FF88' }} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Secure Bank Setup</h2>
+                                    <p className="text-sm text-white/50">Protected by Tazapay</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleClose}
+                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
                             >
-                                <Shield size={24} style={{ color: '#00FF88' }} />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-white">Secure Bank Setup</h2>
-                                <p className="text-sm text-white/50">Protected by Tazapay</p>
-                            </div>
+                                <X size={20} className="text-white/60" />
+                            </button>
                         </div>
-                        <button
-                            onClick={handleClose}
-                            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                        >
-                            <X size={20} className="text-white/60" />
-                        </button>
-                    </div>
+                    )}
 
                     {/* Content */}
-                    <div className="p-6">
+                    <div className={step === 5 ? "" : "p-6"}>
                         {/* Step 1: Info & Initiate */}
                         {step === 1 && (
                             <motion.div
@@ -274,7 +290,7 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry })
                             </motion.div>
                         )}
 
-                        {/* Step 4: Manual Entry Fallback */}
+                        {/* Step 4: Manual Entry Fallback — choice screen */}
                         {step === 4 && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
@@ -299,10 +315,7 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry })
                                         Cancel
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            handleClose();
-                                            if (onUseManualEntry) onUseManualEntry();
-                                        }}
+                                        onClick={handleManualEntry}
                                         className="px-6 py-3 rounded-xl font-medium transition-colors"
                                         style={{
                                             background: 'linear-gradient(135deg, #00FF88, #00CC6A)',
@@ -314,13 +327,32 @@ const SecureOnboardingModal = ({ isOpen, onClose, onSuccess, onUseManualEntry })
                                 </div>
                             </motion.div>
                         )}
+
+                        {/* Step 5: Inline Manual Entry Wizard */}
+                        {step === 5 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{ padding: '0.5rem' }}
+                            >
+                                <OnboardingWizard
+                                    onSuccess={(data) => {
+                                        handleClose();
+                                        onSuccess?.(data);
+                                    }}
+                                    onCancel={() => setStep(4)}
+                                />
+                            </motion.div>
+                        )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-4 border-t border-white/10 flex items-center justify-center gap-2 text-white/40 text-xs">
-                        <Lock size={12} />
-                        <span>Your data is securely handled by Tazapay • PCI DSS Compliant</span>
-                    </div>
+                    {/* Footer — only for steps 1-4 */}
+                    {step !== 5 && (
+                        <div className="p-4 border-t border-white/10 flex items-center justify-center gap-2 text-white/40 text-xs">
+                            <Lock size={12} />
+                            <span>Your data is securely handled by Tazapay • PCI DSS Compliant</span>
+                        </div>
+                    )}
                 </motion.div>
             </motion.div>
         </AnimatePresence>

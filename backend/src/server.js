@@ -25,6 +25,8 @@ import supportRoutes from './routes/supportRoutes.js';
 import { initSocketServer } from './socketServer.js';
 
 import { validateTazapayConfig } from './services/tazapayService.js';
+import { validateEncryptionConfig } from './utils/encryption.js';
+import { payoutQueue } from './services/payoutQueue.js';
 import cron from 'node-cron';
 import { fetchVideoStats } from './utils/videoStats.js';
 
@@ -143,6 +145,8 @@ cron.schedule('*/5 * * * *', async () => {
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     validateTazapayConfig();
+    validateEncryptionConfig();
+    payoutQueue.start();
 });
 
 // Initialize Socket.io on the HTTP server

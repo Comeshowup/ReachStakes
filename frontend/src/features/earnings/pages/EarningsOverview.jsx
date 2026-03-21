@@ -2,7 +2,7 @@
  * EarningsOverview — The main Earnings tab. Assembles all overview components.
  * Answers: How much have I earned? How much can I withdraw? When do I get paid?
  */
-import React, { useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEarnings, EARNINGS_KEYS } from '../hooks/useEarnings';
@@ -10,13 +10,23 @@ import EarningsSummaryCards from '../components/EarningsSummaryCards';
 import WithdrawCard from '../components/WithdrawCard';
 import EarningsGraph from '../components/EarningsGraph';
 import RecentTransactions from '../components/RecentTransactions';
+import PayoutHistoryTable from '../components/PayoutHistoryTable';
+import WithdrawModal from '../components/WithdrawModal';
 
 const EarningsOverview = () => {
   const { data, isLoading, isError, refetch } = useEarnings();
   const queryClient = useQueryClient();
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
   const handleBankConnected = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: EARNINGS_KEYS.summary });
+  }, [queryClient]);
+
+  const handleWithdrawClose = useCallback(() => {
+    setWithdrawModalOpen(false);
+    // Refresh earnings data after withdrawal
+    queryClient.invalidateQueries({ queryKey: EARNINGS_KEYS.summary });
+    queryClient.invalidateQueries({ queryKey: ['payout-history'] });
   }, [queryClient]);
 
   if (isError) {
@@ -70,8 +80,19 @@ const EarningsOverview = () => {
         transactions={data?.recentTransactions ?? []}
         loading={isLoading}
       />
+
+      {/* Row 4 — Payout history table */}
+      <PayoutHistoryTable />
+
+      {/* Withdraw modal */}
+      <WithdrawModal
+        isOpen={withdrawModalOpen}
+        onClose={handleWithdrawClose}
+        availableBalance={data?.availableBalance ?? 0}
+      />
     </div>
   );
 };
 
 export default EarningsOverview;
+

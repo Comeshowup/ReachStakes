@@ -1,4 +1,7 @@
 import { prisma } from '../config/db.js';
+import { safeLog } from '../utils/logMasker.js';
+import { logPayoutAudit, AuditActions } from '../utils/auditLogger.js';
+import crypto from 'crypto';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -307,6 +310,14 @@ export const requestWithdrawal = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'A valid positive amount is required' });
         }
 
+        const parsedAmount = parseFloat(amount);
+
+        // Minimum withdrawal threshold
+        const MIN_WITHDRAWAL = 25;
+        if (parsedAmount < MIN_WITHDRAWAL) {
+            return res.status(400).json({ status: 'error', message: `Minimum withdrawal amount is $${MIN_WITHDRAWAL}.` });
+        }
+
         // Verify bank is connected
         const creatorProfile = await prisma.creatorProfile.findUnique({
             where: { userId },
@@ -321,15 +332,57 @@ export const requestWithdrawal = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Payout account is not active.' });
         }
 
+        // Balance validation — compute available balance
+        const [paidTransactions, completedPayouts, pendingWithdrawals] = await Promise.all([
+            prisma.transaction.aggregate({
+                where: { userId, type: 'Payment', status: 'Completed' },
+                _sum: { amount: true },
+            }),
+            prisma.creatorPayout.aggregate({
+                where: { creatorId: userId, status: { in: ['Completed', 'Processing', 'Pending'] } },
+                _sum: { amount: true },
+            }),
+            prisma.creatorPayout.count({
+                where: { creatorId: userId, status: { in: ['Pending', 'Processing'] } },
+            }),
+        ]);
+
+        const totalEarned = parseFloat(paidTransactions._sum?.amount || 0);
+        const totalPayoutsCommitted = parseFloat(completedPayouts._sum?.amount || 0);
+        const availableBalance = Math.max(0, Math.round((totalEarned - totalPayoutsCommitted) * 100) / 100);
+
+        if (parsedAmount > availableBalance) {
+            return res.status(400).json({
+                status: 'error',
+                message: `Insufficient balance. Available: $${availableBalance.toFixed(2)}.`,
+            });
+        }
+
+        // Generate idempotency key
+        const idempotencyKey = `wd_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
         const payout = await prisma.creatorPayout.create({
             data: {
                 creatorId: userId,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 currency: 'USD',
                 status: 'Pending',
                 payoutType: 'manual_request',
+                idempotencyKey,
             },
         });
+
+        // Audit
+        await logPayoutAudit({
+            userId,
+            action: AuditActions.WITHDRAWAL_REQUESTED,
+            payoutId: payout.id,
+            amount: parsedAmount,
+            currency: 'USD',
+            req,
+        });
+
+        safeLog(`[Withdrawal] Created for user ${userId}:`, { payoutId: payout.id, amount: parsedAmount });
 
         return res.status(201).json({
             status: 'success',

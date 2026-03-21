@@ -151,9 +151,10 @@ model CreatorProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Relations
-  demographics CreatorDemographics?
-  services     CreatorService[]
-  payouts      CreatorPayout[]
+  demographics  CreatorDemographics?
+  services      CreatorService[]
+  payouts       CreatorPayout[]
+  beneficiaries Beneficiary[]
 
   @@index([handle])
   @@index([userId], map: "idx_niche")
@@ -653,12 +654,13 @@ enum PayoutStatus {
 }
 
 enum OnboardingStatus {
-  NotStarted // Haven't started onboarding
-  LinkGenerated // Onboarding link created, awaiting user
-  InProgress // User is on Tazapay's hosted form
+  NotStarted      // Haven't started onboarding
+  LinkGenerated   // Onboarding link created, awaiting user
+  InProgress      // User is on Tazapay's hosted form
   PendingApproval // Submitted, awaiting Tazapay review
-  Approved // Approved, ready for payouts
-  Rejected // Rejected by Tazapay
+  Approved        // Approved, ready for payouts
+  Rejected        // Rejected by Tazapay
+  Complete        // Onboarding fully complete (manual flow)
 }
 
 enum PayoutTxStatus {
@@ -679,6 +681,8 @@ model CreatorPayout {
   tazapayPayoutId String?        @map("tazapay_payout_id") @db.VarChar(100)
   payoutType      String?        @map("payout_type") @db.VarChar(20) // 'local' or 'wire'
   failureReason   String?        @map("failure_reason") @db.VarChar(255)
+  idempotencyKey  String?        @unique @map("idempotency_key") @db.VarChar(100)
+  retryCount      Int            @default(0) @map("retry_count")
   initiatedAt     DateTime       @default(now()) @map("initiated_at")
   completedAt     DateTime?      @map("completed_at")
 
@@ -686,6 +690,63 @@ model CreatorPayout {
 
   @@index([creatorId, status])
   @@map("creator_payouts")
+}
+
+// 14a. Beneficiary Records (Normalized)
+model Beneficiary {
+  id                   Int              @id @default(autoincrement())
+  creatorId            Int              @map("creator_id")
+  tazapayBeneficiaryId String           @map("tazapay_beneficiary_id") @db.VarChar(100)
+  bankName             String?          @map("bank_name") @db.VarChar(100)
+  lastFour             String?          @map("last_four") @db.VarChar(4)
+  country              String           @db.VarChar(5)
+  currency             String           @db.VarChar(5)
+  status               BeneficiaryStatus @default(Active)
+  isPrimary            Boolean          @default(true) @map("is_primary")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  deactivatedAt        DateTime?        @map("deactivated_at")
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [userId])
+
+  @@index([creatorId, status])
+  @@map("beneficiaries")
+}
+
+enum BeneficiaryStatus {
+  Active
+  Inactive
+  Pending
+}
+
+// 14b. Audit Log (Security Trail)
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String   @db.VarChar(50) // e.g. BANK_CONNECTED, PAYOUT_INITIATED
+  resource  String   @db.VarChar(50) // e.g. beneficiary, payout, webhook
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// 14c. Webhook Events (Idempotency)
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  eventId     String   @unique @map("event_id") @db.VarChar(100) // Tazapay event ID
+  eventType   String   @map("event_type") @db.VarChar(50)
+  status      String   @default("received") @db.VarChar(20) // received, processed, failed
+  payload     Json?    // Non-sensitive webhook data
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("webhook_events")
 }
 
 // 15. Escrow Ledger (Audit Trail)

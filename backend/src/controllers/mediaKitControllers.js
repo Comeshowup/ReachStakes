@@ -75,8 +75,9 @@ export const getMediaKit = async (req, res) => {
                 verificationTier: creator.verificationTier
             },
             stats: {
-                followersTotal: creator.followersCount, // Aggregate?
+                followersTotal: creator.followersCount,
                 engagementRate: creator.engagementRate,
+                primaryPlatform: creator.primaryPlatform || null,
                 lastUpdated: creator.statsLastUpdated
             },
             socials: socialStats,
