@@ -49,6 +49,16 @@ model User {
   supportTickets    SupportTicket[]    @relation("BrandTickets")
   liveChatSessions  LiveChatSession[]  @relation("BrandChatSessions")
 
+  // Campaign Manager Relations
+  creatorInvitations    CampaignInvitation[]    @relation("CreatorInvitations")
+  sentInvitations       CampaignInvitation[]    @relation("SentInvitations")
+  sentMessages          CampaignMessage[]       @relation("SentMessages")
+  reportedIssues        CampaignIssue[]         @relation("ReportedIssues")
+  assignedIssues        CampaignIssue[]         @relation("AssignedIssues")
+  issueComments         CampaignIssueComment[]  @relation("IssueComments")
+  assignedTasks         CampaignTask[]          @relation("AssignedTasks")
+  createdTasks          CampaignTask[]          @relation("CreatedTasks")
+
   @@index([email])
   @@index([role])
   @@map("users")
@@ -242,6 +252,12 @@ model Campaign {
   events         CampaignEvent[]
   escrowLedger   EscrowLedger[]
 
+  // Campaign Manager Relations
+  invitations    CampaignInvitation[]
+  campaignMessages CampaignMessage[]
+  issues         CampaignIssue[]
+  tasks          CampaignTask[]
+
   @@index([brandId])
   @@index([status])
   @@map("campaigns")
@@ -327,6 +343,11 @@ model CampaignCollaboration {
   creator          User              @relation("CreatorCollaborations", fields: [creatorId], references: [id])
   invoices         Invoice[]
   contentFeedbacks ContentFeedback[]
+
+  // Campaign Manager Relations
+  collabMessages   CampaignMessage[]
+  collabIssues     CampaignIssue[]
+  collabTasks      CampaignTask[]
 
   @@map("campaign_collaborations")
 }
@@ -528,6 +549,7 @@ enum CampaignStatus {
   Active
   Completed
   Paused
+  Cancelled
 }
 
 enum CollabStatus {
@@ -949,4 +971,187 @@ enum ChatSessionStatus {
   WAITING
   ACTIVE
   ENDED
+}
+
+// =============================================
+// CAMPAIGN MANAGER SYSTEM MODELS
+// =============================================
+
+// --- CAMPAIGN MANAGER ENUMS ---
+
+enum InvitationStatus {
+  Pending
+  Accepted
+  Declined
+  Expired
+  Revoked
+}
+
+enum IssueStatus {
+  Open
+  InProgress    @map("In_Progress")
+  Escalated
+  Resolved
+  Closed
+}
+
+enum IssuePriority {
+  Low
+  Medium
+  High
+  Critical
+}
+
+enum IssueCategory {
+  PaymentDispute
+  ContentQuality
+  DeadlineMissed
+  CreatorNoShow
+  ContractBreach
+  Other
+}
+
+enum TaskStatus {
+  Todo
+  InProgress @map("In_Progress")
+  Done
+  Blocked
+  Cancelled
+}
+
+enum TaskPriority {
+  Low
+  Medium
+  High
+  Urgent
+}
+
+enum MessageType {
+  Text
+  File
+  System
+  InternalNote @map("Internal_Note")
+}
+
+// 22. Campaign Invitations
+model CampaignInvitation {
+  id           Int              @id @default(autoincrement())
+  campaignId   Int              @map("campaign_id")
+  creatorId    Int              @map("creator_id")
+  invitedById  Int              @map("invited_by_id")
+  status       InvitationStatus @default(Pending)
+  message      String?          @db.Text
+  agreedRate   Decimal?         @map("agreed_rate") @db.Decimal(10, 2)
+  expiresAt    DateTime         @map("expires_at")
+  respondedAt  DateTime?        @map("responded_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id])
+  creator   User     @relation("CreatorInvitations", fields: [creatorId], references: [id])
+  invitedBy User     @relation("SentInvitations", fields: [invitedById], references: [id])
+
+  @@unique([campaignId, creatorId])
+  @@index([creatorId, status])
+  @@index([expiresAt])
+  @@map("campaign_invitations")
+}
+
+// 23. Campaign Messages (Thread-based)
+model CampaignMessage {
+  id              Int         @id @default(autoincrement())
+  campaignId      Int         @map("campaign_id")
+  collaborationId Int?        @map("collaboration_id")
+  threadId        String      @map("thread_id") @db.VarChar(100)
+  senderId        Int         @map("sender_id")
+  type            MessageType @default(Text)
+  content         String      @db.Text
+  attachments     Json?
+  isInternal      Boolean     @default(false) @map("is_internal")
+  readBy          Json?       @map("read_by")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  campaign      Campaign               @relation(fields: [campaignId], references: [id])
+  collaboration CampaignCollaboration?  @relation(fields: [collaborationId], references: [id])
+  sender        User                   @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([campaignId, threadId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("campaign_messages")
+}
+
+// 24. Campaign Issues
+model CampaignIssue {
+  id              Int           @id @default(autoincrement())
+  campaignId      Int           @map("campaign_id")
+  collaborationId Int?          @map("collaboration_id")
+  reportedById    Int           @map("reported_by_id")
+  assignedToId    Int?          @map("assigned_to_id")
+  title           String        @db.VarChar(255)
+  description     String        @db.Text
+  category        IssueCategory @default(Other)
+  priority        IssuePriority @default(Medium)
+  status          IssueStatus   @default(Open)
+  slaDeadline     DateTime?     @map("sla_deadline")
+  resolvedAt      DateTime?     @map("resolved_at")
+  resolution      String?       @db.Text
+  metadata        Json?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  campaign      Campaign               @relation(fields: [campaignId], references: [id])
+  collaboration CampaignCollaboration?  @relation(fields: [collaborationId], references: [id])
+  reportedBy    User                   @relation("ReportedIssues", fields: [reportedById], references: [id])
+  assignedTo    User?                  @relation("AssignedIssues", fields: [assignedToId], references: [id])
+  comments      CampaignIssueComment[]
+
+  @@index([campaignId, status])
+  @@index([assignedToId])
+  @@index([slaDeadline])
+  @@map("campaign_issues")
+}
+
+// 25. Campaign Issue Comments
+model CampaignIssueComment {
+  id         Int      @id @default(autoincrement())
+  issueId    Int      @map("issue_id")
+  authorId   Int      @map("author_id")
+  content    String   @db.Text
+  isInternal Boolean  @default(false) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  issue  CampaignIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author User          @relation("IssueComments", fields: [authorId], references: [id])
+
+  @@index([issueId])
+  @@map("campaign_issue_comments")
+}
+
+// 26. Campaign Tasks
+model CampaignTask {
+  id              Int          @id @default(autoincrement())
+  campaignId      Int          @map("campaign_id")
+  collaborationId Int?         @map("collaboration_id")
+  assigneeId      Int?         @map("assignee_id")
+  createdById     Int          @map("created_by_id")
+  title           String       @db.VarChar(255)
+  description     String?      @db.Text
+  status          TaskStatus   @default(Todo)
+  priority        TaskPriority @default(Medium)
+  dueDate         DateTime?    @map("due_date")
+  completedAt     DateTime?    @map("completed_at")
+  tags            Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  campaign      Campaign               @relation(fields: [campaignId], references: [id])
+  collaboration CampaignCollaboration?  @relation(fields: [collaborationId], references: [id])
+  assignee      User?                  @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  createdBy     User                   @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  @@index([campaignId, status])
+  @@index([assigneeId])
+  @@index([dueDate])
+  @@map("campaign_tasks")
 }

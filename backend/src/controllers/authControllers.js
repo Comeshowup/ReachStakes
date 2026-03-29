@@ -141,13 +141,13 @@ const register = async (req, res) => {
         });
 
         //generate token
-        const token = generateToken(result.id, res);
+        const token = generateToken(result.id, res, result.role);
 
         res.status(201).json({
             status: "success",
             data: {
                 user: result,
-                token: generateToken(result.id)
+                token: generateToken(result.id, null, result.role)
             }
         });
 
@@ -206,7 +206,7 @@ const login = async (req, res) => {
     }
 
     //generate token
-    const token = generateToken(user.id, res);
+    const token = generateToken(user.id, res, user.role);
 
     // Phase 2: Update streak for creators
     if (user.role === 'creator') {
@@ -307,7 +307,7 @@ const googleLogin = async (req, res) => {
         }
 
         // Generate JWT token for session management
-        const token = generateToken(user.id, res);
+        const token = generateToken(user.id, res, user.role);
 
         // Phase 2: Update streak for creators
         if (user.role === 'creator') {
@@ -344,4 +344,63 @@ const logout = async (req, res) => {
     });
 }
 
-export { register, login, logout, googleLogin };
+const adminLogin = async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            status: "error",
+            message: "Email and password are required"
+        });
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        // Uniform error message to avoid leaking user existence
+        const authFailed = () => res.status(401).json({
+            status: "error",
+            message: "Invalid credentials"
+        });
+
+        if (!user) return authFailed();
+        if (!user.passwordHash) return authFailed();
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
+        if (!isPasswordCorrect) return authFailed();
+
+        // Role guard — admin only
+        if (user.role !== 'admin') {
+            return res.status(403).json({
+                status: "error",
+                message: "Access denied"
+            });
+        }
+
+        const token = generateToken(user.id, res, user.role);
+
+        res.status(200).json({
+            status: "success",
+            data: {
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    createdAt: user.createdAt
+                },
+                token
+            }
+        });
+    } catch (error) {
+        console.error("Admin Login Error:", error);
+        res.status(500).json({
+            status: "error",
+            message: "Internal server error"
+        });
+    }
+};
+
+export { register, login, logout, googleLogin, adminLogin };

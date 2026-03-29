@@ -8,6 +8,37 @@ import BrandCommandCenter from "./dashboard/pages/BrandCommandCenter";
 import CampaignManagement from "./dashboard/pages/CampaignManagement";
 import CreateCampaignPage from "./dashboard/pages/CreateCampaignPage";
 import CampaignDetailPage from "./dashboard/pages/CampaignDetailPage";
+import AdminControlCenter from './dashboard/pages/admin/AdminControlCenter';
+// Network
+import AdminCreatorListPage from './dashboard/pages/admin/network/creators';
+import AdminBrandListPage from './dashboard/pages/admin/network/brands/BrandsPage';
+// Campaigns
+import AdminCampaignListPage from './dashboard/pages/admin/CampaignListPage';
+import AdminCampaignDetailPage from './dashboard/pages/admin/CampaignDetailPage';
+import AdminInvitationListPage from './dashboard/pages/admin/InvitationListPage';
+import CampaignDeliverablesPage from './dashboard/pages/admin/CampaignDeliverablesPage';
+import CMApprovalDashboard from './dashboard/pages/admin/CMApprovalDashboard';
+// Operations
+import ConversationsPage from './dashboard/pages/admin/ConversationsPage';
+import AdminCalendarPage from './dashboard/pages/admin/CalendarPage';
+import AdminTaskBoardPage from './dashboard/pages/admin/TaskBoardPage';
+// Finance
+import FinanceTransactionsPage from './dashboard/pages/admin/FinanceTransactionsPage';
+import FinancePayoutsPage from './dashboard/pages/admin/FinancePayoutsPage';
+import FinanceEscrowPage from './dashboard/pages/admin/FinanceEscrowPage';
+import FinanceInvoicesPage from './dashboard/pages/admin/FinanceInvoicesPage';
+import FinanceDisputesPage from './dashboard/pages/admin/FinanceDisputesPage';
+// Resolution
+import ResolutionTicketsPage from './dashboard/pages/admin/ResolutionTicketsPage';
+// Insights
+import AdminAnalyticsPage from './dashboard/pages/admin/AnalyticsPage';
+// System
+import AdminSettingsPage from './dashboard/pages/admin/AdminSettingsPage';
+import SystemRolesPage from './dashboard/pages/admin/SystemRolesPage';
+import SystemIntegrationsPage from './dashboard/pages/admin/SystemIntegrationsPage';
+import SystemAuditLogsPage from './dashboard/pages/admin/SystemAuditLogsPage';
+// Overview aux
+import ActivityPage from './dashboard/pages/admin/activity/index';
 
 import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
@@ -34,10 +65,8 @@ import OnboardingStatusPage from "./dashboard/pages/creator/OnboardingStatusPage
 import BrandProfile from "./dashboard/pages/BrandProfile";
 import ProfilePage from "./dashboard/pages/ProfilePage";
 import AdminLayout from "./dashboard/layout/AdminLayout";
-import AdminDashboardHome from "./dashboard/pages/admin/AdminDashboardHome";
-import UserManagement from "./dashboard/pages/admin/UserManagement";
-import CampaignManagementAdmin from "./dashboard/pages/admin/CampaignManagementAdmin";
-import FinancialManagementAdmin from "./dashboard/pages/admin/FinancialManagementAdmin";
+import AdminGuard from "./dashboard/layout/AdminGuard";
+import AdminLoginPage from "./pages/AdminLoginPage/AdminLoginPage";
 import AuthPage from "./AuthPage/AuthPage";
 import MeetingPage from "./pages/MeetingPage/MeetingPage";
 import CampaignPage from "./pages/CampaignPage/CampaignPage";
@@ -140,12 +169,68 @@ function App() {
         <Route path="contact" element={<Navigate to="/creator/support" replace />} />
       </Route>
 
-      {/* Admin Dashboard Routes */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboardHome />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="campaigns" element={<CampaignManagementAdmin />} />
-        <Route path="financials" element={<FinancialManagementAdmin />} />
+      {/* Admin Auth */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+
+      {/* Admin Dashboard Routes — protected by AdminGuard */}
+      <Route element={<AdminGuard />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          {/* ── OVERVIEW ─────────────────────────────────── */}
+          <Route index element={<AdminControlCenter />} />
+          <Route path="activity" element={<ActivityPage />} />
+
+          {/* ── NETWORK ──────────────────────────────────── */}
+          <Route path="network/creators" element={<AdminCreatorListPage />} />
+          <Route path="network/brands"   element={<AdminBrandListPage />} />
+
+          {/* ── CAMPAIGNS ────────────────────────────────── */}
+          <Route path="campaigns"                element={<AdminCampaignListPage />} />
+          <Route path="campaigns/:id"            element={<AdminCampaignDetailPage />} />
+          <Route path="campaigns/invitations"    element={<AdminInvitationListPage />} />
+          <Route path="campaigns/deliverables"   element={<CampaignDeliverablesPage />} />
+          <Route path="campaigns/approvals"      element={<CMApprovalDashboard />} />
+
+          {/* ── OPERATIONS ───────────────────────────────── */}
+          <Route path="operations/conversations" element={<ConversationsPage />} />
+          <Route path="operations/calendar"      element={<AdminCalendarPage />} />
+          <Route path="operations/tasks"         element={<AdminTaskBoardPage />} />
+
+          {/* ── FINANCE ──────────────────────────────────── */}
+          <Route path="finance/transactions" element={<FinanceTransactionsPage />} />
+          <Route path="finance/payouts"      element={<FinancePayoutsPage />} />
+          <Route path="finance/escrow"       element={<FinanceEscrowPage />} />
+          <Route path="finance/invoices"     element={<FinanceInvoicesPage />} />
+          <Route path="finance/disputes"     element={<FinanceDisputesPage />} />
+
+          {/* ── RESOLUTION ───────────────────────────────── */}
+          <Route path="resolution/tickets" element={<ResolutionTicketsPage />} />
+
+          {/* ── INSIGHTS ─────────────────────────────────── */}
+          <Route path="insights/analytics" element={<AdminAnalyticsPage />} />
+
+          {/* ── SYSTEM ───────────────────────────────────── */}
+          <Route path="system/settings"     element={<AdminSettingsPage />} />
+          <Route path="system/roles"        element={<SystemRolesPage />} />
+          <Route path="system/integrations" element={<SystemIntegrationsPage />} />
+          <Route path="system/audit-logs"   element={<SystemAuditLogsPage />} />
+
+          {/* ── LEGACY REDIRECTS (keep old bookmarks alive) ─ */}
+          <Route path="creators"    element={<Navigate to="/admin/network/creators" replace />} />
+          <Route path="brands"      element={<Navigate to="/admin/network/brands"   replace />} />
+          <Route path="campaigns/list" element={<Navigate to="/admin/campaigns"     replace />} />
+          <Route path="inbox"       element={<Navigate to="/admin/operations/conversations" replace />} />
+          <Route path="calendar"    element={<Navigate to="/admin/operations/calendar"      replace />} />
+          <Route path="tasks"       element={<Navigate to="/admin/operations/tasks"         replace />} />
+          <Route path="issues"      element={<Navigate to="/admin/resolution/tickets"       replace />} />
+          <Route path="payments"    element={<Navigate to="/admin/finance/transactions"     replace />} />
+          <Route path="financials"  element={<Navigate to="/admin/finance/transactions"     replace />} />
+          <Route path="analytics"   element={<Navigate to="/admin/insights/analytics"       replace />} />
+          <Route path="settings"    element={<Navigate to="/admin/system/settings"          replace />} />
+          <Route path="messages"    element={<Navigate to="/admin/operations/conversations" replace />} />
+          <Route path="invitations" element={<Navigate to="/admin/campaigns/invitations"    replace />} />
+          <Route path="resources"   element={<Navigate to="/admin/system/settings"          replace />} />
+          <Route path="users"       element={<Navigate to="/admin/network/creators"         replace />} />
+        </Route>
       </Route>
 
       {/* Public Profile Routes (Shareable links) */}

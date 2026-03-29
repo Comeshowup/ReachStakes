@@ -175,7 +175,7 @@ export const FEED_DATA = posts.map((post) => {
 });
 
 // Navigation Data
-import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link, BarChart3, Headphones } from 'lucide-react';
+import { LayoutGrid, Compass, MessageSquare, CreditCard, User, LogOut, Settings, Target, FileText, Home, FolderOpen, Send, DollarSign as DollarIcon, Users as UsersIcon, CheckCircle, Link, BarChart3, Headphones, AlertTriangle, CheckSquare, Calendar } from 'lucide-react';
 
 export const NAV_GROUPS = [
     {
@@ -230,18 +230,50 @@ export const CREATOR_NAV_GROUPS = [
 ];
 
 export const ADMIN_NAV_GROUPS = [
-    {
-        title: "Overview",
-        items: [
-            { label: "Dashboard", path: "/admin", icon: LayoutGrid },
-        ]
-    },
-    {
-        title: "Management",
-        items: [
-            { label: "Users", path: "/admin/users", icon: UsersIcon },
-            { label: "Campaigns", path: "/admin/campaigns", icon: Target },
-            { label: "Financials", path: "/admin/financials", icon: CreditCard },
-        ]
-    }
+  {
+    title: 'Core',
+    items: [
+      { label: 'Dashboard', path: '/admin', icon: LayoutGrid },
+      { label: 'Campaigns', path: '/admin/campaigns', icon: Target },
+    ]
+  },
+  {
+    title: 'Network',
+    items: [
+      { label: 'Creators', path: '/admin/creators', icon: UsersIcon },
+      { label: 'Brands', path: '/admin/brands', icon: Briefcase },
+    ]
+  },
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Inbox', path: '/admin/inbox', icon: MessageSquare },
+      { label: 'Calendar', path: '/admin/calendar', icon: Calendar },
+    ]
+  },
+  {
+    title: 'Resolution',
+    items: [
+      { label: 'Issues', path: '/admin/issues', icon: AlertTriangle },
+      { label: 'Tasks', path: '/admin/tasks', icon: CheckSquare },
+    ]
+  },
+  {
+    title: 'Finance',
+    items: [
+      { label: 'Payments', path: '/admin/payments', icon: CreditCard },
+    ]
+  },
+  {
+    title: 'Insights',
+    items: [
+      { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'System',
+    items: [
+      { label: 'Settings', path: '/admin/settings', icon: Settings },
+    ]
+  }
 ];

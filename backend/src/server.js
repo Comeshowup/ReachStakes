@@ -22,6 +22,15 @@ import brandCampaignRoutes from './routes/campaign.routes.js';
 import escrowRoutes from './routes/escrowRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import adminCampaignRoutes from './routes/adminCampaignRoutes.js';
+import adminCreatorRoutes from './routes/adminCreatorRoutes.js';
+import adminBrandRoutes from './routes/adminBrandRoutes.js';
+import adminInvitationRoutes from './routes/adminInvitationRoutes.js';
+import adminIssueRoutes from './routes/adminIssueRoutes.js';
+import adminTaskRoutes from './routes/adminTaskRoutes.js';
+import adminPaymentRoutes from './routes/adminPaymentRoutes.js';
+import adminAnalyticsRoutes from './routes/adminAnalyticsRoutes.js';
+import adminMessageRoutes from './routes/adminMessageRoutes.js';
 import { initSocketServer } from './socketServer.js';
 
 import { validateTazapayConfig } from './services/tazapayService.js';
@@ -104,6 +113,17 @@ app.use('/api/escrow', escrowRoutes); // Escrow Vault
 app.use('/api/notifications', notificationRoutes); // In-App Notifications
 app.use('/api/support', supportRoutes); // Support System
 
+// Admin Campaign Manager Routes
+app.use('/api/admin/campaigns', adminCampaignRoutes);
+app.use('/api/admin/creators', adminCreatorRoutes);
+app.use('/api/admin/brands', adminBrandRoutes);
+app.use('/api/admin/invitations', adminInvitationRoutes);
+app.use('/api/admin/issues', adminIssueRoutes);
+app.use('/api/admin/tasks', adminTaskRoutes);
+app.use('/api/admin/payments', adminPaymentRoutes);
+app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/messages', adminMessageRoutes);
+
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
     console.log('Running video stats update...');
@@ -142,11 +162,15 @@ cron.schedule('*/5 * * * *', async () => {
 });
 
 
+import { startInvitationExpiryJob, startSLAMonitorJob } from './jobs/adminCronJobs.js';
+
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     validateTazapayConfig();
     validateEncryptionConfig();
     payoutQueue.start();
+    startInvitationExpiryJob();
+    startSLAMonitorJob();
 });
 
 // Initialize Socket.io on the HTTP server
