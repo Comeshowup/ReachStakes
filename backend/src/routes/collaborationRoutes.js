@@ -1,7 +1,7 @@
 import express from "express";
 import { prisma } from "../config/db.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { fetchVideoStats } from "../utils/videoStats.js";
+import { fetchVideoStats, getSocialAccountForUser, fetchAudienceDemographics } from "../utils/videoStats.js";
 import { executePayout } from "../controllers/conciergeControllers.js";
 
 const router = express.Router();
@@ -184,66 +184,184 @@ router.patch("/:id/decision", protect, async (req, res) => {
 router.post("/:id/submit", protect, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { submissionUrl, platform, videoId } = req.body;
-        const userId = req.user.id; // protect middleware ensures this exists
+        const { submissionUrl, platform, videoId, title, notes } = req.body;
+        const userId = req.user.id;
 
-        // DEBUG: Log all incoming data
         console.log("=== SUBMISSION REQUEST RECEIVED ===");
-        console.log("Collaboration ID:", id);
-        console.log("Platform received:", platform);
-        console.log("Submission URL:", submissionUrl);
-        console.log("Video ID:", videoId);
-        console.log("User ID:", userId);
+        console.log("Collaboration ID:", id, "Platform:", platform, "URL:", submissionUrl, "User:", userId);
 
         if (isNaN(id)) {
             return res.status(400).json({ error: "Invalid submission ID" });
         }
 
-        // Fetch initial stats immediately to verify ownership and populate data
-        let initialStats = {
-            views: "0",
-            likes: "0",
-            comments: "0"
-        };
-
-        if (platform === 'YouTube' && videoId) {
-            // We allow this to throw (e.g. Ownership Mismatch) so the user gets the error
-            console.log(`Fetching stats for video ${videoId} on platform ${platform} for user ${userId}`);
-            const fetched = await fetchVideoStats(platform, videoId, userId);
-            console.log("Fetched stats:", fetched);
-            // Ensure we use the fetched stats
-            initialStats = fetched;
-        } else if (platform === 'Instagram' && submissionUrl) {
-            console.log(`Fetching stats for Instagram post ${submissionUrl} for user ${userId}`);
-            // Pass submissionUrl as the "videoId" argument for Instagram
-            const fetched = await fetchVideoStats(platform, submissionUrl, userId);
-            console.log("Fetched IG stats:", fetched);
-            initialStats = fetched;
-        } else if (platform === 'TikTok' && submissionUrl) {
-            console.log(`Fetching stats for TikTok video ${submissionUrl} for user ${userId}`);
-            const fetched = await fetchVideoStats(platform, submissionUrl, userId);
-            console.log("Fetched TikTok stats:", fetched);
-            initialStats = fetched;
+        if (!submissionUrl || !platform) {
+            return res.status(400).json({ error: "Submission URL and platform are required." });
         }
 
+        // ── STEP 1: Pre-check — verify the social account is connected ──────────
+        const socialAccount = await getSocialAccountForUser(userId, platform);
+        if (!socialAccount) {
+            return res.status(400).json({
+                error: `Your ${platform} account is not connected.`,
+                details: `Please go to Settings > Social Accounts and connect your ${platform} account before submitting.`,
+                code: 'SOCIAL_ACCOUNT_NOT_CONNECTED'
+            });
+        }
+
+        console.log(`[Submit] Social account verified: ${platform} (${socialAccount.username})`);
+
+        // ── STEP 2: Fetch initial stats (also verifies URL ownership) ─────────
+        let initialStats = { views: 0, likes: 0, comments: 0, shares: 0 };
+
+        const targetId = (platform === 'YouTube' && videoId) ? videoId : submissionUrl;
+
+        if (targetId) {
+            try {
+                console.log(`[Submit] Fetching stats for ${platform}...`);
+                const fetched = await fetchVideoStats(platform, targetId, userId);
+                console.log(`[Submit] Fetched stats:`, fetched);
+                initialStats = fetched;
+            } catch (statsError) {
+                // Ownership mismatch / not found → reject the submission
+                console.error(`[Submit] Stats fetch failed:`, statsError.message);
+                return res.status(400).json({
+                    error: 'Content verification failed.',
+                    details: statsError.message,
+                    code: 'CONTENT_VERIFICATION_FAILED'
+                });
+            }
+        }
+
+        // ── STEP 3: Compute engagement rate ───────────────────────────────────
+        const views = parseInt(initialStats.views || 0);
+        const likes = parseInt(initialStats.likes || 0);
+        const comments = parseInt(initialStats.comments || 0);
+        const shares = parseInt(initialStats.shares || 0);
+        const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
+
+        // ── STEP 4: Persist the submission ─────────────────────────────────────
         const updated = await prisma.campaignCollaboration.update({
-            where: { id: id },
+            where: { id },
             data: {
                 submissionUrl,
                 submissionPlatform: platform,
-                videoId, // Store the YouTube video ID
+                submissionTitle: title || null,
+                submissionNotes: notes || null,
+                videoId: videoId || null,
                 status: "Under_Review",
-                videoStats: initialStats
+                // Raw JSON snapshot
+                videoStats: initialStats,
+                // Dedicated queryable columns
+                viewsCount: views,
+                likesCount: likes,
+                sharesCount: shares,
+                engagementRate: parseFloat(engagementRate.toFixed(4))
             }
         });
 
+        console.log(`[Submit] Collaboration ${id} updated to Under_Review.`);
         res.json(updated);
+
     } catch (error) {
         console.error("Error submitting content:", error);
         res.status(500).json({
             error: "Failed to submit content",
             details: error.message
         });
+    }
+});
+
+// ── On-demand stats refresh ──────────────────────────────────────────────────
+// GET /api/collaborations/:id/stats
+// Fetches fresh stats for a collaboration from the platform API and updates the DB.
+router.get("/:id/stats", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+        const collab = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                creatorId: true,
+                submissionUrl: true,
+                submissionPlatform: true,
+                videoId: true,
+                videoStats: true,
+                viewsCount: true,
+                likesCount: true,
+                sharesCount: true,
+                engagementRate: true
+            }
+        });
+
+        if (!collab) return res.status(404).json({ error: "Collaboration not found" });
+        if (!collab.submissionUrl || !collab.submissionPlatform) {
+            return res.status(400).json({ error: "No submission to refresh stats for" });
+        }
+
+        // Only the creator or admin can refresh their own submission stats
+        if (collab.creatorId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorised" });
+        }
+
+        const targetId = (collab.submissionPlatform === 'YouTube' && collab.videoId)
+            ? collab.videoId
+            : collab.submissionUrl;
+
+        const freshStats = await fetchVideoStats(collab.submissionPlatform, targetId, collab.creatorId);
+
+        const views = parseInt(freshStats.views || 0);
+        const likes = parseInt(freshStats.likes || 0);
+        const comments = parseInt(freshStats.comments || 0);
+        const shares = parseInt(freshStats.shares || 0);
+        const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
+
+        const updated = await prisma.campaignCollaboration.update({
+            where: { id },
+            data: {
+                videoStats: freshStats,
+                viewsCount: views,
+                likesCount: likes,
+                sharesCount: shares,
+                engagementRate: parseFloat(engagementRate.toFixed(4))
+            }
+        });
+
+        res.json({ status: 'success', stats: freshStats, collaboration: updated });
+    } catch (error) {
+        console.error("Error refreshing stats:", error);
+        res.status(500).json({ error: "Failed to refresh stats", details: error.message });
+    }
+});
+
+// ── Audience demographics for a submission ───────────────────────────────────
+// GET /api/collaborations/:id/demographics
+router.get("/:id/demographics", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+        const collab = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            select: { creatorId: true, submissionPlatform: true }
+        });
+
+        if (!collab) return res.status(404).json({ error: "Collaboration not found" });
+
+        if (collab.creatorId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorised" });
+        }
+
+        const demographics = await fetchAudienceDemographics(
+            collab.creatorId,
+            collab.submissionPlatform || 'Instagram'
+        );
+
+        res.json({ status: 'success', demographics });
+    } catch (error) {
+        console.error("Error fetching demographics:", error);
+        res.status(500).json({ error: "Failed to fetch demographics", details: error.message });
     }
 });
 

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Briefcase, ListChecks, Upload, MessageSquare, CreditCard } from 'lucide-react';
+import { Briefcase, ListChecks, FolderOpen, MessageSquare, CreditCard } from 'lucide-react';
 
 const TABS = [
     { id: 'overview', label: 'Overview', icon: Briefcase },
     { id: 'deliverables', label: 'Deliverables', icon: ListChecks },
-    { id: 'submissions', label: 'Submissions', icon: Upload },
+    { id: 'submissions', label: 'Submissions', icon: FolderOpen },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'payment', label: 'Payment', icon: CreditCard },
 ];

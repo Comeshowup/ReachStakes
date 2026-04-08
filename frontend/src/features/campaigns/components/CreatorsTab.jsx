@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   XCircle,
+  CheckCircle,
   ExternalLink,
   Users,
 } from 'lucide-react';
@@ -40,17 +41,54 @@ const RowActions = ({ collab, campaignId }) => {
 
   const handleAction = (type) => {
     setOpen(false);
+    if (type === 'view') {
+      // TODO: Navigate to creator profile
+      return;
+    }
+    
     action.mutate(
       { collaborationId: collab.id, action: type },
       {
-        onSuccess: () => toast.success(type === 'resend' ? 'Invite resent' : 'Invite cancelled'),
+        onSuccess: () => {
+          const msgs = {
+            resend: 'Invite resent',
+            cancel: 'Invite cancelled',
+            accept: 'Application accepted',
+            reject: 'Application rejected'
+          };
+          toast.success(msgs[type] || 'Action successful');
+        },
         onError: () => toast.error('Action failed'),
       }
     );
   };
 
+  const getActions = () => {
+    const status = collab.status?.toLowerCase();
+    if (status === 'applied') {
+      return [
+        { icon: CheckCircle, label: 'Accept Application', action: 'accept' },
+        { icon: XCircle, label: 'Reject Application', action: 'reject' },
+        { icon: ExternalLink, label: 'View Profile', action: 'view' },
+      ];
+    }
+    if (status === 'invited') {
+      return [
+        { icon: RefreshCw, label: 'Resend Invite', action: 'resend' },
+        { icon: XCircle, label: 'Cancel Invite', action: 'cancel' },
+        { icon: ExternalLink, label: 'View Profile', action: 'view' },
+      ];
+    }
+    // Default actions for other statuses
+    return [
+      { icon: ExternalLink, label: 'View Profile', action: 'view' },
+    ];
+  };
+
+  const actions = getActions();
+
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200"
@@ -60,19 +98,19 @@ const RowActions = ({ collab, campaignId }) => {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 w-44 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-lg py-1">
-            {[
-              { icon: RefreshCw, label: 'Resend Invite', action: 'resend' },
-              { icon: XCircle, label: 'Cancel Invite', action: 'cancel' },
-              { icon: ExternalLink, label: 'View Profile', action: 'view' },
-            ].map(({ icon: Icon, label, action: type }) => (
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+            {actions.map(({ icon: Icon, label, action: type }) => (
               <button
                 key={type}
                 onClick={() => handleAction(type)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                   type === 'reject' || type === 'cancel' 
+                     ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' 
+                     : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                }`}
               >
-                <Icon className="w-3.5 h-3.5 text-gray-400" />
+                <Icon className={`w-3.5 h-3.5 ${type === 'reject' || type === 'cancel' ? '' : 'text-gray-400'}`} />
                 {label}
               </button>
             ))}
@@ -174,16 +212,18 @@ const CreatorsTab = ({ campaignId }) => {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      {/* Table Card */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800">
+        <div className="overflow-x-auto min-h-[220px]">
+          <table className="w-full text-sm border-separate border-spacing-0">
             <thead>
               <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-800/40">
-                {['Creator', 'Platform', 'Audience', 'Offer', 'Status', ''].map((col) => (
+                {['Creator', 'Platform', 'Audience', 'Offer', 'Status', ''].map((col, i) => (
                   <th
                     key={col}
-                    className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide"
+                    className={`text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide border-b border-gray-100 dark:border-zinc-800 ${
+                      i === 0 ? 'rounded-tl-xl' : i === 5 ? 'rounded-tr-xl' : ''
+                    }`}
                   >
                     {col}
                   </th>

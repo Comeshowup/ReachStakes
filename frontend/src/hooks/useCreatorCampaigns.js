@@ -48,7 +48,7 @@ export const useCreatorCampaigns = (statusFilter = 'active') => {
 
     // Workspace counts (Invited excluded — they live in the inbox tab)
     const activeCount = useMemo(
-        () => campaigns.filter((c) => c.status === 'In_Progress' || c.status === 'In Progress').length,
+        () => campaigns.filter((c) => c.status === 'In_Progress' || c.status === 'In Progress' || c.status === 'Approved').length,
         [campaigns]
     );
     const pendingCount = useMemo(
@@ -60,7 +60,7 @@ export const useCreatorCampaigns = (statusFilter = 'active') => {
         [campaigns]
     );
     const completedCount = useMemo(
-        () => campaigns.filter((c) => c.status === 'Approved' || c.status === 'Paid' || c.status === 'Completed').length,
+        () => campaigns.filter((c) => c.status === 'Paid' || c.status === 'Completed').length,
         [campaigns]
     );
 
@@ -68,10 +68,10 @@ export const useCreatorCampaigns = (statusFilter = 'active') => {
     const filteredCampaigns = useMemo(() => {
         // Invitations are handled separately via InvitationsList
         if (statusFilter === 'invitations') return [];
-        if (statusFilter === 'active') return campaigns.filter((c) => c.status === 'In_Progress' || c.status === 'In Progress');
+        if (statusFilter === 'active') return campaigns.filter((c) => c.status === 'In_Progress' || c.status === 'In Progress' || c.status === 'Approved');
         if (statusFilter === 'pending') return campaigns.filter((c) => c.status === 'Applied');
         if (statusFilter === 'revision') return campaigns.filter((c) => c.status === 'Revision' || c.status === 'Under_Review' || c.status === 'Under Review');
-        if (statusFilter === 'completed') return campaigns.filter((c) => c.status === 'Approved' || c.status === 'Paid' || c.status === 'Completed');
+        if (statusFilter === 'completed') return campaigns.filter((c) => c.status === 'Paid' || c.status === 'Completed');
         return campaigns.filter((c) => c.status !== 'Invited'); // all non-invite
     }, [campaigns, statusFilter]);
 

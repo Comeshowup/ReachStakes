@@ -249,3 +249,155 @@ export const getCampaignStats = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 };
+
+export const inviteCampaignCreators = async (req, res) => {
+  try {
+    const campaignId = parseInt(req.params.id);
+    const { creatorIds, offer, message } = req.body;
+
+    if (!creatorIds || !Array.isArray(creatorIds)) {
+      return res.status(400).json({ error: 'creatorIds required' });
+    }
+
+    const { amount, deliverables } = offer || {};
+
+    const results = await Promise.all(
+      creatorIds.map(async (creatorId) => {
+        const collab = await prisma.campaignCollaboration.findFirst({
+          where: { campaignId, creatorId },
+        });
+
+        if (collab) {
+          return prisma.campaignCollaboration.update({
+            where: { id: collab.id },
+            data: {
+              status: 'Invited',
+              agreedPrice: amount,
+              deliverables,
+            },
+          });
+        }
+
+        return prisma.campaignCollaboration.create({
+          data: {
+            campaignId,
+            creatorId,
+            status: 'Invited',
+            agreedPrice: amount,
+            deliverables,
+          },
+        });
+      })
+    );
+
+    // Optionally create CampaignMessages if message exists
+    if (message) {
+      await Promise.all(
+        results.map((collab) =>
+          prisma.campaignMessage.create({
+            data: {
+              campaignId,
+              collaborationId: collab.id,
+              threadId: `collab-${collab.id}`,
+              senderId: req.user.id,
+              content: message,
+            },
+          })
+        )
+      );
+    }
+
+    await prisma.campaignEvent.create({
+      data: {
+        campaignId,
+        type: 'creators_invited',
+        description: `Invited ${creatorIds.length} creators`,
+        createdBy: req.user.id,
+        metadata: { creatorIds, offer },
+      },
+    });
+
+    res.json({ success: true, count: creatorIds.length });
+  } catch (err) {
+    console.error('[adminCampaign] inviteCampaignCreators:', err);
+    res.status(500).json({ error: 'Failed to invite creators' });
+  }
+};
+
+export const updateCreatorInviteStatus = async (req, res) => {
+  try {
+    const campaignId = parseInt(req.params.id);
+    const collaborationId = parseInt(req.params.collaborationId);
+    const { action } = req.params;
+
+    const collab = await prisma.campaignCollaboration.findUnique({
+      where: { id: collaborationId },
+    });
+
+    if (!collab || collab.campaignId !== campaignId) {
+      return res.status(404).json({ error: 'Collaboration not found' });
+    }
+
+    if (action === 'cancel') {
+      await prisma.campaignCollaboration.update({
+        where: { id: collaborationId },
+        data: { status: 'Rejected' },
+      });
+
+      await prisma.campaignEvent.create({
+        data: {
+          campaignId,
+          type: 'invite_cancelled',
+          description: `Cancelled invite for creator ${collab.creatorId}`,
+          createdBy: req.user.id,
+        },
+      });
+      res.json({ success: true, status: 'Rejected' });
+    } else if (action === 'resend') {
+      await prisma.campaignEvent.create({
+        data: {
+          campaignId,
+          type: 'invite_resent',
+          description: `Resent invite to creator ${collab.creatorId}`,
+          createdBy: req.user.id,
+        },
+      });
+      res.json({ success: true, status: collab.status });
+    } else if (action === 'accept') {
+      await prisma.campaignCollaboration.update({
+        where: { id: collaborationId },
+        data: { status: 'In_Progress' },
+      });
+
+      await prisma.campaignEvent.create({
+        data: {
+          campaignId,
+          type: 'application_accepted',
+          description: `Accepted application from creator ${collab.creatorId}`,
+          createdBy: req.user.id,
+        },
+      });
+      res.json({ success: true, status: 'In_Progress' });
+    } else if (action === 'reject') {
+      await prisma.campaignCollaboration.update({
+        where: { id: collaborationId },
+        data: { status: 'Rejected' },
+      });
+
+      await prisma.campaignEvent.create({
+        data: {
+          campaignId,
+          type: 'application_rejected',
+          description: `Rejected application from creator ${collab.creatorId}`,
+          createdBy: req.user.id,
+        },
+      });
+      res.json({ success: true, status: 'Rejected' });
+    } else {
+      res.status(400).json({ error: 'Invalid action' });
+    }
+  } catch (err) {
+    console.error('[adminCampaign] updateCreatorInviteStatus:', err);
+    res.status(500).json({ error: 'Failed to update invite' });
+  }
+};

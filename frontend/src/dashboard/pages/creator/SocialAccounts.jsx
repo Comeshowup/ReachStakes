@@ -146,9 +146,13 @@ const SocialAccounts = () => {
             bg: 'bg-pink-50 dark:bg-pink-900/20',
             maxAccounts: 5,
             connectAction: () => {
-                const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID || 'YOUR_INSTAGRAM_CLIENT_ID';
-                const redirectUri = `${window.location.origin}/creator/social-accounts`;
-                const scope = 'instagram_business_basic,instagram_business_manage_insights';
+                const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+                if (!clientId || clientId === 'YOUR_INSTAGRAM_CLIENT_ID') {
+                    alert("Instagram Client ID is missing! Please check your .env file and RESTART the dev server.");
+                    return;
+                }
+                const redirectUri = `${window.location.origin}/creator/settings/social`;
+                const scope = 'user_profile,user_media';
                 const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
 
                 window.location.href = authUrl;

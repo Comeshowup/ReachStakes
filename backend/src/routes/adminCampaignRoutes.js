@@ -10,6 +10,8 @@ import {
   getCampaignPayments,
   getCampaignActivity,
   getCampaignStats,
+  inviteCampaignCreators,
+  updateCreatorInviteStatus,
 } from '../controllers/adminCampaignController.js';
 
 const router = express.Router();
@@ -24,5 +26,8 @@ router.get('/:id/timeline', getCampaignTimeline);
 router.get('/:id/payments', getCampaignPayments);
 router.get('/:id/activity', getCampaignActivity);
 router.get('/:id/stats', getCampaignStats);
+
+router.post('/:id/invite', inviteCampaignCreators);
+router.post('/:id/creators/:collaborationId/:action', updateCreatorInviteStatus);
 
 export default router;

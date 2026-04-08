@@ -15,11 +15,20 @@ import {
 /**
  * Campaign Overview tab — brief, brand info, guidelines, and timeline.
  */
+const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+
+function resolveUrl(url) {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${BACKEND_URL}${url}`;
+}
+
 const CampaignOverview = ({ campaign }) => {
     if (!campaign) return null;
 
     const campaignData = campaign.campaign || campaign;
     const brandProfile = campaignData.brand?.brandProfile || {};
+    const logoUrl = resolveUrl(brandProfile.logoUrl || campaign.brandLogo);
 
     // Build timeline steps
     const timelineSteps = buildTimeline(campaign);
@@ -114,11 +123,12 @@ const CampaignOverview = ({ campaign }) => {
                             border: '1px solid var(--bd-border-subtle)',
                         }}
                     >
-                        {(brandProfile.logoUrl || campaign.brandLogo) ? (
+                        {logoUrl ? (
                             <img
-                                src={brandProfile.logoUrl || campaign.brandLogo}
+                                src={logoUrl}
                                 alt=""
                                 className="w-12 h-12 rounded-xl object-cover"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                         ) : (
                             <Briefcase className="w-5 h-5" style={{ color: 'var(--bd-text-secondary)' }} />
@@ -244,6 +254,7 @@ function buildTimeline(campaign) {
             steps[0].completed = true;
             steps[1].active = true;
             break;
+        case 'Approved':
         case 'In_Progress':
             steps[0].completed = true;
             steps[1].completed = true;

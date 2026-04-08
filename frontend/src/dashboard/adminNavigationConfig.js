@@ -75,8 +75,6 @@ export const ADMIN_NAV_GROUPS = [
     title: "Campaigns",
     items: [
       { label: "Campaigns",    path: "/admin/campaigns",              icon: Target },
-      { label: "Invitations",  path: "/admin/campaigns/invitations",  icon: Send },
-      { label: "Deliverables", path: "/admin/campaigns/deliverables", icon: FileImage },
       { label: "Approvals",    path: "/admin/campaigns/approvals",    icon: CheckCircle },
     ],
   },

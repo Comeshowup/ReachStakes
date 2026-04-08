@@ -15,9 +15,7 @@ import AdminBrandListPage from './dashboard/pages/admin/network/brands/BrandsPag
 // Campaigns
 import AdminCampaignListPage from './dashboard/pages/admin/CampaignListPage';
 import AdminCampaignDetailPage from './dashboard/pages/admin/CampaignDetailPage';
-import AdminInvitationListPage from './dashboard/pages/admin/InvitationListPage';
-import CampaignDeliverablesPage from './dashboard/pages/admin/CampaignDeliverablesPage';
-import CMApprovalDashboard from './dashboard/pages/admin/CMApprovalDashboard';
+import ApprovalsPage from './dashboard/pages/admin/approvals/ApprovalsPage';
 // Operations
 import ConversationsPage from './dashboard/pages/admin/ConversationsPage';
 import AdminCalendarPage from './dashboard/pages/admin/CalendarPage';
@@ -186,9 +184,7 @@ function App() {
           {/* ── CAMPAIGNS ────────────────────────────────── */}
           <Route path="campaigns"                element={<AdminCampaignListPage />} />
           <Route path="campaigns/:id"            element={<AdminCampaignDetailPage />} />
-          <Route path="campaigns/invitations"    element={<AdminInvitationListPage />} />
-          <Route path="campaigns/deliverables"   element={<CampaignDeliverablesPage />} />
-          <Route path="campaigns/approvals"      element={<CMApprovalDashboard />} />
+          <Route path="campaigns/approvals"      element={<ApprovalsPage />} />
 
           {/* ── OPERATIONS ───────────────────────────────── */}
           <Route path="operations/conversations" element={<ConversationsPage />} />
@@ -227,7 +223,6 @@ function App() {
           <Route path="analytics"   element={<Navigate to="/admin/insights/analytics"       replace />} />
           <Route path="settings"    element={<Navigate to="/admin/system/settings"          replace />} />
           <Route path="messages"    element={<Navigate to="/admin/operations/conversations" replace />} />
-          <Route path="invitations" element={<Navigate to="/admin/campaigns/invitations"    replace />} />
           <Route path="resources"   element={<Navigate to="/admin/system/settings"          replace />} />
           <Route path="users"       element={<Navigate to="/admin/network/creators"         replace />} />
         </Route>

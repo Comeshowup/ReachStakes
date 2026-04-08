@@ -7,7 +7,7 @@ import CampaignHeader from '../../components/workspace/CampaignHeader';
 import CampaignTabs from '../../components/workspace/CampaignTabs';
 import CampaignOverview from '../../components/workspace/CampaignOverview';
 import DeliverablesList from '../../components/workspace/DeliverablesList';
-import SubmissionUploader from '../../components/workspace/SubmissionUploader';
+import { SubmissionsModule } from '../../../features/submissions/index.js';
 import CampaignMessages from '../../components/workspace/CampaignMessages';
 import PaymentStatus from '../../components/workspace/PaymentStatus';
 
@@ -74,11 +74,9 @@ const CampaignWorkspacePage = () => {
                 return <DeliverablesList deliverables={deliverables} />;
             case 'submissions':
                 return (
-                    <SubmissionUploader
-                        collaborationId={campaignId}
-                        submissions={submissions}
+                    <SubmissionsModule
+                        campaignId={campaignId}
                         campaign={campaign}
-                        onSubmitSuccess={refetch}
                     />
                 );
             case 'messages':

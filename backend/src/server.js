@@ -44,6 +44,8 @@ BigInt.prototype.toJSON = function () {
     return this.toString();
 };
 
+
+
 connectDB();
 
 
@@ -126,38 +128,60 @@ app.use('/api/admin/messages', adminMessageRoutes);
 
 // Cron Job: Update Video Stats every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
-    console.log('Running video stats update...');
+    console.log('[Cron] Running video stats update...');
     try {
-        // Find all collaborations with a videoId that are not active/completed? Or just all?
-        // Let's update all for now.
+        // Find all submitted collaborations (URL required, platform required)
         const activeSubmissions = await prisma.campaignCollaboration.findMany({
             where: {
-                videoId: { not: null },
-                submissionUrl: { not: null }
+                submissionUrl: { not: null },
+                submissionPlatform: { not: null }
             }
         });
 
+        let successCount = 0;
         for (const submission of activeSubmissions) {
             try {
-                // Fetch real stats using creator's token
-                const stats = await fetchVideoStats(submission.submissionPlatform, submission.videoId, submission.creatorId);
+                // Use videoId for YouTube, submissionUrl for Instagram/TikTok
+                const targetId = (submission.submissionPlatform === 'YouTube' && submission.videoId)
+                    ? submission.videoId
+                    : submission.submissionUrl;
+
+                const stats = await fetchVideoStats(
+                    submission.submissionPlatform,
+                    targetId,
+                    submission.creatorId
+                );
+
+                const views = parseInt(stats.views || 0);
+                const likes = parseInt(stats.likes || 0);
+                const comments = parseInt(stats.comments || 0);
+                const shares = parseInt(stats.shares || 0);
+                const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
 
                 await prisma.campaignCollaboration.update({
                     where: { id: submission.id },
-                    data: { videoStats: stats }
+                    data: {
+                        // Raw JSON snapshot
+                        videoStats: stats,
+                        // Dedicated queryable columns (indexed, usable in analytics)
+                        viewsCount: views,
+                        likesCount: likes,
+                        sharesCount: shares,
+                        engagementRate: parseFloat(engagementRate.toFixed(4))
+                    }
                 });
+                successCount++;
             } catch (error) {
-                // Log specific warning for unlinked accounts to avoid cluttering error logs
-                if (error.message.includes('not linked') || error.message.includes('expired')) {
-                    console.warn(`[Stats Update] User ${submission.creatorId} (Submission ${submission.id}): ${error.message}`);
+                if (error.message.includes('not linked') || error.message.includes('expired') || error.message.includes('not connected')) {
+                    console.warn(`[Stats Cron] User ${submission.creatorId} (Collab ${submission.id}): ${error.message}`);
                 } else {
-                    console.error(`[Stats Update] Error updating stats for submission ${submission.id}:`, error.message);
+                    console.error(`[Stats Cron] Error for collab ${submission.id}:`, error.message);
                 }
             }
         }
-        console.log(`Updated stats for ${activeSubmissions.length} videos.`);
+        console.log(`[Cron] Stats updated: ${successCount}/${activeSubmissions.length} submissions.`);
     } catch (error) {
-        console.error('Error updating video stats:', error);
+        console.error('[Cron] Fatal error in video stats update:', error);
     }
 });
 
@@ -166,6 +190,7 @@ import { startInvitationExpiryJob, startSLAMonitorJob } from './jobs/adminCronJo
 
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(process.env.DATABASE_URL);
     validateTazapayConfig();
     validateEncryptionConfig();
     payoutQueue.start();

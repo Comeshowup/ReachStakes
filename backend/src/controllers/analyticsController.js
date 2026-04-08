@@ -75,11 +75,15 @@ export const getCreatorAnalytics = async (req, res) => {
                 0;
             const comments =
                 parseInt(raw.comments || raw.commentCount || 0) || 0;
+            const shares =
+                parseInt(collab.sharesCount || 0) ||
+                parseInt(raw.shares || raw.shareCount || 0) ||
+                0;
             const engRate =
                 parseFloat(collab.engagementRate || 0) ||
                 (views > 0 ? ((likes + comments) / views) * 100 : 0);
 
-            return { views, likes, comments, engRate };
+            return { views, likes, comments, shares, engRate };
         };
 
         // ─── Partition into current vs previous windows ───────
@@ -205,7 +209,7 @@ export const getCreatorAnalytics = async (req, res) => {
 
         // ─── Videos: top content list ─────────────────────────
         const videos = allCollabs.map((collab) => {
-            const { views, likes, comments, engRate } = extractStats(collab);
+            const { views, likes, comments, shares, engRate } = extractStats(collab);
             return {
                 id: collab.id,
                 title: collab.submissionTitle || collab.campaign.title,
@@ -214,6 +218,7 @@ export const getCreatorAnalytics = async (req, res) => {
                 views,
                 likes,
                 comments,
+                shares,
                 engagementRate: parseFloat(engRate.toFixed(2)),
                 publishDate: collab.updatedAt,
                 link: collab.submissionUrl,
