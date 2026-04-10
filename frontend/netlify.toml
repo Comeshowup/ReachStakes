@@ -7,3 +7,10 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Fix Google OAuth popup: prevent COOP from blocking window.closed polling
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "unsafe-none"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
