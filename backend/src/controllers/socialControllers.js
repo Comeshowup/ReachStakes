@@ -109,20 +109,21 @@ const linkInstagram = async (req, res) => {
         return res.status(400).json({ status: 'error', message: 'User ID is missing' });
     }
 
+    // redirect_uri MUST be the exact same one used in the frontend auth URL
+    if (!req.body.redirectUri) {
+        return res.status(400).json({ status: 'error', message: 'redirectUri is required' });
+    }
+
     try {
+        console.log(`Attempting to link Instagram for User ${userId}`);
 
         // 1. Exchange Code for Short-Lived Token
-        // Endpoint: https://api.instagram.com/oauth/access_token
-        // Content-Type: application/x-www-form-urlencoded
+        // New Instagram Login API — same endpoint as before
         const formData = new URLSearchParams();
         formData.append('client_id', process.env.INSTAGRAM_CLIENT_ID);
         formData.append('client_secret', process.env.INSTAGRAM_CLIENT_SECRET);
         formData.append('grant_type', 'authorization_code');
-
-        // Use the redirect_uri passed from frontend (dynamic), or fallback if missing
-        const redirectParam = req.body.redirectUri || 'https://c958bf235ae3.ngrok-free.app/creator/social-accounts';
-        formData.append('redirect_uri', redirectParam);
-
+        formData.append('redirect_uri', req.body.redirectUri);
         formData.append('code', code);
 
         const tokenResponse = await axios.post('https://api.instagram.com/oauth/access_token', formData, {
@@ -131,8 +132,7 @@ const linkInstagram = async (req, res) => {
 
         const { access_token, user_id } = tokenResponse.data;
 
-        // 2. Exchange for Long-Lived Token (Optional but recommended)
-        // Endpoint: https://graph.instagram.com/access_token
+        // 2. Exchange for Long-Lived Token (60-day token)
         const longLivedResponse = await axios.get('https://graph.instagram.com/access_token', {
             params: {
                 grant_type: 'ig_exchange_token',
@@ -145,35 +145,33 @@ const linkInstagram = async (req, res) => {
         const expiresSeconds = longLivedResponse.data.expires_in;
         const expiryDate = new Date(Date.now() + expiresSeconds * 1000);
 
-        // 3. Fetch User Details (Username, Account Type) via Graph API
-        // Endpoint: https://graph.instagram.com/me
-        const userDetailsResponse = await axios.get('https://graph.instagram.com/me', {
+        // 3. Fetch User Details via Graph API
+        // New Instagram Login API returns: user_id, username, account_type, profile_picture_url
+        const userDetailsResponse = await axios.get(`https://graph.instagram.com/v21.0/${user_id}`, {
             params: {
-                fields: 'id,username,account_type,media_count',
+                fields: 'id,username,account_type,media_count,profile_picture_url',
                 access_token: longLivedToken
             }
         });
 
         const igUser = userDetailsResponse.data;
+        console.log('Instagram user details fetched:', igUser.username);
 
-        // 4. Save to DB
+        // 4. Upsert to DB
         const existingAccount = await prisma.socialAccount.findFirst({
-            where: {
-                userId: parseInt(userId),
-                platform: 'Instagram',
-            }
+            where: { userId: parseInt(userId), platform: 'Instagram' }
         });
 
-        let newAccount;
         const accountData = {
             username: igUser.username,
             handle: igUser.username,
-            profileUrl: `https://instagram.com/${igUser.username}`, // Construct simplified URL
-            accessToken: longLivedToken, // Store the long-lived one
+            profileUrl: `https://instagram.com/${igUser.username}`,
+            accessToken: longLivedToken,
             expiresAt: expiryDate,
             platform: 'Instagram'
         };
 
+        let newAccount;
         if (existingAccount) {
             newAccount = await prisma.socialAccount.update({
                 where: { id: existingAccount.id },
@@ -181,19 +179,16 @@ const linkInstagram = async (req, res) => {
             });
         } else {
             newAccount = await prisma.socialAccount.create({
-                data: {
-                    ...accountData,
-                    userId: parseInt(userId)
-                }
+                data: { ...accountData, userId: parseInt(userId) }
             });
         }
 
         console.log('Instagram account saved/updated for:', igUser.username);
         res.status(200).json({ status: 'success', data: newAccount });
 
-
     } catch (error) {
-        const errorMsg = error.response?.data?.error_message || error.message;
+        console.error('Link Instagram Error:', error.response?.data || error.message);
+        const errorMsg = error.response?.data?.error_message || error.response?.data?.error?.message || error.message;
         res.status(500).json({ status: 'error', message: 'Failed to link Instagram account: ' + errorMsg });
     }
 };

@@ -152,8 +152,9 @@ const SocialAccounts = () => {
                     return;
                 }
                 const redirectUri = `${window.location.origin}/creator/social-accounts`;
-                const scope = 'user_profile,user_media';
-                const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+                // instagram_basic is the new scope for the Instagram Login API (replaces deprecated Basic Display API)
+                const scope = 'instagram_basic,instagram_content_publish';
+                const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
 
                 window.location.href = authUrl;
             },
