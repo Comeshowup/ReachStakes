@@ -139,9 +139,9 @@ const useSocialAccounts = () => {
       return;
     }
     const redirectUri = `${window.location.origin}${window.location.pathname}`;
-    // Sync scopes with the user's actual Meta Dashboard permissions
-    const scope = "instagram_business_basic,instagram_basic,public_profile";
-    const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+    // Scopes MUST match the Meta Dashboard use case: 'Manage messaging & content on Instagram'
+    const scope = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights";
+    const authUrl = `https://www.instagram.com/oauth/authorize?force_reauth=true&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
     window.location.href = authUrl;
   };
 
