@@ -147,7 +147,7 @@ const linkInstagram = async (req, res) => {
 
         // 3. Fetch User Details via Graph API
         // New Instagram Login API returns: user_id, username, account_type, profile_picture_url
-        const userDetailsResponse = await axios.get(`https://graph.instagram.com/v21.0/${user_id}`, {
+        const userDetailsResponse = await axios.get(`https://graph.instagram.com/v22.0/${user_id}`, {
             params: {
                 fields: 'id,username,account_type,media_count,profile_picture_url',
                 access_token: longLivedToken

@@ -70,7 +70,7 @@ const useSocialAccounts = () => {
       } else {
         const linkInstagram = async () => {
           try {
-            const currentRedirectUri = `${window.location.origin}/creator/settings/social`;
+            const currentRedirectUri = `${window.location.origin}${window.location.pathname}`;
             await api.post("/social/instagram/link", {
               code,
               userId,
@@ -138,9 +138,10 @@ const useSocialAccounts = () => {
       );
       return;
     }
-    const redirectUri = `${window.location.origin}/creator/settings/social`;
-    const scope = "user_profile,user_media";
-    const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+    const redirectUri = `${window.location.origin}${window.location.pathname}`;
+    // Sync scopes with the user's actual Meta Dashboard permissions
+    const scope = "instagram_business_basic,instagram_basic,public_profile";
+    const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
     window.location.href = authUrl;
   };
 

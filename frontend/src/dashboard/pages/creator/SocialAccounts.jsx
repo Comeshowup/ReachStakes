@@ -66,8 +66,8 @@ const SocialAccounts = () => {
                     }
                 };
                 linkTikTok();
-            } else {
-                // Default to Instagram (existing flow)
+            } else if (state === 'social-page' || !state) {
+                // Default to Instagram flow
                 const linkInstagram = async () => {
                     try {
                         const currentRedirectUri = `${window.location.origin}/creator/social-accounts`;
@@ -152,9 +152,10 @@ const SocialAccounts = () => {
                     return;
                 }
                 const redirectUri = `${window.location.origin}/creator/social-accounts`;
-                // instagram_basic is the new scope for the Instagram Login API (replaces deprecated Basic Display API)
-                const scope = 'instagram_basic,instagram_content_publish';
-                const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+                // Match permissions exactly as they appear in your Meta Dashboard 'API setup with Instagram login' section
+                const scope = 'instagram_business_basic,instagram_basic,public_profile';
+                const state = 'social-page'; // Optional but good practice
+                const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code&state=${state}`;
 
                 window.location.href = authUrl;
             },
