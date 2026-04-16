@@ -118,7 +118,6 @@ const linkInstagram = async (req, res) => {
         console.log(`Attempting to link Instagram for User ${userId}`);
 
         // 1. Exchange Code for Short-Lived Token
-        // New Instagram Login API — same endpoint as before
         const formData = new URLSearchParams();
         formData.append('client_id', process.env.INSTAGRAM_CLIENT_ID);
         formData.append('client_secret', process.env.INSTAGRAM_CLIENT_SECRET);
@@ -126,36 +125,63 @@ const linkInstagram = async (req, res) => {
         formData.append('redirect_uri', req.body.redirectUri);
         formData.append('code', code);
 
-        const tokenResponse = await axios.post('https://api.instagram.com/oauth/access_token', formData, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
+        let access_token, user_id;
+        try {
+            const tokenResponse = await axios.post('https://api.instagram.com/oauth/access_token', formData, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                transformResponse: [data => {
+                    // Fix JavaScript large integer precision loss for 17-digit Meta IDs
+                    if (typeof data === 'string') {
+                        try {
+                            const fixedData = data.replace(/"user_id"\s*:\s*(\d+)/g, '"user_id":"$1"');
+                            return JSON.parse(fixedData);
+                        } catch (err) {
+                            return data;
+                        }
+                    }
+                    return data;
+                }]
+            });
+            access_token = tokenResponse.data.access_token;
+            user_id = tokenResponse.data.user_id;
+        } catch (e) {
+            e.message = "Step 1 (Short-lived Token Exchange) Failed: " + e.message;
+            throw e;
+        }
 
-        const { access_token, user_id } = tokenResponse.data;
-
-        // 2. Exchange for Long-Lived Token (60-day token)
-        const longLivedResponse = await axios.get('https://graph.instagram.com/access_token', {
-            params: {
-                grant_type: 'ig_exchange_token',
-                client_secret: process.env.INSTAGRAM_CLIENT_SECRET,
-                access_token: access_token
-            }
-        });
-
-        const longLivedToken = longLivedResponse.data.access_token;
-        const expiresSeconds = longLivedResponse.data.expires_in;
-        const expiryDate = new Date(Date.now() + expiresSeconds * 1000);
+        // 2. Exchange for Long-Lived Token
+        let longLivedToken, expiryDate;
+        try {
+            const longLivedResponse = await axios.get('https://graph.instagram.com/access_token', {
+                params: {
+                    grant_type: 'ig_exchange_token',
+                    client_secret: process.env.INSTAGRAM_CLIENT_SECRET,
+                    access_token: access_token
+                }
+            });
+            longLivedToken = longLivedResponse.data.access_token;
+            const expiresSeconds = longLivedResponse.data.expires_in;
+            expiryDate = new Date(Date.now() + expiresSeconds * 1000);
+        } catch (e) {
+            e.message = "Step 2 (Long-lived Token Exchange) Failed: " + e.message;
+            throw e;
+        }
 
         // 3. Fetch User Details via Graph API
-        // New Instagram Login API returns: user_id, username, account_type, profile_picture_url
-        const userDetailsResponse = await axios.get(`https://graph.instagram.com/v22.0/${user_id}`, {
-            params: {
-                fields: 'id,username,account_type,media_count,profile_picture_url',
-                access_token: longLivedToken
-            }
-        });
-
-        const igUser = userDetailsResponse.data;
-        console.log('Instagram user details fetched:', igUser.username);
+        let igUser;
+        try {
+            const userDetailsResponse = await axios.get(`https://graph.instagram.com/v22.0/${user_id}`, {
+                params: {
+                    fields: 'id,username,account_type,media_count,profile_picture_url',
+                    access_token: longLivedToken
+                }
+            });
+            igUser = userDetailsResponse.data;
+            console.log('Instagram user details fetched:', igUser.username);
+        } catch (e) {
+            e.message = `Step 3 (Graph API Details Fetch for ${user_id}) Failed: ` + e.message;
+            throw e;
+        }
 
         // 4. Upsert to DB
         const existingAccount = await prisma.socialAccount.findFirst({
@@ -193,12 +219,17 @@ const linkInstagram = async (req, res) => {
         
         console.error('Link Instagram Error — Meta API response:', JSON.stringify(igError, null, 2));
         console.error('Link Instagram Error — raw:', error.message);
+        
         // Surface the full Meta error so the frontend can show it
-        const errorMsg =
+        let errorMsg =
             igError?.error_message ||           // short-lived token exchange errors
             igError?.error?.message ||          // Graph API errors
             igError?.error_description ||       // OAuth errors
-            error.message;
+            'Unknown API Error';
+            
+        // Prepend our custom step message
+        errorMsg = `[${error.message}] - ${errorMsg}`;
+
         const errorCode = igError?.error_type || igError?.error?.code || igError?.error?.type || '';
         res.status(500).json({
             status: 'error',
