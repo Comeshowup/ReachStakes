@@ -187,9 +187,25 @@ const linkInstagram = async (req, res) => {
         res.status(200).json({ status: 'success', data: newAccount });
 
     } catch (error) {
-        console.error('Link Instagram Error:', error.response?.data || error.message);
-        const errorMsg = error.response?.data?.error_message || error.response?.data?.error?.message || error.message;
-        res.status(500).json({ status: 'error', message: 'Failed to link Instagram account: ' + errorMsg });
+        const igError = error.response?.data;
+        const logContent = `\n[${new Date().toISOString()}] IG Error: ${JSON.stringify(error.response?.data || error.message)}\n`;
+        import('fs').then(fs => fs.appendFileSync('ig_error.log', logContent));
+        
+        console.error('Link Instagram Error — Meta API response:', JSON.stringify(igError, null, 2));
+        console.error('Link Instagram Error — raw:', error.message);
+        // Surface the full Meta error so the frontend can show it
+        const errorMsg =
+            igError?.error_message ||           // short-lived token exchange errors
+            igError?.error?.message ||          // Graph API errors
+            igError?.error_description ||       // OAuth errors
+            error.message;
+        const errorCode = igError?.error_type || igError?.error?.code || igError?.error?.type || '';
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to link Instagram account: ' + errorMsg,
+            metaError: igError || null,
+            errorCode,
+        });
     }
 };
 

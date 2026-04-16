@@ -80,9 +80,14 @@ const useSocialAccounts = () => {
             fetchAccounts();
           } catch (err) {
             console.error("Instagram Link Error:", err);
+            const metaErr = err.response?.data?.metaError;
+            const detail = metaErr
+              ? `\n\nMeta error: ${JSON.stringify(metaErr, null, 2)}`
+              : "";
             alert(
               "Failed to link Instagram: " +
-                (err.response?.data?.message || err.message)
+                (err.response?.data?.message || err.message) +
+                detail
             );
           } finally {
             setLoading(false);
