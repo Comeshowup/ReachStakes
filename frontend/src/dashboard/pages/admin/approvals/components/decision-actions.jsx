@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, RefreshCw, Loader2, ChevronDown } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Loader2, ChevronDown, ExternalLink } from 'lucide-react';
 import { useApprovalsStore } from '../store/approvals-store';
 import { useApproveItem, useRejectItem, useRequestChanges } from '../api/approvals-api';
 
@@ -17,7 +17,7 @@ const REJECT_REASONS = [
  * DecisionActions — approve / reject / request-changes block for the Review Panel.
  * Approve auto-selects next pending item.
  */
-export default function DecisionActions({ item, items = [] }) {
+export default function DecisionActions({ item, items = [], campaignId }) {
   const setSelectedApprovalId = useApprovalsStore(s => s.setSelectedApprovalId);
   const [note, setNote] = useState('');
   const [rejectReason, setRejectReason] = useState(REJECT_REASONS[0]);
@@ -37,14 +37,14 @@ export default function DecisionActions({ item, items = [] }) {
   };
 
   const handleApprove = async () => {
-    await approveMutation.mutateAsync({ id: item.id, note });
+    await approveMutation.mutateAsync({ campaignId, id: item.id, note });
     setNote('');
     selectNext();
   };
 
   const handleReject = async () => {
     if (!rejectReason) return;
-    await rejectMutation.mutateAsync({ id: item.id, reason: rejectReason, note });
+    await rejectMutation.mutateAsync({ campaignId, id: item.id, reason: rejectReason, note });
     setNote('');
     setShowRejectForm(false);
     selectNext();
@@ -52,7 +52,7 @@ export default function DecisionActions({ item, items = [] }) {
 
   const handleRequestChanges = async () => {
     if (!note.trim()) return;
-    await changesMutation.mutateAsync({ id: item.id, note });
+    await changesMutation.mutateAsync({ campaignId, id: item.id, note });
     setNote('');
   };
 
@@ -60,20 +60,46 @@ export default function DecisionActions({ item, items = [] }) {
 
   if (!isPending) {
     return (
-      <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center">
-        <p className="text-xs text-slate-500">
-          This item has already been{' '}
-          <span className={item?.status === 'approved' ? 'text-emerald-400' : 'text-red-400'}>
-            {item?.status}
-          </span>
-          .
-        </p>
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center">
+          <p className="text-xs text-slate-500">
+            This item has already been{' '}
+            <span className={item?.status === 'approved' ? 'text-emerald-400' : 'text-red-400'}>
+              {item?.status}
+            </span>
+            .
+          </p>
+        </div>
+        {item?.content?.url && (
+          <a
+            href={item.content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View Submission
+          </a>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      {/* External link */}
+      {item?.content?.url && (
+        <a
+          href={item.content.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-slate-400 hover:text-violet-400 hover:border-violet-500/30 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          View Submission
+        </a>
+      )}
+
       {/* Note input */}
       <textarea
         value={note}

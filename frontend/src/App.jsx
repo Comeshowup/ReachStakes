@@ -184,7 +184,6 @@ function App() {
           {/* ── CAMPAIGNS ────────────────────────────────── */}
           <Route path="campaigns"                element={<AdminCampaignListPage />} />
           <Route path="campaigns/:id"            element={<AdminCampaignDetailPage />} />
-          <Route path="campaigns/approvals"      element={<ApprovalsPage />} />
 
           {/* ── OPERATIONS ───────────────────────────────── */}
           <Route path="operations/conversations" element={<ConversationsPage />} />

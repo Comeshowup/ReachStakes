@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle, Eye, Image, Video } from 'lucide-react';
+import { CheckCircle, Eye, Image, Video, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import RiskBadge from './risk-badge';
@@ -36,6 +36,7 @@ const ApprovalRow = memo(function ApprovalRow({
   isSelected,
   isActive,
   style,
+  campaignId,
 }) {
   const toggleRow = useApprovalsStore(s => s.toggleRow);
   const setSelectedApprovalId = useApprovalsStore(s => s.setSelectedApprovalId);
@@ -43,7 +44,7 @@ const ApprovalRow = memo(function ApprovalRow({
 
   const handleQuickApprove = (e) => {
     e.stopPropagation();
-    approveMutation.mutate({ id: item.id, note: '' });
+    approveMutation.mutate({ campaignId, id: item.id, note: '' });
   };
 
   return (
@@ -67,25 +68,28 @@ const ApprovalRow = memo(function ApprovalRow({
       </div>
 
       {/* Priority dot */}
-      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', PRIORITY_DOT[item.priority])} />
+      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', PRIORITY_DOT[item.priority] || PRIORITY_DOT.medium)} />
 
-      {/* Thumbnail */}
+      {/* Thumbnail / platform icon */}
       <div className="relative w-9 h-9 rounded-md overflow-hidden bg-white/[0.05] shrink-0">
-        <img
-          src={item.content.thumbnail}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={e => { e.target.style.display = 'none'; }}
-        />
-        {item.content.type === 'video' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <Video className="w-3 h-3 text-white" />
+        {item.content?.thumbnail || item.content?.url ? (
+          <img
+            src={item.content.thumbnail || item.content.url}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            {item.content?.type === 'video'
+              ? <Video className="w-4 h-4 text-slate-600" />
+              : <Image className="w-4 h-4 text-slate-600" />}
           </div>
         )}
-        {item.content.type === 'image' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-            <Image className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+        {item.content?.type === 'video' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <Video className="w-3 h-3 text-white" />
           </div>
         )}
       </div>
@@ -96,21 +100,23 @@ const ApprovalRow = memo(function ApprovalRow({
           src={item.creator.avatar}
           alt={item.creator.name}
           className="w-6 h-6 rounded-full bg-white/[0.05] shrink-0"
-          onError={e => {
-            e.target.style.display = 'none';
-          }}
+          onError={e => { e.target.style.display = 'none'; }}
         />
         <span className="text-xs text-slate-300 truncate">{item.creator.name}</span>
       </div>
 
-      {/* Campaign */}
+      {/* Title / caption */}
       <div className="min-w-0 flex-1 hidden md:block">
-        <span className="text-xs text-slate-400 truncate block">{item.campaign.name}</span>
+        <span className="text-xs text-slate-400 truncate block">
+          {item.content?.caption || '—'}
+        </span>
       </div>
 
-      {/* Brand */}
+      {/* Platform */}
       <div className="min-w-0 w-24 shrink-0 hidden lg:block">
-        <span className="text-xs text-slate-500 truncate block">{item.brand.name}</span>
+        <span className="text-xs text-slate-500 truncate block">
+          {item.platform || '—'}
+        </span>
       </div>
 
       {/* Submitted */}
@@ -129,7 +135,7 @@ const ApprovalRow = memo(function ApprovalRow({
       <div className="w-20 shrink-0">
         <span className={cn(
           'px-2 py-0.5 rounded-md text-[10px] font-medium border capitalize',
-          STATUS_STYLES[item.status]
+          STATUS_STYLES[item.status] || STATUS_STYLES.pending
         )}>
           {item.status}
         </span>
@@ -154,6 +160,18 @@ const ApprovalRow = memo(function ApprovalRow({
               <Eye className="w-3.5 h-3.5" />
             </button>
           </div>
+        )}
+        {item.status !== 'pending' && item.content?.url && (
+          <a
+            href={item.content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="p-1 rounded-md text-slate-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors opacity-0 group-hover:opacity-100"
+            title="View submission"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         )}
       </div>
     </div>

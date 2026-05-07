@@ -53,7 +53,7 @@ const CampaignsPage = () => {
     };
 
     // Show the global empty-workspace CTA only when not on invitations tab
-    // and there are truly zero non-invite collaborations
+    // and there are truly zero non-invite collaborations (including revisions)
     const showGlobalEmpty =
         !isInvitationsTab &&
         !loading &&
@@ -62,7 +62,15 @@ const CampaignsPage = () => {
         activeTab === 'active' &&
         activeCount === 0 &&
         pendingCount === 0 &&
+        revisionCount === 0 &&
         completedCount === 0;
+
+    // Show a nudge banner when on the active tab but brand has requested changes
+    const showRevisionNudge =
+        !loading &&
+        !error &&
+        activeTab === 'active' &&
+        revisionCount > 0;
 
     return (
         <div>
@@ -114,6 +122,36 @@ const CampaignsPage = () => {
                     counts={{ activeCount, pendingCount, revisionCount, completedCount, invitationCount }}
                 />
             </div>
+
+            {/* Revision nudge banner — shown on Active tab when brand requested changes */}
+            {showRevisionNudge && (
+                <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl mb-5 text-sm"
+                    style={{
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                    }}
+                >
+                    <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                    <span style={{ color: 'rgb(252, 211, 77)' }}>
+                        <strong>{revisionCount} campaign{revisionCount !== 1 ? 's' : ''}</strong> need{revisionCount === 1 ? 's' : ''} your attention — a brand has requested changes.
+                    </span>
+                    <button
+                        onClick={() => {
+                            setActiveTab('revision');
+                            setSearchQuery('');
+                        }}
+                        className="ml-auto px-3 py-1 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                        style={{
+                            background: 'rgba(245, 158, 11, 0.2)',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            color: 'rgb(252, 211, 77)',
+                        }}
+                    >
+                        View Revisions →
+                    </button>
+                </div>
+            )}
 
             {/* Invitations Inbox */}
             {isInvitationsTab ? (

@@ -2,17 +2,13 @@ import { create } from 'zustand';
 
 /**
  * Approvals UI Store (Zustand)
- * Manages all client-side UI state for the approvals section.
+ * Manages all client-side UI state for the campaign-scoped approvals section.
  */
 export const useApprovalsStore = create((set, get) => ({
   // ── Filter State ────────────────────────────────────────────────────────────
   filters: {
     search: '',
     status: 'all',       // 'all' | 'pending' | 'approved' | 'rejected'
-    priority: 'all',     // 'all' | 'high' | 'medium' | 'low'
-    campaign: 'all',
-    brand: 'all',
-    creator: '',
     contentType: 'all',  // 'all' | 'image' | 'video'
     flags: [],           // string[]
     sortBy: 'submittedAt',  // 'submittedAt' | 'riskScore'
@@ -34,10 +30,6 @@ export const useApprovalsStore = create((set, get) => ({
       filters: {
         search: '',
         status: 'all',
-        priority: 'all',
-        campaign: 'all',
-        brand: 'all',
-        creator: '',
         contentType: 'all',
         flags: [],
         sortBy: 'submittedAt',
@@ -80,10 +72,6 @@ export const selectActiveFilterCount = (state) => {
   let count = 0;
   if (f.search) count++;
   if (f.status !== 'all') count++;
-  if (f.priority !== 'all') count++;
-  if (f.campaign !== 'all') count++;
-  if (f.brand !== 'all') count++;
-  if (f.creator) count++;
   if (f.contentType !== 'all') count++;
   if (f.flags.length) count += f.flags.length;
   return count;

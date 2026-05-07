@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, AlertTriangle, ShieldAlert, Timer } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -27,7 +27,8 @@ function KpiPill({ icon: Icon, label, value, variant = 'default', loading }) {
 }
 
 /**
- * KpiStrip — compact horizontal KPI row at the top of the approvals page.
+ * KpiStrip — compact horizontal KPI row at the top of the approvals section.
+ * Shows real counts from the campaign's collaboration data.
  */
 export default function KpiStrip({ kpi, loading }) {
   return (
@@ -36,27 +37,27 @@ export default function KpiStrip({ kpi, loading }) {
         icon={Clock}
         label="Pending"
         value={kpi?.pending ?? '—'}
-        variant={kpi?.pending > 10 ? 'warning' : 'default'}
+        variant={kpi?.pending > 0 ? 'warning' : 'default'}
         loading={loading}
       />
       <KpiPill
-        icon={ShieldAlert}
-        label="High Risk"
-        value={kpi?.highRisk ?? '—'}
-        variant={kpi?.highRisk > 0 ? 'danger' : 'default'}
+        icon={CheckCircle}
+        label="Approved"
+        value={kpi?.approved ?? '—'}
+        variant={kpi?.approved > 0 ? 'success' : 'default'}
         loading={loading}
       />
       <KpiPill
-        icon={AlertTriangle}
-        label="SLA Breached"
-        value={kpi?.slaBreached ?? '—'}
-        variant={kpi?.slaBreached > 0 ? 'danger' : 'default'}
+        icon={XCircle}
+        label="Rejected"
+        value={kpi?.rejected ?? '—'}
+        variant={kpi?.rejected > 0 ? 'danger' : 'default'}
         loading={loading}
       />
       <KpiPill
-        icon={Timer}
-        label="Avg Review"
-        value={kpi?.avgReviewTime ?? '—'}
+        icon={Users}
+        label="Total"
+        value={kpi?.total ?? '—'}
         variant="default"
         loading={loading}
       />

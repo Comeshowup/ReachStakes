@@ -16,11 +16,13 @@ import {
   PauseCircle,
   Archive,
   Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useCampaign, useUpdateCampaignStatus } from '../../../features/campaigns/hooks/useCampaigns.js';
 import CreatorsTab from '../../../features/campaigns/components/CreatorsTab.jsx';
+import ApprovalsPage from './approvals/ApprovalsPage.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -295,6 +297,7 @@ const SettingsTab = ({ campaign }) => (
 const TABS = [
   { key: 'overview',     label: 'Overview',     icon: BarChart2 },
   { key: 'creators',     label: 'Creators',     icon: Users },
+  { key: 'approvals',    label: 'Approvals',    icon: ShieldCheck },
   { key: 'deliverables', label: 'Deliverables', icon: FileText },
   { key: 'settings',     label: 'Settings',     icon: Settings },
   // Legacy tabs preserved
@@ -457,6 +460,14 @@ const CampaignDetailPage = () => {
           )}
           {activeTab === 'creators' && (
             <CreatorsTab campaignId={id} />
+          )}
+          {activeTab === 'approvals' && (
+            <div
+              className="rounded-xl border border-white/[0.06] overflow-hidden"
+              style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}
+            >
+              <ApprovalsPage campaignId={id} />
+            </div>
           )}
           {activeTab === 'deliverables' && (
             <DeliverablesTab campaignId={id} />

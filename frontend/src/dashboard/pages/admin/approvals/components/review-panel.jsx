@@ -74,7 +74,7 @@ function MetaRow({ label, value }) {
  * ReviewPanel — right-side inspector for a selected approval item.
  * Contains content preview, metadata, AI signals, decision block, and audit timeline.
  */
-export default function ReviewPanel({ items = [], className }) {
+export default function ReviewPanel({ items = [], className, campaignId }) {
   const selectedApprovalId = useApprovalsStore(s => s.selectedApprovalId);
   const setSelectedApprovalId = useApprovalsStore(s => s.setSelectedApprovalId);
   const [expanded, setExpanded] = useState(false);
@@ -276,7 +276,7 @@ export default function ReviewPanel({ items = [], className }) {
           {/* ── 4. Decision Block ────────────────────────────────────── */}
           <div>
             <SectionHeader title="Decision" icon={CheckCircle} />
-            <DecisionActions item={item} items={items} />
+            <DecisionActions item={item} items={items} campaignId={campaignId} />
           </div>
 
           <Separator className="bg-white/[0.05]" />

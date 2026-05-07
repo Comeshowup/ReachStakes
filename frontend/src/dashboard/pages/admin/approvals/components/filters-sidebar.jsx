@@ -2,7 +2,7 @@ import React from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApprovalsStore, selectActiveFilterCount } from '../store/approvals-store';
-import { CAMPAIGNS, BRANDS, FLAG_POOL } from '../api/approvals-api';
+import { FLAG_POOL } from '../api/approvals-api';
 
 function FilterSection({ title, children }) {
   return (
@@ -29,21 +29,6 @@ function FilterChip({ children, active, onClick }) {
   );
 }
 
-function SelectFilter({ value, onChange, options, placeholder }) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="w-full bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-violet-500/40 appearance-none cursor-pointer"
-    >
-      <option value="all">{placeholder}</option>
-      {options.map(opt => (
-        <option key={opt.id} value={opt.id}>{opt.name}</option>
-      ))}
-    </select>
-  );
-}
-
 const FLAG_LABELS = {
   nsfw: 'NSFW',
   copyright: 'Copyright',
@@ -55,6 +40,7 @@ const FLAG_LABELS = {
 
 /**
  * FiltersSidebar — left panel filter controls backed by Zustand.
+ * Campaign-scoped; no brand/campaign dropdowns since we're already inside a campaign.
  */
 export default function FiltersSidebar({ className }) {
   const filters = useApprovalsStore(s => s.filters);
@@ -96,7 +82,7 @@ export default function FiltersSidebar({ className }) {
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search creator, campaign..."
+          placeholder="Search creator, title..."
           value={filters.search}
           onChange={e => setFilter('search', e.target.value)}
           className="w-full bg-white/[0.03] border border-white/[0.06] rounded-md pl-8 pr-3 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/40"
@@ -122,37 +108,6 @@ export default function FiltersSidebar({ className }) {
         </div>
       </FilterSection>
 
-      {/* Priority */}
-      <FilterSection title="Priority">
-        <div className="flex flex-wrap gap-1.5">
-          {['all', 'high', 'medium', 'low'].map(p => (
-            <FilterChip key={p} active={filters.priority === p} onClick={() => setFilter('priority', p)}>
-              {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
-            </FilterChip>
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Campaign */}
-      <FilterSection title="Campaign">
-        <SelectFilter
-          value={filters.campaign}
-          onChange={v => setFilter('campaign', v)}
-          options={CAMPAIGNS}
-          placeholder="All campaigns"
-        />
-      </FilterSection>
-
-      {/* Brand */}
-      <FilterSection title="Brand">
-        <SelectFilter
-          value={filters.brand}
-          onChange={v => setFilter('brand', v)}
-          options={BRANDS}
-          placeholder="All brands"
-        />
-      </FilterSection>
-
       {/* Content Type */}
       <FilterSection title="Content Type">
         <div className="flex gap-1.5">
@@ -164,7 +119,7 @@ export default function FiltersSidebar({ className }) {
         </div>
       </FilterSection>
 
-      {/* Flags */}
+      {/* Flags — kept for future use, hidden when no data */}
       <FilterSection title="Flags">
         <div className="flex flex-wrap gap-1.5">
           {FLAG_POOL.map(flag => (

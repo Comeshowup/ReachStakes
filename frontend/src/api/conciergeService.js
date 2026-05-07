@@ -24,6 +24,18 @@ export const getBrandQueue = async (brandId) => {
 };
 
 /**
+ * Get brand approvals queue — only Under_Review / Changes_Requested with submissionUrl.
+ * Returns pre-mapped items ready for the ApprovalQueue UI.
+ * @param {number|string} brandId
+ */
+export const getBrandApprovalsQueue = async (brandId) => {
+    const response = await api.get(`/collaborations/brand/${brandId}/approvals`, {
+        headers: getAuthHeaders()
+    });
+    return response.data; // { status, count, data: [...items] }
+};
+
+/**
  * Verify Social Metrics (Read-only Sync)
  * @param {number} collaborationId
  */

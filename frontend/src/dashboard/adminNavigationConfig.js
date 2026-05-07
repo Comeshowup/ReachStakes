@@ -16,9 +16,6 @@ import {
   Users,
   Briefcase,
   Target,
-  Send,
-  FileImage,
-  CheckCircle,
   MessageSquare,
   Calendar,
   CheckSquare,
@@ -34,6 +31,7 @@ import {
   Plug2,
   ScrollText,
 } from "lucide-react";
+
 
 /**
  * @type {Array<{
@@ -74,8 +72,7 @@ export const ADMIN_NAV_GROUPS = [
     id: "campaigns",
     title: "Campaigns",
     items: [
-      { label: "Campaigns",    path: "/admin/campaigns",              icon: Target },
-      { label: "Approvals",    path: "/admin/campaigns/approvals",    icon: CheckCircle },
+      { label: "Campaigns",    path: "/admin/campaigns",  icon: Target },
     ],
   },
 

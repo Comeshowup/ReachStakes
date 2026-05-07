@@ -8,7 +8,7 @@ import { useBatchAction } from '../api/approvals-api';
  * BatchToolbar — floating action bar that appears when rows are selected.
  * Supports approve/reject batch operations with optimistic update.
  */
-export default function BatchToolbar() {
+export default function BatchToolbar({ campaignId }) {
   const selectedRows = useApprovalsStore(s => s.selectedRows);
   const clearSelectedRows = useApprovalsStore(s => s.clearSelectedRows);
   const batchMutation = useBatchAction();
@@ -17,7 +17,7 @@ export default function BatchToolbar() {
   const ids = [...selectedRows];
 
   const handleBatch = async (action) => {
-    await batchMutation.mutateAsync({ ids, action });
+    await batchMutation.mutateAsync({ campaignId, ids, action });
     clearSelectedRows();
   };
 

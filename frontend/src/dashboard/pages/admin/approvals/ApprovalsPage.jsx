@@ -9,20 +9,26 @@ import ReviewPanel from './components/review-panel';
 import BatchToolbar from './components/batch-toolbar';
 
 /**
- * ApprovalsPage — 3-panel layout for the admin approvals queue.
+ * ApprovalsPage — 3-panel layout for campaign-specific approvals queue.
  *
  * Layout:
  *   [KPI Strip]
  *   [Filters Sidebar] | [Approvals Table] | [Review Panel]
  *
+ * Props:
+ *   campaignId — the integer ID of the campaign whose approvals to show.
+ *
  * State:
  *   - React Query → server/data state (items, kpi)
  *   - Zustand → UI state (filters, selectedApprovalId, selectedRows)
  */
-export default function ApprovalsPage() {
+export default function ApprovalsPage({ campaignId }) {
   const filters = useApprovalsStore(s => s.filters);
 
-  const { data, isLoading, isError, refetch } = useApprovals(filters);
+  const { data, isLoading, isError, refetch } = useApprovals({
+    ...filters,
+    campaignId,
+  });
 
   const items = data?.items ?? [];
   const kpi = data?.kpi;
@@ -34,7 +40,7 @@ export default function ApprovalsPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-violet-400" />
-            <h1 className="text-base font-semibold text-slate-100">Approvals</h1>
+            <h2 className="text-base font-semibold text-slate-100">Approvals</h2>
           </div>
           <div className="h-4 w-px bg-white/10" />
           <KpiStrip kpi={kpi} loading={isLoading} />
@@ -56,17 +62,18 @@ export default function ApprovalsPage() {
             loading={isLoading}
             error={isError}
             onRetry={refetch}
+            campaignId={campaignId}
           />
         </div>
 
         {/* RIGHT: Review Panel */}
         <div className="w-[380px] shrink-0 border-l border-white/[0.06] hidden xl:flex flex-col">
-          <ReviewPanel items={items} />
+          <ReviewPanel items={items} campaignId={campaignId} />
         </div>
       </div>
 
       {/* Batch action floating toolbar */}
-      <BatchToolbar />
+      <BatchToolbar campaignId={campaignId} />
     </div>
   );
 }

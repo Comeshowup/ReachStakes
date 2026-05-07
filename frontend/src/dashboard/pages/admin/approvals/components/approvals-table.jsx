@@ -80,7 +80,7 @@ function EmptyState({ hasFilters, onReset }) {
  * ApprovalsTable — virtualized, sortable, multi-select table.
  * Uses @tanstack/react-virtual for high-performance rendering with large datasets.
  */
-export default function ApprovalsTable({ items = [], loading, error, onRetry }) {
+export default function ApprovalsTable({ items = [], loading, error, onRetry, campaignId }) {
   const parentRef = useRef(null);
   const selectedRows = useApprovalsStore(s => s.selectedRows);
   const selectedApprovalId = useApprovalsStore(s => s.selectedApprovalId);
@@ -135,10 +135,10 @@ export default function ApprovalsTable({ items = [], loading, error, onRetry }) 
           Creator
         </span>
         <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 flex-1 hidden md:block">
-          Campaign
+          Title
         </span>
         <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 w-24 shrink-0 hidden lg:block">
-          Brand
+          Platform
         </span>
         {/* Sortable: Submitted */}
         <button
@@ -218,6 +218,7 @@ export default function ApprovalsTable({ items = [], loading, error, onRetry }) 
                   item={item}
                   isSelected={selectedRows.has(item.id)}
                   isActive={item.id === selectedApprovalId}
+                  campaignId={campaignId}
                   style={{
                     position: 'absolute',
                     top: 0,

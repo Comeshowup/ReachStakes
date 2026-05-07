@@ -100,6 +100,9 @@ const ReviewWorkspace = ({
                     {item.type === 'video' ? (
                         <VideoReviewPlayer
                             src={item.videoSrc}
+                            platform={item.platform}
+                            videoId={item.videoId}
+                            submissionUrl={item.submissionUrl}
                             sponsorTimestamp={item.sponsorTimestamp}
                             ctaTimestamp={item.ctaTimestamp}
                         />

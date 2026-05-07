@@ -93,6 +93,185 @@ router.get("/brand/:brandId", async (req, res) => {
     }
 });
 
+// ── Brand Approvals Queue ─────────────────────────────────────────────────────
+// GET /api/collaborations/brand/:brandId/approvals
+// Returns only submissions awaiting brand review (Under_Review or Revision)
+// with a submissionUrl. Includes rich creator, campaign, and milestone data.
+router.get("/brand/:brandId/approvals", protect, async (req, res) => {
+    try {
+        const brandId = parseInt(req.params.brandId);
+
+        // Authorization: only the brand owner or an admin
+        if (req.user.id !== brandId && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        // CollabStatus enum values: Under_Review, Revision (no Changes_Requested in schema)
+        const collaborations = await prisma.campaignCollaboration.findMany({
+            where: {
+                campaign: { brandId },
+                status: { in: ['Under_Review', 'Revision'] },
+                submissionUrl: { not: null }
+            },
+            include: {
+                campaign: {
+                    select: {
+                        id: true,
+                        title: true,
+                        escrowBalance: true,
+                        payoutSpeed: true,
+                        platformRequired: true
+                    }
+                },
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        // avatar is NOT on User model — fetched from creatorProfile.avatarUrl
+                        creatorProfile: {
+                            select: {
+                                handle: true,
+                                avatarUrl: true,
+                                primaryPlatform: true,
+                                nicheTags: true,
+                                socialLinks: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        const mapped = collaborations.map(c => {
+            // Build requirements from milestones if present
+            let requirements = [];
+            if (c.milestones && Array.isArray(c.milestones)) {
+                requirements = c.milestones.map((m, i) => ({
+                    id: `req-${c.id}-${i}`,
+                    label: typeof m === 'string' ? m : (m.title || m.label || `Milestone ${i + 1}`),
+                    isMet: typeof m === 'object' ? (m.completed || false) : false,
+                    overridden: false,
+                    proof: null,
+                    comments: []
+                }));
+            }
+
+            // Fallback requirements
+            if (requirements.length === 0) {
+                requirements = [
+                    {
+                        id: `req-${c.id}-platform`,
+                        label: 'Content submitted on correct platform',
+                        isMet: !!c.submissionUrl,
+                        overridden: false,
+                        proof: c.submissionUrl ? { type: 'link', value: c.submissionUrl } : null,
+                        comments: []
+                    },
+                    {
+                        id: `req-${c.id}-guidelines`,
+                        label: 'Campaign guidelines followed',
+                        isMet: c.status === 'Under_Review',
+                        overridden: false,
+                        proof: null,
+                        comments: []
+                    }
+                ];
+            }
+
+            // Determine submission type based on platform
+            const platform = c.submissionPlatform || c.campaign.platformRequired || 'Other';
+            const isScript = platform === 'Blog' || platform === 'Email';
+
+            // Map DB status → sidebar status key (CollabStatus enum: Under_Review, Revision)
+            const statusMap = {
+                'Under_Review': 'needs_review',
+                'Revision': 'waiting'
+            };
+
+            // Build activity timeline from feedback notes
+            const timeline = [];
+            if (c.feedbackNotes) {
+                timeline.push({
+                    id: `t-feedback-${c.id}`,
+                    role: 'brand',
+                    author: 'Brand Manager',
+                    date: new Date(c.updatedAt).toLocaleString(),
+                    type: 'message',
+                    text: c.feedbackNotes
+                });
+            }
+            timeline.push({
+                id: `t-submit-${c.id}`,
+                role: 'creator',
+                author: c.creator?.name || 'Creator',
+                date: new Date(c.updatedAt).toLocaleString(),
+                type: 'message',
+                text: c.submissionNotes || `Submitted ${platform} content for review.`
+            });
+            timeline.push({
+                id: `t-status-${c.id}`,
+                role: 'system',
+                author: 'System',
+                date: new Date(c.updatedAt).toLocaleString(),
+                type: 'status',
+                text: `Status changed to ${c.status.replace('_', ' ')}`
+            });
+
+            // Build smart insights from video stats
+            const insights = [];
+            if (c.videoStats) {
+                const stats = c.videoStats;
+                if (stats.views) insights.push({ type: 'detected', text: `${Number(stats.views).toLocaleString()} views detected` });
+                if (stats.likes)  insights.push({ type: 'detected', text: `${Number(stats.likes).toLocaleString()} likes` });
+                if (stats.comments) insights.push({ type: 'info', text: `${Number(stats.comments).toLocaleString()} comments` });
+            }
+            if (c.engagementRate) {
+                insights.push({ type: 'detected', text: `Engagement rate: ${Number(c.engagementRate).toFixed(2)}%` });
+            }
+
+            return {
+                id: c.id,  // real numeric DB id
+                campaign: c.campaign.title,
+                creator: c.creator?.name || 'Creator',
+                avatar: c.creator?.creatorProfile?.avatarUrl
+                    || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.creatorId}`,
+                handle: c.creator?.creatorProfile?.handle
+                    || c.creator?.email
+                    || 'Creator',
+                version: 1,  // schema doesn't track version; defaulting to 1
+                submittedAt: new Date(c.updatedAt).toLocaleDateString(),
+                status: statusMap[c.status] || 'needs_review',
+                type: isScript ? 'script' : 'video',
+                // Video fields
+                videoSrc: platform === 'Other' ? c.submissionUrl : null,  // direct video only for "Other"
+                platform: platform,
+                videoId: c.videoId || null,
+                submissionUrl: c.submissionUrl,
+                sponsorTimestamp: null,
+                ctaTimestamp: null,
+                // Financial
+                escrow: Number(c.agreedPrice || 0),
+                creatorFee: Number(c.agreedPrice || 0),
+                budgetRemaining: Number(c.campaign.escrowBalance || 0),
+                roas: null,
+                // Content
+                requirements,
+                timeline,
+                insights,
+                annotations: [],
+                scriptContent: isScript ? (c.submissionNotes || '') : ''
+            };
+        });
+
+        res.json({ status: 'success', count: mapped.length, data: mapped });
+    } catch (error) {
+        console.error("Error fetching brand approvals:", error);
+        res.status(500).json({ error: "Failed to fetch approvals", details: error.message });
+    }
+});
+
 // Get collaborations for a CREATOR (Campaigns joined by this creator)
 // Route: GET /api/collaborations/creator/:creatorId
 router.get("/creator/:creatorId", async (req, res) => {

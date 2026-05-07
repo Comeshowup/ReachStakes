@@ -12,6 +12,8 @@ import {
   getCampaignStats,
   inviteCampaignCreators,
   updateCreatorInviteStatus,
+  getCampaignApprovals,
+  updateApprovalDecision,
 } from '../controllers/adminCampaignController.js';
 
 const router = express.Router();
@@ -26,6 +28,10 @@ router.get('/:id/timeline', getCampaignTimeline);
 router.get('/:id/payments', getCampaignPayments);
 router.get('/:id/activity', getCampaignActivity);
 router.get('/:id/stats', getCampaignStats);
+
+// Approvals — campaign-scoped
+router.get('/:id/approvals', getCampaignApprovals);
+router.patch('/:id/approvals/:collabId/:action', updateApprovalDecision);
 
 router.post('/:id/invite', inviteCampaignCreators);
 router.post('/:id/creators/:collaborationId/:action', updateCreatorInviteStatus);

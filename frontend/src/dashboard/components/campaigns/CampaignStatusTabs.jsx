@@ -28,11 +28,14 @@ const CampaignStatusTabs = ({ activeTab = 'active', onTabChange, counts = {} }) 
                 const isActive = activeTab === tab.id;
                 const count = counts[tab.countKey] || 0;
 
-                // Red badge for invitations (attention-grabbing), regular accent for others
+                // Red badge for invitations, amber for revisions (both need action), accent for others
+                const isRevision = tab.id === 'revision';
                 const badgeBg = tab.isInbox
                     ? (isActive ? 'var(--bd-accent-primary)' : 'rgb(239,68,68)')
-                    : (isActive ? 'var(--bd-accent-primary)' : 'var(--bd-surface-panel)');
-                const badgeColor = (tab.isInbox || isActive) ? '#fff' : 'var(--bd-text-secondary)';
+                    : isRevision && count > 0
+                        ? (isActive ? 'rgb(245,158,11)' : 'rgb(245,158,11)')
+                        : (isActive ? 'var(--bd-accent-primary)' : 'var(--bd-surface-panel)');
+                const badgeColor = (tab.isInbox || isRevision && count > 0 || isActive) ? '#fff' : 'var(--bd-text-secondary)';
 
                 return (
                     <button
