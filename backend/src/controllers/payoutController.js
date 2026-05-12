@@ -385,7 +385,28 @@ const isValidCountryCode = (code) => /^[A-Z]{2}$/.test(code);
 const isValidCurrencyCode = (code) => /^[A-Z]{3}$/.test(code);
 const isValidAccountNumber = (num) => /^[0-9]{4,34}$/.test(num);
 const isValidIBAN = (iban) => /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(iban.replace(/\s/g, ''));
-const isValidBankCode = (code) => /^[A-Z0-9]{3,11}$/.test(code.replace(/[-\s]/g, ''));
+const isValidBankCode = (code, type, country) => {
+    const cleanCode = code.replace(/[-\s]/g, '').toUpperCase();
+    
+    // Country-specific validations
+    if (country === 'IN' || type === 'ifsc_code') {
+        // Indian IFSC: 4 letters, 0, 6 alphanumeric (11 characters total)
+        return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanCode);
+    }
+    
+    if (type === 'sort_code') {
+        // UK Sort Code: 6 digits
+        return /^[0-9]{6}$/.test(cleanCode);
+    }
+    
+    if (type === 'aba_code') {
+        // US Routing (ABA): 9 digits
+        return /^[0-9]{9}$/.test(cleanCode);
+    }
+
+    // Default: 3-11 alphanumeric characters
+    return /^[A-Z0-9]{3,11}$/.test(cleanCode);
+};
 const isValidBankName = (name) => /^[a-zA-Z0-9\s.&'-]{2,100}$/.test(name);
 const isValidPixKey = (key) => {
     // PIX: email, phone (+55...), CPF (11 digits), CNPJ (14 digits), or random key (UUID)
@@ -480,10 +501,14 @@ export const connectBank = async (req, res) => {
                     message: 'Invalid bank name. Must be 2-100 characters, letters, numbers, spaces, periods, and hyphens only.'
                 });
             }
-            if (bankCode && !isValidBankCode(bankCode)) {
+            if (bankCode && !isValidBankCode(bankCode, bankCodeType, country)) {
+                let errorMsg = `Invalid ${bankCodeType || 'bank code'}.`;
+                if (country === 'IN' || bankCodeType === 'ifsc_code') {
+                    errorMsg = 'Invalid IFSC code. Format: 4 letters, then 0, then 6 alphanumeric characters (e.g., SBIN0123456).';
+                }
                 return res.status(400).json({
                     success: false,
-                    message: `Invalid ${bankCodeType || 'bank code'}. Must be 3-11 alphanumeric characters.`
+                    message: errorMsg
                 });
             }
         }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCampaignDetail } from '../../hooks/useCampaigns';
+import { useCampaignDetail, useUpdateCollaborationDecision } from '../../hooks/useCampaigns';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -278,6 +278,7 @@ const CampaignDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { data, isLoading, error } = useCampaignDetail(id);
+    const { mutate: updateDecision, isPending: isUpdating } = useUpdateCollaborationDecision(id);
     const [timeRange, setTimeRange] = useState('30d');
     const [sortCol, setSortCol] = useState('spend');
     const [sortDir, setSortDir] = useState('desc');
@@ -658,6 +659,7 @@ const CampaignDetailPage = () => {
                                             </span>
                                         </th>
                                     ))}
+                                    <th style={{ padding: '12px 16px', background: 'var(--bd-surface-header)' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -678,6 +680,28 @@ const CampaignDetailPage = () => {
                                         <td style={{ padding: '12px 16px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: parseFloat(c.roas) >= 2 ? 'var(--bd-success)' : 'var(--bd-text-primary)' }}>{c.roas}x</td>
                                         <td style={{ padding: '12px 16px' }}>
                                             <StatusBadge status={(c.status || '').replace('_', ' ')} />
+                                        </td>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                            {c.status === 'Applied' && (
+                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                    <button
+                                                        className="bd-cm-btn-secondary"
+                                                        style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                                        disabled={isUpdating}
+                                                        onClick={() => updateDecision({ collabId: c.id, data: { status: 'Rejected' } })}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                    <button
+                                                        className="bd-cm-btn-primary"
+                                                        style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                                        disabled={isUpdating}
+                                                        onClick={() => updateDecision({ collabId: c.id, data: { status: 'In_Progress' } })}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

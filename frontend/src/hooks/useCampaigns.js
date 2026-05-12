@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { campaignsApi } from '../lib/api/campaigns';
+import { campaignsApi, collaborationsApi } from '../lib/api/campaigns';
 
 export const useCampaignDetail = (id) => {
     return useQuery({
@@ -25,6 +25,20 @@ export const useCreateCampaign = () => {
                 // Better to just let it fetch.
                 return undefined;
             });
+        },
+    });
+};
+
+export const useUpdateCollaborationDecision = (campaignId) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ collabId, data }) => collaborationsApi.updateDecision(collabId, data),
+        onSuccess: () => {
+            // Invalidate the campaign detail query to refresh the creators list
+            if (campaignId) {
+                queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+            }
         },
     });
 };

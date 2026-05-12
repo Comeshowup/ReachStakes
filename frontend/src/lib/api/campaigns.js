@@ -40,3 +40,28 @@ export const campaignsApi = {
         return response.data.data;
     },
 };
+
+// Reusing the same interceptor logic but different base URL for collaborations
+const collabApi = axios.create({
+    baseURL: 'http://localhost:3000/api/collaborations',
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+collabApi.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+export const collaborationsApi = {
+    updateDecision: async (id, data) => {
+        // data: { status, feedback }
+        const response = await collabApi.patch(`/${id}/decision`, data);
+        return response.data;
+    }
+};

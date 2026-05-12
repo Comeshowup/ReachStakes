@@ -122,8 +122,12 @@ const parseTazapayApiError = (error, context) => {
     }
 
     if (status === 400) {
+        // Extract the most specific error message from the errors array if it exists
+        const specificError = data?.errors?.[0]?.message || data?.error?.message;
+        const displayMessage = specificError || tazapayMessage;
+
         // Parse specific 400 errors
-        if (tazapayMessage.includes('Parties should not be identical') || tazapayCode === 19009) {
+        if (displayMessage.includes('Parties should not be identical') || tazapayCode === 19009) {
             return new TazapayError(
                 'Payment configuration error: buyer and seller cannot be the same. Please contact support.',
                 'IDENTICAL_PARTIES',
@@ -140,7 +144,7 @@ const parseTazapayApiError = (error, context) => {
             );
         }
         return new TazapayError(
-            `Payment error: ${tazapayMessage}`,
+            `Payment error: ${displayMessage}`,
             'VALIDATION_ERROR',
             400,
             data
@@ -550,6 +554,7 @@ export const tazapayService = {
             city: addressCity || '',
             state: addressState || '',
             postal_code: addressPostalCode || '',
+            country: country // Added missing country field required by Tazapay V3
         } : undefined;
 
         const payload = { type, name, email, destination_details: destinationDetails };

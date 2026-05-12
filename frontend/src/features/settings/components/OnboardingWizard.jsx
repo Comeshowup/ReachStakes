@@ -518,6 +518,22 @@ const OnboardingWizard = ({ onSuccess, onCancel }) => {
     } else {
       if (!bank.accountNumber || bank.accountNumber.length < 4) errs.accountNumber = 'Account number is required (min 4 digits)';
       if (!bank.bankName) errs.bankName = 'Bank name is required';
+      
+      // Bank code validation
+      if (bankFields?.bankCodeLabel) {
+        if (!bank.bankCode) {
+          errs.bankCode = `${bankFields.bankCodeLabel} is required`;
+        } else {
+          const cleanCode = bank.bankCode.replace(/[-\s]/g, '').toUpperCase();
+          if (identity.country === 'IN' || bankFields.bankCodeType === 'ifsc_code') {
+            if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanCode)) {
+              errs.bankCode = 'Invalid IFSC code (e.g. SBIN0123456)';
+            }
+          } else if (cleanCode.length < 3 || cleanCode.length > 11) {
+            errs.bankCode = `Invalid ${bankFields.bankCodeLabel}`;
+          }
+        }
+      }
     }
     // Address always required for bank type
     if (!isPix) {
