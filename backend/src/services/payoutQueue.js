@@ -119,18 +119,14 @@ const pollAndProcess = async () => {
     if (activeCount >= MAX_CONCURRENT) return;
 
     try {
-        // Find pending payouts that haven't exceeded max retries
-        // Process all non-manual payouts, AND retry manual payouts that already
-        // had a failed initial attempt (retryCount > 0) — these were created by
-        // the earnings controller but the Tazapay call failed.
+        // Find pending payouts that haven't exceeded max retries.
+        // Manual withdrawal requests are queued here too so the HTTP request can
+        // succeed once validation passes, while Tazapay failures are retried out
+        // of band instead of surfacing as a 502 in the dashboard.
         const pendingPayouts = await prisma.creatorPayout.findMany({
             where: {
                 status: 'Pending',
                 retryCount: { lt: MAX_RETRIES },
-                OR: [
-                    { payoutType: { not: 'manual_request' } },
-                    { payoutType: 'manual_request', retryCount: { gt: 0 } },
-                ],
             },
             orderBy: { initiatedAt: 'asc' },
             take: MAX_CONCURRENT - activeCount,

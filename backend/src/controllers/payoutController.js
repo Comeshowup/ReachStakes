@@ -7,6 +7,33 @@ import { sanitize } from '../utils/validator.js';
 
 const prisma = new PrismaClient();
 
+const getPayoutFailureReason = (data) =>
+    data?.failure?.description
+    || data?.failure_reason
+    || data?.status_description
+    || 'Payout failed';
+
+const findPayoutForTazapayEvent = async (data) => {
+    const referenceId = data?.reference_id;
+
+    if (referenceId?.startsWith('payout_')) {
+        const payoutId = parseInt(referenceId.replace('payout_', ''), 10);
+        if (!Number.isNaN(payoutId)) {
+            return prisma.creatorPayout.findUnique({ where: { id: payoutId } });
+        }
+    }
+
+    if (referenceId?.startsWith('wd_')) {
+        return prisma.creatorPayout.findUnique({ where: { idempotencyKey: referenceId } });
+    }
+
+    if (data?.id) {
+        return prisma.creatorPayout.findFirst({ where: { tazapayPayoutId: data.id } });
+    }
+
+    return null;
+};
+
 /**
  * Get required bank fields for a country/currency
  * GET /api/payouts/bank-fields?country=US&currency=USD
@@ -898,7 +925,8 @@ export const handlePayoutWebhook = async (req, res) => {
             return res.status(401).json({ message: 'Invalid webhook signature' });
         }
 
-        const { event, data } = req.body;
+        const event = req.body.type || req.body.event;
+        const { data } = req.body;
         const webhookEventId = data?.id || data?.reference_id || `${event}_${Date.now()}`;
 
         safeLog('Tazapay webhook received:', { event, id: webhookEventId });
@@ -1048,21 +1076,21 @@ export const handlePayoutWebhook = async (req, res) => {
         // ============================================
         // PAYOUT EVENTS
         // ============================================
-        else if (event === 'payout.completed' || event === 'payout.success') {
-            const referenceId = data.reference_id;
+        else if (event === 'payout.completed' || event === 'payout.success' || event === 'payout.succeeded') {
+            const payout = await findPayoutForTazapayEvent(data);
 
-            if (referenceId && referenceId.startsWith('payout_')) {
-                const payoutId = parseInt(referenceId.replace('payout_', ''));
-
+            if (payout) {
                 const completedPayout = await prisma.creatorPayout.update({
-                    where: { id: payoutId },
+                    where: { id: payout.id },
                     data: {
                         status: 'Completed',
+                        tazapayPayoutId: data.id || payout.tazapayPayoutId,
+                        failureReason: null,
                         completedAt: new Date()
                     }
                 });
 
-                console.log(`Payout ${payoutId} completed`);
+                console.log(`Payout ${payout.id} completed`);
 
                 // Phase 3: Apply Referral Bonus on FIRST payout
                 try {
@@ -1089,21 +1117,20 @@ export const handlePayoutWebhook = async (req, res) => {
                     // Don't block the webhook response
                 }
             }
-        } else if (event === 'payout.failed') {
-            const referenceId = data.reference_id;
+        } else if (event === 'payout.failed' || event === 'payout.cancelled' || event === 'payout.reversed') {
+            const payout = await findPayoutForTazapayEvent(data);
 
-            if (referenceId && referenceId.startsWith('payout_')) {
-                const payoutId = parseInt(referenceId.replace('payout_', ''));
-
+            if (payout) {
                 await prisma.creatorPayout.update({
-                    where: { id: payoutId },
+                    where: { id: payout.id },
                     data: {
                         status: 'Failed',
-                        failureReason: data.failure_reason || 'Payout failed'
+                        tazapayPayoutId: data.id || payout.tazapayPayoutId,
+                        failureReason: getPayoutFailureReason(data).substring(0, 255)
                     }
                 });
 
-                console.log(`Payout ${payoutId} failed`);
+                console.log(`Payout ${payout.id} failed`);
             }
         }
 

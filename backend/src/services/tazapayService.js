@@ -585,16 +585,19 @@ export const tazapayService = {
     createPayout: async ({
         beneficiaryId, amount, currency = 'USD',
         holdingCurrency = 'USD', payoutType = 'local',
+        purpose = 'PYR030',
         reason = 'Creator payout', referenceId
     }) => {
         const amountInCents = Math.round(parseFloat(amount) * 100);
         const payload = {
-            beneficiary_id: beneficiaryId,
+            beneficiary: beneficiaryId,
             amount: amountInCents,
             currency,
             holding_currency: holdingCurrency,
-            payout_type: payoutType,
-            reason,
+            type: payoutType,
+            purpose,
+            transaction_description: reason,
+            statement_descriptor: 'ReachStakes',
             reference_id: referenceId || `payout_${Date.now()}`
         };
 

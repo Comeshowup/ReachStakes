@@ -1,6 +1,7 @@
 import { prisma } from '../config/db.js';
 import { safeLog } from '../utils/logMasker.js';
 import { logPayoutAudit, AuditActions } from '../utils/auditLogger.js';
+import { payoutQueue } from '../services/payoutQueue.js';
 import { tazapayService } from '../services/tazapayService.js';
 import crypto from 'crypto';
 
@@ -29,6 +30,53 @@ function buildTimeseries(paidTransactions) {
         .map(([date, amount]) => ({ date, amount: Math.round(amount * 100) / 100 }));
 }
 
+const getPayoutFailureReason = (payoutData) =>
+    payoutData?.failure?.description
+    || payoutData?.failure_reason
+    || payoutData?.status_description
+    || 'Payout failed';
+
+const syncProcessingPayouts = async (creatorId) => {
+    const processingPayouts = await prisma.creatorPayout.findMany({
+        where: {
+            creatorId,
+            status: 'Processing',
+            tazapayPayoutId: { not: null },
+        },
+        select: { id: true, tazapayPayoutId: true },
+        take: 10,
+    });
+
+    for (const payout of processingPayouts) {
+        try {
+            const result = await tazapayService.getPayoutStatus(payout.tazapayPayoutId);
+            const payoutData = result?.data ?? result;
+            const status = String(payoutData?.status || '').toLowerCase();
+
+            if (status === 'succeeded') {
+                await prisma.creatorPayout.update({
+                    where: { id: payout.id },
+                    data: {
+                        status: 'Completed',
+                        completedAt: new Date(),
+                        failureReason: null,
+                    },
+                });
+            } else if (status === 'failed' || status === 'cancelled' || status === 'reversed') {
+                await prisma.creatorPayout.update({
+                    where: { id: payout.id },
+                    data: {
+                        status: 'Failed',
+                        failureReason: getPayoutFailureReason(payoutData).substring(0, 255),
+                    },
+                });
+            }
+        } catch (error) {
+            console.warn(`[EarningsController] Failed to sync payout ${payout.id}:`, error.message);
+        }
+    }
+};
+
 // ─── GET /api/creators/earnings-summary ──────────────────────────────────────
 
 /**
@@ -38,6 +86,8 @@ function buildTimeseries(paidTransactions) {
 export const getEarningsSummary = async (req, res) => {
     try {
         const userId = req.user.id;
+
+        await syncProcessingPayouts(userId);
 
         // 1. Bank / payout config from creator profile
         const creatorProfile = await prisma.creatorProfile.findUnique({
@@ -177,6 +227,8 @@ export const getEarningsSummary = async (req, res) => {
 export const getCreatorTransactions = async (req, res) => {
     try {
         const userId = req.user.id;
+
+        await syncProcessingPayouts(userId);
         const page   = Math.max(1, parseInt(req.query.page)  || 1);
         const limit  = Math.min(100, parseInt(req.query.limit) || 20);
         const skip   = (page - 1) * limit;
@@ -300,8 +352,8 @@ export const getCreatorTransactions = async (req, res) => {
 // ─── POST /api/creators/withdrawals ──────────────────────────────────────────
 
 /**
- * Request manual withdrawal — creates a CreatorPayout record AND initiates the
- * actual Tazapay bank transfer so the creator receives real funds.
+ * Request manual withdrawal — creates a CreatorPayout record and hands it to the
+ * payout queue, which initiates the Tazapay transfer with retry handling.
  *
  * Security:
  * - Duplicate-withdrawal guard (rejects if a Pending/Processing payout exists)
@@ -407,82 +459,22 @@ export const requestWithdrawal = async (req, res) => {
             req,
         });
 
-        // ── Trigger actual Tazapay payout ───────────────────────────────────
-        try {
-            const tazapayResult = await tazapayService.createPayout({
-                beneficiaryId: creatorProfile.tazapayBeneficiaryId,
-                amount: parsedAmount,
-                currency: 'USD',
-                holdingCurrency: 'USD',
-                payoutType: 'local',
-                reason: `Withdrawal for ${creatorProfile.fullName || 'Creator'}`,
-                referenceId: idempotencyKey,
-            });
+        payoutQueue.trigger();
 
-            // Update payout record with Tazapay payout ID
-            await prisma.creatorPayout.update({
-                where: { id: payout.id },
-                data: {
-                    tazapayPayoutId: tazapayResult.data?.id || null,
-                    status: 'Processing',
-                },
-            });
+        safeLog(`[Withdrawal] Manual withdrawal queued for user ${userId}:`, {
+            payoutId: payout.id,
+            amount: parsedAmount,
+        });
 
-            await logPayoutAudit({
-                userId,
-                action: AuditActions.PAYOUT_INITIATED,
+        return res.status(202).json({
+            status: 'success',
+            message: 'Withdrawal submitted and queued for processing. Funds will arrive in 1-3 business days after processing begins.',
+            data: {
                 payoutId: payout.id,
                 amount: parsedAmount,
-                currency: 'USD',
-                req,
-            });
-
-            safeLog(`[Withdrawal] Tazapay payout initiated for user ${userId}:`, {
-                payoutId: payout.id,
-                tazapayId: tazapayResult.data?.id,
-                amount: parsedAmount,
-            });
-
-            return res.status(201).json({
-                status: 'success',
-                message: 'Withdrawal submitted and processing. Funds will arrive in 1-3 business days.',
-                data: {
-                    payoutId: payout.id,
-                    amount: parsedAmount,
-                    status: 'Processing',
-                    tazapayPayoutId: tazapayResult.data?.id || null,
-                },
-            });
-        } catch (tazapayError) {
-            // Tazapay call failed — mark payout as Failed so creator can retry
-            const failureReason = tazapayError.message?.substring(0, 200) || 'Tazapay payout initiation failed';
-
-            await prisma.creatorPayout.update({
-                where: { id: payout.id },
-                data: {
-                    status: 'Failed',
-                    failureReason,
-                    retryCount: 1,
-                },
-            });
-
-            await logPayoutAudit({
-                userId,
-                action: AuditActions.PAYOUT_FAILED,
-                payoutId: payout.id,
-                amount: parsedAmount,
-                currency: 'USD',
-                req,
-            });
-
-            console.error(`[Withdrawal] Tazapay payout failed for user ${userId}:`, tazapayError.message);
-
-            return res.status(502).json({
-                status: 'error',
-                message: 'Withdrawal request created but payment processing failed. Please try again shortly.',
-                data: { payoutId: payout.id },
-            });
-        }
+                status: 'Pending',
+            },
+        });
     } catch (error) {
         console.error('[EarningsController] requestWithdrawal error:', error);
         return res.status(500).json({ status: 'error', message: 'Failed to submit withdrawal request' });
