@@ -151,6 +151,7 @@ const ApprovalQueue = () => {
         try {
             if (batchMode && batchSelectedIds.length > 0) {
                 // Batch approve
+                let releaseFailCount = 0;
                 await Promise.all(batchSelectedIds.map(async (id) => {
                     await api.patch(`/collaborations/${id}/decision`,
                         { status: 'Approved', feedback: '' },
@@ -160,13 +161,18 @@ const ApprovalQueue = () => {
                     try {
                         await conciergeService.releaseEscrow(id);
                     } catch (escrowErr) {
-                        console.warn(`[ApprovalQueue] Escrow release failed for ${id}:`, escrowErr.message);
+                        releaseFailCount++;
+                        console.error(`[ApprovalQueue] Escrow release failed for ${id}:`, escrowErr.message);
                     }
                 }));
 
                 const remaining = queue.filter(q => !batchSelectedIds.includes(q.id));
                 setQueue(remaining);
-                showToast(`✓ ${batchSelectedIds.length} approvals released`);
+                if (releaseFailCount > 0) {
+                    showToast(`⚠ ${batchSelectedIds.length - releaseFailCount} released, ${releaseFailCount} payment(s) failed — check escrow balance`);
+                } else {
+                    showToast(`✓ ${batchSelectedIds.length} approvals & payments released`);
+                }
                 setBatchSelectedIds([]);
                 setBatchMode(false);
                 setSelectedId(remaining[0]?.id || null);
@@ -179,17 +185,25 @@ const ApprovalQueue = () => {
                     { headers: getAuthHeaders() }
                 );
 
-                // 2. Release escrow
+                // 2. Release escrow — surface errors clearly so brand isn't misled
+                let escrowReleased = false;
+                let escrowErrMsg = null;
                 try {
                     await conciergeService.releaseEscrow(selectedId);
+                    escrowReleased = true;
                 } catch (escrowErr) {
-                    // Still counts as approval even if escrow release fails (may already be released)
-                    console.warn('[ApprovalQueue] Escrow release warning:', escrowErr.message);
+                    escrowErrMsg = escrowErr.response?.data?.message || escrowErr.message;
+                    console.error('[ApprovalQueue] Escrow release failed:', escrowErrMsg);
                 }
 
                 const newQueue = queue.filter(q => q.id !== selectedId);
                 setQueue(newQueue);
-                showToast(`✓ Escrow released for ${selectedItem.creator}`);
+
+                if (escrowReleased) {
+                    showToast(`✓ Approved & payment released for ${selectedItem.creator}`);
+                } else {
+                    showToast(`✓ Approved, but payment failed: ${escrowErrMsg || 'Check escrow balance'}`);
+                }
 
                 // Auto-advance
                 const nextIdx = Math.min(currentIdx, newQueue.length - 1);

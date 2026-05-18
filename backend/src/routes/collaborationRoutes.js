@@ -40,13 +40,18 @@ router.get("/my-submissions", protect, async (req, res) => {
             title: collab.submissionTitle || collab.campaign.title,
             campaignTitle: collab.campaign.title,
             brandName: collab.campaign.brand.brandProfile?.companyName || collab.campaign.brand.name,
-            brandLogo: collab.campaign.brand.brandProfile?.logoUrl, // Optional: if frontend uses it someday
+            brandLogo: collab.campaign.brand.brandProfile?.logoUrl,
             platform: collab.submissionPlatform || collab.campaign.platformRequired || "Other",
             status: collab.status,
             date: collab.updatedAt,
             link: collab.submissionUrl,
             stats: collab.videoStats,
             feedback: collab.feedbackNotes,
+            // Payment negotiation
+            agreedPrice: collab.agreedPrice ? parseFloat(collab.agreedPrice) : null,
+            payoutReleased: collab.payoutReleased || false,
+            payoutDate: collab.payoutDate || null,
+            escrowStatus: collab.campaign.escrowBalance > 0 ? 'Locked' : 'Not Funded',
             // New Fields
             milestones: collab.milestones,
             usageAgreed: collab.usageAgreed,
@@ -119,6 +124,7 @@ router.get("/brand/:brandId/approvals", protect, async (req, res) => {
                         id: true,
                         title: true,
                         escrowBalance: true,
+                        targetBudget: true,
                         payoutSpeed: true,
                         platformRequired: true
                     }
@@ -252,8 +258,10 @@ router.get("/brand/:brandId/approvals", protect, async (req, res) => {
                 sponsorTimestamp: null,
                 ctaTimestamp: null,
                 // Financial
-                escrow: Number(c.agreedPrice || 0),
-                creatorFee: Number(c.agreedPrice || 0),
+                // agreedPrice is set when brand invites/accepts with a price;
+                // fall back to campaign targetBudget when creator self-applied without a negotiated price.
+                escrow: Number(c.agreedPrice || c.campaign.targetBudget || 0),
+                creatorFee: Number(c.agreedPrice || c.campaign.targetBudget || 0),
                 budgetRemaining: Number(c.campaign.escrowBalance || 0),
                 roas: null,
                 // Content
@@ -325,16 +333,20 @@ router.patch("/:id/milestones", protect, async (req, res) => {
 router.patch("/:id/decision", protect, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { status, feedback } = req.body;
+        const { status, feedback, agreedPrice } = req.body;
 
-        // In a real app, verify req.user owns the campaign for this collaboration
+        // Build update payload — only include agreedPrice if explicitly provided
+        const updateData = {
+            status: status,
+            feedbackNotes: feedback,
+        };
+        if (agreedPrice !== undefined && agreedPrice !== null && !isNaN(parseFloat(agreedPrice))) {
+            updateData.agreedPrice = parseFloat(agreedPrice);
+        }
 
         const updated = await prisma.campaignCollaboration.update({
             where: { id: id },
-            data: {
-                status: status, // e.g., 'Changes_Requested', 'Approved'
-                feedbackNotes: feedback
-            },
+            data: updateData,
             include: { campaign: true } // Fetch campaign for payout check
         });
 
@@ -342,14 +354,10 @@ router.patch("/:id/decision", protect, async (req, res) => {
         if (status === 'Approved' && updated.campaign.payoutSpeed === 'Instant') {
             console.log(`[Fast Payout] Triggering instant payout for Collaboration ${id}`);
             try {
-                // We don't await the result to block the response, or we do?
-                // Better to await to catch errors, but if it fails, the approval is already done.
-                // Let's await and append result or just log.
                 await executePayout(id, req.user.id);
                 console.log(`[Fast Payout] Payout executed successfully for ${id}`);
             } catch (payoutError) {
                 console.error(`[Fast Payout] Payout failed for ${id}:`, payoutError.message);
-                // Optionally notify admin/brand
             }
         }
 

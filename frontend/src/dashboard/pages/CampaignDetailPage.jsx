@@ -1,14 +1,15 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCampaignDetail, useUpdateCollaborationDecision } from '../../hooks/useCampaigns';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import {
     ArrowLeft, ArrowUpRight, ArrowDownRight, Download, MoreHorizontal, Edit3,
     TrendingUp, DollarSign, Users, Activity, Shield, Calendar, ChevronUp,
     ChevronDown, AlertTriangle, CheckCircle, Clock, Zap, Info, UserPlus,
-    BarChart3, FileText,
+    BarChart3, FileText, X, Banknote,
 } from 'lucide-react';
 
 /* ================================================================
@@ -201,30 +202,34 @@ const Skeleton = () => (
 /* ================================================================
    EMPTY STATES
    ================================================================ */
-const CreatorEmptyState = () => (
-    <div style={{
-        padding: '48px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-    }}>
+const CreatorEmptyState = ({ campaignId }) => {
+    const navigate = useNavigate();
+    return (
         <div style={{
-            width: 48, height: 48, borderRadius: 'var(--bd-radius-xl)',
-            background: 'var(--bd-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+            padding: '48px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         }}>
-            <Users size={22} style={{ color: 'var(--bd-text-muted)' }} />
+            <div style={{
+                width: 48, height: 48, borderRadius: 'var(--bd-radius-xl)',
+                background: 'var(--bd-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+            }}>
+                <Users size={22} style={{ color: 'var(--bd-text-muted)' }} />
+            </div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--bd-text-primary)' }}>
+                No creators assigned to this campaign
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--bd-text-muted)', maxWidth: 300, lineHeight: 1.5 }}>
+                Assign creators to start generating performance data.
+            </div>
+            <button
+                className="bd-cm-btn-primary"
+                onClick={() => navigate(`/brand/creators${campaignId ? `?campaignId=${campaignId}` : ''}`)}
+                style={{ marginTop: 12, padding: '8px 20px', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+                <UserPlus size={15} /> Assign Creators
+            </button>
         </div>
-        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--bd-text-primary)' }}>
-            No creators assigned to this campaign
-        </div>
-        <div style={{ fontSize: '0.8125rem', color: 'var(--bd-text-muted)', maxWidth: 300, lineHeight: 1.5 }}>
-            Assign creators to start generating performance data.
-        </div>
-        <button
-            className="bd-cm-btn-primary"
-            style={{ marginTop: 12, padding: '8px 20px', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-            <UserPlus size={15} /> Assign Creators
-        </button>
-    </div>
-);
+    );
+};
 
 const ActivityEmptyState = () => (
     <div style={{
@@ -282,6 +287,10 @@ const CampaignDetailPage = () => {
     const [timeRange, setTimeRange] = useState('30d');
     const [sortCol, setSortCol] = useState('spend');
     const [sortDir, setSortDir] = useState('desc');
+    // payModal: null | { collabId, name, mode: 'accept' | 'edit' }
+    const [payModal, setPayModal] = useState(null);
+    const [payAmount, setPayAmount] = useState('');
+    const [payNote, setPayNote] = useState('');
 
     const sortedCreators = useMemo(() => {
         if (!data?.creators) return [];
@@ -308,6 +317,29 @@ const CampaignDetailPage = () => {
         if (col === sortCol) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
         else { setSortCol(col); setSortDir('desc'); }
     }, [sortCol]);
+
+    const openPayModal = useCallback((creator, mode) => {
+        setPayAmount(creator.agreedPrice ? String(creator.agreedPrice) : '');
+        setPayNote('');
+        setPayModal({ collabId: creator.id, name: creator.name, mode });
+    }, []);
+
+    const closePayModal = useCallback(() => {
+        setPayModal(null);
+        setPayAmount('');
+        setPayNote('');
+    }, []);
+
+    const confirmPayModal = useCallback(() => {
+        if (!payModal) return;
+        const amount = parseFloat(payAmount);
+        if (!amount || amount <= 0) return;
+        const newStatus = payModal.mode === 'accept' ? 'In_Progress' : undefined;
+        const payload = { agreedPrice: amount };
+        if (newStatus) payload.status = newStatus;
+        updateDecision({ collabId: payModal.collabId, data: payload });
+        closePayModal();
+    }, [payModal, payAmount, updateDecision, closePayModal]);
 
     const SortIcon = ({ col }) => (
         sortCol === col
@@ -471,7 +503,7 @@ const CampaignDetailPage = () => {
             <section style={{ marginBottom: SECTION_GAP }}>
                 {chartData.length > 0 ? (
                     <div style={{ ...CARD_STYLE, padding: '20px 24px 16px' }}>
-                        <ResponsiveContainer width="100%" height={200}>
+                        <SafeChart height={200}>
                             <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="grev" x1="0" y1="0" x2="0" y2="1">
@@ -494,7 +526,7 @@ const CampaignDetailPage = () => {
                                 <Area type="monotone" dataKey="revenue" stroke="var(--bd-success)" fill="url(#grev)" strokeWidth={2} dot={false} />
                                 <Area type="monotone" dataKey="spend" stroke="var(--bd-primary)" fill="url(#gspe)" strokeWidth={1.5} dot={false} strokeDasharray="4 3" />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </SafeChart>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 4, fontSize: '0.6875rem', color: 'var(--bd-text-muted)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <span style={{ width: 12, height: 2, background: 'var(--bd-success)', borderRadius: 1 }} /> Revenue
@@ -639,6 +671,7 @@ const CampaignDetailPage = () => {
                                     {[
                                         { key: 'name', label: 'Creator' },
                                         { key: 'content', label: 'Content' },
+                                        { key: 'agreedPrice', label: 'Agreed Fee' },
                                         { key: 'spend', label: 'Spend' },
                                         { key: 'revenue', label: 'Revenue' },
                                         { key: 'roas', label: 'ROAS' },
@@ -675,6 +708,34 @@ const CampaignDetailPage = () => {
                                             {c.handle && <div style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>@{c.handle}</div>}
                                         </td>
                                         <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{c.content}</td>
+                                        {/* Agreed Fee column */}
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {c.agreedPrice > 0 ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{ fontWeight: 600, color: 'rgb(52,211,153)', fontVariantNumeric: 'tabular-nums' }}>
+                                                        ${Number(c.agreedPrice).toLocaleString()}
+                                                    </span>
+                                                    <button
+                                                        title="Edit payment"
+                                                        onClick={() => openPayModal(c, 'edit')}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--bd-text-muted)', lineHeight: 1 }}
+                                                    >
+                                                        <Edit3 size={12} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => openPayModal(c, 'edit')}
+                                                    style={{
+                                                        fontSize: '0.75rem', fontWeight: 500, padding: '2px 8px',
+                                                        borderRadius: 6, border: '1px dashed var(--bd-border-default)',
+                                                        background: 'none', color: 'var(--bd-text-muted)', cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    + Set Pay
+                                                </button>
+                                            )}
+                                        </td>
                                         <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>${Number(c.spend).toLocaleString()}</td>
                                         <td style={{ padding: '12px 16px', color: 'var(--bd-success)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>${Number(c.revenue).toLocaleString()}</td>
                                         <td style={{ padding: '12px 16px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: parseFloat(c.roas) >= 2 ? 'var(--bd-success)' : 'var(--bd-text-primary)' }}>{c.roas}x</td>
@@ -694,11 +755,11 @@ const CampaignDetailPage = () => {
                                                     </button>
                                                     <button
                                                         className="bd-cm-btn-primary"
-                                                        style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                                        style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}
                                                         disabled={isUpdating}
-                                                        onClick={() => updateDecision({ collabId: c.id, data: { status: 'In_Progress' } })}
+                                                        onClick={() => openPayModal(c, 'accept')}
                                                     >
-                                                        Accept
+                                                        <Banknote size={12} /> Accept + Set Pay
                                                     </button>
                                                 </div>
                                             )}
@@ -710,7 +771,7 @@ const CampaignDetailPage = () => {
                     </div>
                 ) : (
                     <div style={{ ...CARD_STYLE, overflow: 'hidden' }}>
-                        <CreatorEmptyState />
+                        <CreatorEmptyState campaignId={campaign.id} />
                     </div>
                 )}
             </section>
@@ -792,6 +853,120 @@ const CampaignDetailPage = () => {
                     )}
                 </div>
             </section>
+            {/* ═══════════════════════════════════════════
+                SET PAYMENT MODAL
+               ═══════════════════════════════════════════ */}
+            {payModal && (
+                <div
+                    onClick={closePayModal}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            width: '100%', maxWidth: 440,
+                            borderRadius: 'var(--bd-radius-xl)',
+                            background: 'var(--bd-surface-elevated)',
+                            border: '1px solid var(--bd-border-default)',
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                            padding: 32,
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: 'var(--bd-radius-lg)',
+                                        background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Banknote size={18} style={{ color: 'rgb(52,211,153)' }} />
+                                    </div>
+                                    <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--bd-text-primary)', margin: 0 }}>
+                                        {payModal.mode === 'accept' ? 'Accept & Set Payment' : 'Update Payment'}
+                                    </h3>
+                                </div>
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--bd-text-secondary)', margin: 0 }}>
+                                    {payModal.mode === 'accept'
+                                        ? `Set the agreed fee for ${payModal.name} before accepting.`
+                                        : `Update the agreed payment for ${payModal.name}.`}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closePayModal}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--bd-text-muted)', lineHeight: 1 }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Amount Input */}
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--bd-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Payment Amount (USD)
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{
+                                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                                    fontSize: '1.125rem', fontWeight: 600, color: 'var(--bd-text-muted)',
+                                }}>$</span>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="0"
+                                    autoFocus
+                                    value={payAmount}
+                                    onChange={e => setPayAmount(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && confirmPayModal()}
+                                    style={{
+                                        width: '100%', padding: '12px 14px 12px 30px',
+                                        borderRadius: 'var(--bd-radius-lg)',
+                                        border: '1px solid var(--bd-border-default)',
+                                        background: 'var(--bd-surface-input)',
+                                        color: 'var(--bd-text-primary)',
+                                        fontSize: '1.5rem', fontWeight: 700,
+                                        outline: 'none', boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Info banner */}
+                        <div style={{
+                            padding: '10px 14px', borderRadius: 'var(--bd-radius-lg)',
+                            background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)',
+                            marginBottom: 24, fontSize: '0.8125rem', color: 'var(--bd-text-secondary)',
+                        }}>
+                            💡 This amount will be released from escrow automatically once you approve the creator's submitted video.
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button
+                                onClick={closePayModal}
+                                className="bd-cm-btn-secondary"
+                                style={{ flex: 1, padding: '10px 0', fontWeight: 600 }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmPayModal}
+                                disabled={!payAmount || parseFloat(payAmount) <= 0 || isUpdating}
+                                className="bd-cm-btn-primary"
+                                style={{ flex: 2, padding: '10px 0', fontWeight: 700, opacity: (!payAmount || parseFloat(payAmount) <= 0) ? 0.5 : 1 }}
+                            >
+                                {payModal.mode === 'accept' ? '✓ Accept Creator & Set Pay' : '✓ Update Payment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

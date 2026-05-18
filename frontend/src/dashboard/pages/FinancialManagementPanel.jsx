@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -28,7 +29,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer
 } from "recharts";
 
 // --- Mock Data ---
@@ -466,7 +466,7 @@ const FinancialManagementPanel = () => {
                         </div>
                     </div>
                     <div style={{ height: 300, width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <SafeChart height="100%">
                             <AreaChart data={CHART_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -488,7 +488,7 @@ const FinancialManagementPanel = () => {
                                 <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" />
                                 <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSpend)" name="Spend" />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </SafeChart>
                     </div>
                 </div>
 

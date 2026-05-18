@@ -162,7 +162,27 @@ const paymentService = {
             console.error('Verify Payment Error:', error);
             throw parseApiError(error, 'Failed to verify payment');
         }
-    }
+    },
+    
+    /**
+     * [DEV ONLY] Simulate a successful Tazapay payment for a pending transaction.
+     * Used when checkout-sandbox.digitrade.app is unreachable in local/dev environments.
+     * @param {number} transactionId
+     * @returns {Promise<{status: string, message: string}>}
+     */
+    simulatePaymentSuccess: async (transactionId) => {
+        try {
+            const response = await api.post(
+                `/payments/dev/simulate-success/${transactionId}`,
+                {},
+                getAuthHeaders()
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Simulate Payment Error:', error);
+            throw parseApiError(error, 'Simulation failed');
+        }
+    },
 };
 
 export default paymentService;

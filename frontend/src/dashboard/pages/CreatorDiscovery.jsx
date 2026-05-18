@@ -13,7 +13,7 @@ import {
     X,
     Loader2
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { calculateSuggestedRate } from "../../utils/rateUtils";
 
@@ -62,9 +62,16 @@ const PRICE_RANGES = [
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite }) => {
+const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite, preselectedCampaignId }) => {
     const [selectedCampaign, setSelectedCampaign] = useState("");
     const [isInviting, setIsInviting] = useState(false);
+
+    // Pre-select the campaign if we arrived from a campaign's "Assign Creators" button
+    useEffect(() => {
+        if (isOpen && preselectedCampaignId) {
+            setSelectedCampaign(String(preselectedCampaignId));
+        }
+    }, [isOpen, preselectedCampaignId]);
 
     if (!isOpen) return null;
 
@@ -145,7 +152,7 @@ const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite }) => {
     );
 };
 
-const CreatorCard = ({ creator, brandCampaigns }) => {
+const CreatorCard = ({ creator, brandCampaigns, preselectedCampaignId }) => {
     const [invited, setInvited] = useState(false);
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const navigate = useNavigate();
@@ -298,12 +305,16 @@ const CreatorCard = ({ creator, brandCampaigns }) => {
                 creator={creator}
                 campaigns={brandCampaigns}
                 onInvite={() => setInvited(true)}
+                preselectedCampaignId={preselectedCampaignId}
             />
         </>
     );
 };
 
 const CreatorDiscovery = () => {
+    const [searchParams] = useSearchParams();
+    const preselectedCampaignId = searchParams.get('campaignId');
+
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedNiches, setSelectedNiches] = useState([]);
     const [selectedPlatform, setSelectedPlatform] = useState("All");
@@ -495,7 +506,12 @@ const CreatorDiscovery = () => {
                             <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <AnimatePresence>
                                     {filteredCreators.map(creator => (
-                                        <CreatorCard key={creator.id} creator={creator} brandCampaigns={brandCampaigns} />
+                                        <CreatorCard
+                                            key={creator.id}
+                                            creator={creator}
+                                            brandCampaigns={brandCampaigns}
+                                            preselectedCampaignId={preselectedCampaignId}
+                                        />
                                     ))}
                                 </AnimatePresence>
                             </motion.div>

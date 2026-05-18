@@ -8,7 +8,7 @@ import {
     Loader2,
     CheckCircle2,
 } from 'lucide-react';
-import paymentService from '../../../api/paymentService';
+
 
 /**
  * FundCampaignModal — Modal to fund a campaign escrow.
@@ -87,7 +87,6 @@ const FundCampaignModal = ({ isOpen, onClose, campaign, onFundSuccess }) => {
             );
 
             if (result?.url) {
-                // Redirect to Tazapay checkout
                 window.location.href = result.url;
             } else {
                 // Direct funding (no external payment needed)
@@ -105,7 +104,7 @@ const FundCampaignModal = ({ isOpen, onClose, campaign, onFundSuccess }) => {
     if (!isOpen || !campaign) return null;
 
     const numAmount = parseFloat(amount) || 0;
-    const remaining = Math.max(0, (campaign.targetBudget || 0) - (campaign.fundedAmount || 0));
+    const remaining = Math.max(0, (campaign.requiredAmount || 0) - (campaign.fundedAmount || 0));
 
     return (
         <AnimatePresence>
@@ -145,7 +144,7 @@ const FundCampaignModal = ({ isOpen, onClose, campaign, onFundSuccess }) => {
                         <div className="ev-modal__info-row">
                             <div className="ev-modal__info-item">
                                 <span className="ev-modal__info-label">Target Budget</span>
-                                <span className="ev-modal__info-value">{formatCurrency(campaign.targetBudget)}</span>
+                                <span className="ev-modal__info-value">{formatCurrency(campaign.requiredAmount || 0)}</span>
                             </div>
                             <div className="ev-modal__info-item">
                                 <span className="ev-modal__info-label">Already Funded</span>

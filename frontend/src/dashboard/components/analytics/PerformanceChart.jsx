@@ -1,6 +1,7 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useMemo } from 'react';
 import {
-    ResponsiveContainer,
+    
     LineChart,
     Line,
     XAxis,
@@ -196,7 +197,7 @@ const PerformanceChart = ({
             {!hasData ? (
                 <ChartEmpty />
             ) : (
-                <ResponsiveContainer width="100%" height={260}>
+                <SafeChart height={260}>
                     <AreaChart data={timeline} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id={`grad-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -239,7 +240,7 @@ const PerformanceChart = ({
                             activeDot={{ r: 4, fill: metric.color }}
                         />
                     </AreaChart>
-                </ResponsiveContainer>
+                </SafeChart>
             )}
         </div>
     );

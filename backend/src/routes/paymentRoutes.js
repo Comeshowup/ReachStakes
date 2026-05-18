@@ -6,7 +6,8 @@ import {
     getEscrowDetails,
     getTransactionHistory,
     getTransactionStatus,
-    verifyPayment
+    verifyPayment,
+    simulatePaymentSuccess,
 } from '../controllers/paymentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -19,6 +20,9 @@ router.post('/checkout', protect, initiatePayment);
 router.get('/history', protect, getTransactionHistory);
 router.get('/status/:transactionId', protect, getTransactionStatus);
 router.post('/verify/:transactionId', protect, verifyPayment);
+
+// Dev/Sandbox only — simulate a successful Tazapay payment (disabled in production)
+router.post('/dev/simulate-success/:transactionId', protect, simulatePaymentSuccess);
 
 // Public - Webhook callback from Tazapay
 router.post('/webhook', handleWebhook);

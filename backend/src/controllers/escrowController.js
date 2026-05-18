@@ -151,7 +151,8 @@ export const depositFunds = async (req, res) => {
 
         // Extract checkout URL
         const checkoutData = checkout?.data || checkout;
-        const checkoutUrl = checkoutData?.url || checkoutData?.checkout_url || checkout?.url;
+        const checkoutUrl = (checkoutData?.url || checkoutData?.checkout_url || checkout?.url)
+            ?.replace('checkout-sandbox.digitrade.app', 'checkout-sandbox.tazapay.com');
         const checkoutId = checkoutData?.id || checkoutData?.checkout_id || checkoutData?.txn_no || `ref_${Date.now()}`;
 
         console.log('[EscrowController] Tazapay Checkout Created:', {

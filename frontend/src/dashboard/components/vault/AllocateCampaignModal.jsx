@@ -22,11 +22,11 @@ function AllocateCampaignModal({ isOpen, onClose, onSubmit, isSubmitting, availa
         const breakdown = selectedCampaign.allocationBreakdown;
         if (!breakdown) {
             // Fallback: compute locally if backend didn't provide it
-            const budget = selectedCampaign.targetBudget || 0;
+            const budget = selectedCampaign.requiredAmount || 0;
             const platformFee = parseFloat((budget * 0.05).toFixed(2));
             const processingFee = parseFloat((budget * 0.029).toFixed(2));
             return {
-                targetBudget: budget,
+                requiredAmount: budget,
                 platformFee,
                 processingFee,
                 platformFeePercent: 5,
@@ -112,7 +112,7 @@ function AllocateCampaignModal({ isOpen, onClose, onSubmit, isSubmitting, availa
                                 </option>
                                 {campaigns.map((c) => (
                                     <option key={c.id} value={c.id}>
-                                        {c.name} — Budget: {formatCurrency(c.targetBudget || 0)}
+                                        {c.name} — Budget: {formatCurrency(c.requiredAmount || 0)}
                                     </option>
                                 ))}
                             </select>
@@ -124,7 +124,7 @@ function AllocateCampaignModal({ isOpen, onClose, onSubmit, isSubmitting, availa
                                 <h4 className="vault-modal__fee-title">Allocation Breakdown</h4>
                                 <div className="vault-modal__fee-row">
                                     <span>Target Budget</span>
-                                    <span>{formatCurrency(allocation.targetBudget)}</span>
+                                    <span>{formatCurrency(allocation.requiredAmount)}</span>
                                 </div>
                                 <div className="vault-modal__fee-row vault-modal__fee-row--sub">
                                     <span>Platform Fee ({allocation.platformFeePercent}%)</span>

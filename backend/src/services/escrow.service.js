@@ -177,8 +177,14 @@ export class EscrowService {
             throw new Error('Funding amount must be a positive number.');
         }
 
+        // 1. Verify sufficient unallocated vault balance
+        const overview = await EscrowService.getOverview(brandId);
+        if (amount > overview.availableBalance) {
+            throw new Error(`Insufficient unallocated vault balance. Available: $${overview.availableBalance.toFixed(2)}, Requested: $${amount.toFixed(2)}`);
+        }
+
         return prisma.$transaction(async (tx) => {
-            // 1. Verify campaign exists and belongs to brand
+            // 2. Verify campaign exists and belongs to brand
             const campaign = await tx.campaign.findFirst({
                 where: { id: campaignId, brandId },
             });
@@ -187,7 +193,7 @@ export class EscrowService {
                 throw new Error('Campaign not found or access denied.');
             }
 
-            // 2. Insert ledger record
+            // 3. Insert ledger record
             const ledgerEntry = await tx.escrowLedger.create({
                 data: {
                     brandId,
@@ -195,11 +201,11 @@ export class EscrowService {
                     type: 'Funding',
                     amount,
                     status: 'Completed',
-                    description: `Escrow funding: $${amount.toFixed(2)} for "${campaign.title}"`,
+                    description: `Escrow allocation: $${amount.toFixed(2)} from vault to "${campaign.title}"`,
                 },
             });
 
-            // 3. Update campaign escrow fields
+            // 4. Update campaign escrow fields
             const updatedCampaign = await tx.campaign.update({
                 where: { id: campaignId },
                 data: {
@@ -210,7 +216,7 @@ export class EscrowService {
                 },
             });
 
-            // 4. Upsert CampaignEscrow record
+            // 5. Upsert CampaignEscrow record
             await tx.campaignEscrow.upsert({
                 where: { campaignId },
                 create: {
@@ -225,7 +231,20 @@ export class EscrowService {
                 },
             });
 
-            // 5. Create transaction record for audit
+            // 6. Create dual transactions for internal allocation audit
+            // Withdrawal from unallocated vault pool
+            await tx.transaction.create({
+                data: {
+                    userId: brandId,
+                    amount: -amount,
+                    type: 'Withdrawal',
+                    status: 'Completed',
+                    description: `Vault allocation to campaign: $${amount.toFixed(2)} for "${campaign.title}"`,
+                    transactionDate: new Date(),
+                },
+            });
+
+            // Deposit into specific campaign bucket
             await tx.transaction.create({
                 data: {
                     userId: brandId,
@@ -233,12 +252,12 @@ export class EscrowService {
                     amount,
                     type: 'Deposit',
                     status: 'Completed',
-                    description: `Escrow funded: $${amount.toFixed(2)} for "${campaign.title}"`,
+                    description: `Escrow allocated from vault: $${amount.toFixed(2)}`,
                     transactionDate: new Date(),
                 },
             });
 
-            console.log(`[EscrowService] Funded $${amount.toFixed(2)} for campaign ${campaignId} (brand: ${brandId})`);
+            console.log(`[EscrowService] Allocated $${amount.toFixed(2)} from vault to campaign ${campaignId}`);
 
             return {
                 ledgerEntryId: ledgerEntry.id,
@@ -539,32 +558,31 @@ export class EscrowService {
      */
     static async _computeVaultBalance(brandId) {
         try {
-            // Sum all completed deposits (vault-level, no campaignId)
-            const deposits = await prisma.transaction.aggregate({
+            const totals = await prisma.transaction.groupBy({
+                by: ['type'],
                 where: {
                     userId: brandId,
-                    type: 'Deposit',
-                    status: 'Completed',
-                    campaignId: null, // vault-level deposits only
-                },
-                _sum: { amount: true },
-            });
-
-            // Sum all completed withdrawals
-            const withdrawals = await prisma.transaction.aggregate({
-                where: {
-                    userId: brandId,
-                    type: 'Withdrawal',
                     status: 'Completed',
                 },
                 _sum: { amount: true },
             });
 
-            const totalDeposits = parseFloat(deposits._sum.amount || 0);
-            const totalWithdrawals = parseFloat(withdrawals._sum.amount || 0);
+            let balance = 0;
+            totals.forEach(t => {
+                const sum = parseFloat(t._sum.amount || 0);
+                if (t.type === 'Deposit') {
+                    balance += sum;
+                } else if (t.type === 'Withdrawal') {
+                    // Withdrawals are already negative in DB if created via withdrawFunds
+                    // If they are positive, we should subtract. Checking sign here for robustness.
+                    balance += sum < 0 ? sum : -sum;
+                } else if (t.type === 'Payment' || t.type === 'Refund') {
+                    // Payments and refunds decrease liquidity
+                    balance -= Math.abs(sum);
+                }
+            });
 
-            // Withdrawals are stored as negative amounts, so we add them
-            return totalDeposits + totalWithdrawals;
+            return balance;
         } catch (err) {
             console.warn('[EscrowService] _computeVaultBalance error:', err.message);
             return 0;

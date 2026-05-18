@@ -12,22 +12,20 @@ const PROCESSING_FEE_PERCENT = 2.9;
  */
 function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount, fundingContext }) {
     const [amount, setAmount] = useState('');
-
     const [error, setError] = useState('');
-    const [redirecting, setRedirecting] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    // Pre-fill with minimum amount when provided (from insufficient-funds redirect)
     useEffect(() => {
         if (isOpen && minimumAmount && minimumAmount > 0) {
             setAmount(String(minimumAmount));
         }
     }, [isOpen, minimumAmount]);
 
-    // Reset on close
     useEffect(() => {
         if (!isOpen) {
-            setRedirecting(false);
+            setSubmitting(false);
             setError('');
+            setAmount('');
         }
     }, [isOpen]);
 
@@ -38,8 +36,6 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
     const meetsMinimum = !hasMinimum || parsedAmount >= minimumAmount;
     const isValid = parsedAmount > 0 && parsedAmount <= 10000000 && meetsMinimum;
 
-
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -48,31 +44,27 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
             setError(`Minimum deposit of ${formatCurrency(minimumAmount)} required to fund ${fundingContext || 'campaign'}.`);
             return;
         }
-
         if (!isValid) {
             setError('Enter an amount between $1 and $10,000,000.');
             return;
         }
 
+        setSubmitting(true);
         try {
             const result = await onSubmit({ amount: parsedAmount });
+            const checkoutUrl = result?.data?.url || result?.url;
 
-            // Check if the backend returned a Tazapay checkout URL
-            if (result?.data?.url || result?.url) {
-                const checkoutUrl = result?.data?.url || result?.url;
-                setRedirecting(true);
+            if (checkoutUrl) {
                 toast.success('Redirecting to payment gateway...');
-                // Redirect to Tazapay checkout page
                 window.location.href = checkoutUrl;
             } else {
-                // Fallback: direct deposit (no payment gateway)
                 toast.success(`Successfully deposited ${formatCurrency(parsedAmount)}`);
                 setAmount('');
-                setMethod('Wire');
                 onClose();
             }
         } catch (err) {
             setError(err?.response?.data?.message || err?.message || 'Deposit failed. Please try again.');
+            setSubmitting(false);
         }
     };
 
@@ -85,9 +77,9 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
+
                 <form onSubmit={handleSubmit}>
                     <div className="vault-modal__body">
-                        {/* Minimum deposit notice from allocation redirect */}
                         {hasMinimum && (
                             <div className="vault-modal__minimum-notice">
                                 <span className="material-symbols-outlined vault-modal__minimum-icon">info</span>
@@ -97,7 +89,6 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                                 </p>
                             </div>
                         )}
-
                         <label className="vault-modal__label">
                             Amount (USD)
                             <div className="vault-modal__input-wrap">
@@ -116,8 +107,6 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                                 />
                             </div>
                         </label>
-
-
                         {error && <p className="vault-modal__error">{error}</p>}
                     </div>
                     <div className="vault-modal__footer">
@@ -125,14 +114,9 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
                         <button
                             type="submit"
                             className="vault-modal__btn vault-modal__btn--submit"
-                            disabled={!isValid || isSubmitting || redirecting}
+                            disabled={!isValid || isSubmitting || submitting}
                         >
-                            {redirecting ? (
-                                <>
-                                    <span className="vault-modal__spinner" />
-                                    Redirecting to payment...
-                                </>
-                            ) : isSubmitting ? (
+                            {submitting || isSubmitting ? (
                                 <span className="vault-modal__spinner" />
                             ) : (
                                 <>Deposit {amount ? formatCurrency(parsedAmount) : ''}</>
@@ -146,4 +130,3 @@ function AddFundsModal({ isOpen, onClose, onSubmit, isSubmitting, minimumAmount,
 }
 
 export default memo(AddFundsModal);
-

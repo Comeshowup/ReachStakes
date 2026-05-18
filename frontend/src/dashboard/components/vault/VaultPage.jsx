@@ -250,6 +250,7 @@ export default function VaultPage() {
                 isOpen={!!selectedCampaign}
                 onClose={() => setSelectedCampaign(null)}
                 campaign={selectedCampaign}
+                availableBalance={summary?.available ?? 0}
                 onFundSuccess={handleFundSuccess}
             />
         </div>

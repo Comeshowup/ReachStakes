@@ -1,13 +1,57 @@
 /**
  * EarningsGraph — Area chart with time-range filter pills.
  * Filters are applied client-side on the earningsTimeseries data.
+ *
+ * NOTE: Uses manual ResizeObserver instead of recharts' ResponsiveContainer.
+ * ResponsiveContainer's internal ResizeObserver mutates frozen React 19 Fiber
+ * properties on unmount, crashing the app. This pattern is immune to that bug.
  */
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import { BarChart2 } from 'lucide-react';
+
+/**
+ * Safe responsive container — tracks size via a guarded ResizeObserver
+ * so recharts never gets a chance to update state on an unmounted fiber.
+ */
+function SafeChart({ children, height = 220 }) {
+  const containerRef = useRef(null);
+  const [width, setWidth] = useState(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const el = containerRef.current;
+    if (!el) return;
+
+    // Read initial size synchronously
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && mountedRef.current) setWidth(rect.width);
+
+    const ro = new ResizeObserver((entries) => {
+      if (!mountedRef.current) return; // guard: ignore after unmount
+      const entry = entries[0];
+      if (!entry) return;
+      const w = entry.contentRect.width;
+      if (w > 0) setWidth(w);
+    });
+    ro.observe(el);
+
+    return () => {
+      mountedRef.current = false;
+      ro.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height }}>
+      {width > 0 && React.cloneElement(children, { width, height })}
+    </div>
+  );
+}
 
 const FILTERS = [
   { label: '30d', days: 30 },
@@ -147,43 +191,41 @@ const EarningsGraph = memo(({ timeseries = [], loading = false }) => {
             <p className="text-sm" style={{ color: 'var(--bd-text-secondary)' }}>No earnings data for this period</p>
           </div>
         ) : (
-          <div style={{ width: '100%', height: 220 }}>
-            <ResponsiveContainer width="99%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#8b5cf6" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--bd-text-secondary, #64748b)', fontSize: 11 }}
-                  dy={8}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--bd-text-secondary, #64748b)', fontSize: 11 }}
-                  tickFormatter={fmt$}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.5}
-                  fill="url(#earningsGrad)"
-                  dot={false}
-                  activeDot={{ r: 4, fill: '#a78bfa', strokeWidth: 0 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <SafeChart height={220}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#8b5cf6" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--bd-text-secondary, #64748b)', fontSize: 11 }}
+                dy={8}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--bd-text-secondary, #64748b)', fontSize: 11 }}
+                tickFormatter={fmt$}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#8b5cf6"
+                strokeWidth={2.5}
+                fill="url(#earningsGrad)"
+                dot={false}
+                activeDot={{ r: 4, fill: '#a78bfa', strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </SafeChart>
         )}
       </div>
     </motion.div>

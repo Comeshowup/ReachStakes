@@ -65,6 +65,7 @@ const EarningsOverview = () => {
             bankConnected={data?.bankConnected}
             loading={isLoading}
             onBankConnected={handleBankConnected}
+            onWithdrawClick={() => setWithdrawModalOpen(true)}
           />
         </div>
         <div className="lg:col-span-2">

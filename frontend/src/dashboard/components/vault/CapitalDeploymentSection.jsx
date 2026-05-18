@@ -71,7 +71,7 @@ function CampaignAllocationCardComponent({
     const { required, funded, remaining, pct } = deriveCampaignMetrics(campaign);
     const isFunded = campaign.status === 'FUNDED';
     const isAllocating = allocatingId === campaign.id;
-    const insufficientLiquidity = remaining > availableLiquidity && !isFunded;
+    const insufficientLiquidity = remaining > availableLiquidity && !isFunded; // Kept for tooltip/logic if needed, but not for disabling
 
     // CTA label
     let ctaLabel;
@@ -85,7 +85,7 @@ function CampaignAllocationCardComponent({
         ctaLabel = 'Complete Funding';
     }
 
-    const ctaDisabled = isFunded || isAllocating || insufficientLiquidity;
+    const ctaDisabled = isFunded || isAllocating;
     const ctaClassName = [
         'vault-cd-alloc__cta',
         isFunded ? 'vault-cd-alloc__cta--funded' : '',
@@ -140,11 +140,9 @@ function CampaignAllocationCardComponent({
                     disabled={ctaDisabled}
                     onClick={handleClick}
                     title={
-                        insufficientLiquidity
-                            ? 'Insufficient available liquidity'
-                            : isFunded
-                                ? ''
-                                : 'Moves funds from Available Liquidity to Escrow'
+                        isFunded
+                            ? 'Campaign is already fully funded'
+                            : 'Open funding portal to allocate liquidity or deposit new funds'
                     }
                     aria-label={`${ctaLabel} for ${campaign.name}`}
                 >

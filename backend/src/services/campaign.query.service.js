@@ -159,6 +159,9 @@ export class CampaignQueryService {
                 : '0.0',
             cpa: 0,
             status: collab.status || 'Applied',
+            // Payment negotiation fields
+            agreedPrice: collab.agreedPrice ? parseFloat(collab.agreedPrice) : null,
+            payoutReleased: collab.payoutReleased || false,
         }));
 
         // Activity Feed

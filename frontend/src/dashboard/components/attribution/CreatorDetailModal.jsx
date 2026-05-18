@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -19,7 +20,7 @@ import {
     Line,
     XAxis,
     YAxis,
-    ResponsiveContainer,
+    
     Tooltip,
     CartesianGrid
 } from 'recharts';
@@ -281,7 +282,7 @@ const CreatorDetailModal = ({ isOpen, onClose, campaignId, creatorId }) => {
                                 <div className="p-6 border-b border-white/5">
                                     <h3 className="text-white font-semibold mb-4">Daily Performance (Last 14 Days)</h3>
                                     <div className="h-52">
-                                        <ResponsiveContainer width="100%" height="100%">
+                                        <SafeChart height="100%">
                                             <LineChart data={data.dailyStats}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                                                 <XAxis
@@ -315,7 +316,7 @@ const CreatorDetailModal = ({ isOpen, onClose, campaignId, creatorId }) => {
                                                     name="clicks"
                                                 />
                                             </LineChart>
-                                        </ResponsiveContainer>
+                                        </SafeChart>
                                     </div>
                                     <div className="flex items-center gap-6 mt-3 text-xs">
                                         <div className="flex items-center gap-2">

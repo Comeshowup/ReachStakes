@@ -92,55 +92,111 @@ export const executePayout = async (collaborationId, userId) => {
         // A. Fetch Data
         const collab = await tx.campaignCollaboration.findUnique({
             where: { id: parseInt(collaborationId) },
-            include: { campaign: true }
+            include: {
+                campaign: {
+                    select: { id: true, brandId: true, escrowBalance: true, targetBudget: true, title: true }
+                }
+            }
         });
 
         if (!collab) throw new Error("Collaboration not found");
         if (collab.payoutReleased) throw new Error("Payout already released for this collaboration");
         if (collab.status !== 'Approved') throw new Error("Collaboration must be Approved before payout");
 
-        const payoutAmount = collab.agreedPrice;
+        // Use agreedPrice if set; fall back to campaign targetBudget (for self-applied creators)
+        const payoutAmount = Number(collab.agreedPrice || collab.campaign.targetBudget || 0);
 
-        // B. Check Vault Balance
-        if (collab.campaign.escrowBalance && collab.campaign.escrowBalance < payoutAmount) {
-            throw new Error("Insufficient funds in Campaign Escrow Vault");
+        if (!payoutAmount || payoutAmount <= 0) {
+            throw new Error("No payout amount set for this collaboration. Please set an agreed price before releasing.");
         }
 
-        // C. Execute Financial Logic
+        // B. Check escrow balance — always enforce, use Number() to handle Prisma Decimal
+        const escrowBalance = Number(collab.campaign.escrowBalance || 0);
+        if (escrowBalance < payoutAmount) {
+            throw new Error(
+                `Insufficient funds in Campaign Escrow Vault. Available: $${escrowBalance.toFixed(2)}, Required: $${payoutAmount.toFixed(2)}`
+            );
+        }
 
-        // 1. Debit Campaign Escrow
+        const campaignTitle = collab.campaign.title || 'Campaign';
+        const brandId = collab.campaign.brandId;
+
+        // C. Execute Financial Logic atomically
+
+        // 1. Debit campaign escrowBalance and increment totalReleased
         await tx.campaign.update({
             where: { id: collab.campaignId },
             data: {
-                escrowBalance: { decrement: payoutAmount }
-            }
+                escrowBalance: { decrement: payoutAmount },
+                totalReleased: { increment: payoutAmount },
+            },
         });
 
-        // 2. Credit Creator (Create Transaction Record)
-        const transaction = await tx.transaction.create({
+        // 2. Update CampaignEscrow ledger to keep vault dashboard in sync
+        await tx.campaignEscrow.updateMany({
+            where: { campaignId: collab.campaignId },
+            data: {
+                releasedAmount: { increment: payoutAmount },
+                remainingAmount: { decrement: payoutAmount },
+            },
+        });
+
+        // 3. Create a brand-side Payment debit so vault balance decreases
+        //    _computeVaultBalance() sums Transactions for the brand — without this
+        //    the vault shows no change after payout.
+        await tx.transaction.create({
+            data: {
+                userId: brandId,
+                campaignId: collab.campaignId,
+                amount: payoutAmount,
+                type: 'Payment',
+                status: 'Completed',
+                description: `Escrow release to creator for "${campaignTitle}"`,
+                transactionDate: new Date(),
+            },
+        });
+
+        // 4. Create an EscrowLedger Release record for audit trail
+        await tx.escrowLedger.create({
+            data: {
+                brandId,
+                campaignId: collab.campaignId,
+                type: 'Release',
+                amount: payoutAmount,
+                status: 'Completed',
+                description: `Creator payout: $${payoutAmount.toFixed(2)} for collab #${collab.id}`,
+            },
+        });
+
+        // 5. Credit creator wallet (Transaction record for creator's earnings view)
+        const creatorTx = await tx.transaction.create({
             data: {
                 userId: collab.creatorId,
                 campaignId: collab.campaignId,
                 amount: payoutAmount,
-                type: 'Payment', // Enum: Payment
+                type: 'Payment',
                 status: 'Completed',
-                description: `Escrow Release for ${collab.submissionTitle || 'Collaboration'}`
-            }
+                description: `Payment received for "${campaignTitle}"`,
+                transactionDate: new Date(),
+            },
         });
 
-        // 3. Mark Collaboration as Paid
+        // 6. Mark collaboration as Paid
         await tx.campaignCollaboration.update({
             where: { id: collab.id },
             data: {
                 payoutReleased: true,
                 payoutDate: new Date(),
                 status: 'Paid',
-                escrowStatus: 'Released'
-            }
+            },
         });
 
-        // 4. Trigger Stats Recalculation (Off-transaction)
-        // We don't await this to keep the payout fast, but we fire-and-forget
+        console.log(
+            `[Concierge] Payout executed: $${payoutAmount.toFixed(2)} from campaign ${collab.campaignId} ` +
+            `to creator ${collab.creatorId} (collab #${collab.id})`
+        );
+
+        // 7. Trigger stats recalculation off-transaction (fire-and-forget)
         recalculateCreatorStats(collab.creatorId).catch(err =>
             console.error(`[Verification] Recalculate failed for ${collab.creatorId}:`, err)
         );
@@ -148,13 +204,13 @@ export const executePayout = async (collaborationId, userId) => {
         return {
             status: 'success',
             message: 'Funds released successfully',
-            transactionId: transaction.id,
+            transactionId: creatorTx.id,
             amountReleased: payoutAmount,
-            newEscrowBalance: Number(collab.campaign.escrowBalance) - Number(payoutAmount)
+            newEscrowBalance: escrowBalance - payoutAmount,
         };
     }, {
         maxWait: 5000,
-        timeout: 15000 // Higher timeout for financial operations
+        timeout: 15000, // Higher timeout for financial operations
     });
 };
 

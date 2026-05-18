@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 /**
  * @deprecated This component has been replaced by `features/earnings/pages/EarningsOverview.jsx`.
  * Safe to delete after confirming no other references remain.
@@ -36,7 +37,7 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
+    
     LineChart,
     Line
 } from "recharts";
@@ -289,7 +290,7 @@ const CreatorFinancials = () => {
                     </div>
 
                     <div className="relative z-10" style={{ width: "100%", height: 300, minHeight: 300 }}>
-                        <ResponsiveContainer width="99%" height="100%">
+                        <SafeChart height="100%">
                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
@@ -307,7 +308,7 @@ const CreatorFinancials = () => {
                                 />
                                 <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorEarnings)" />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </SafeChart>
                     </div>
                 </motion.div>
 

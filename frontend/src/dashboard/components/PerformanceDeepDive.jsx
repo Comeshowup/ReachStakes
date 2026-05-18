@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import React from "react";
 import {
     BarChart,
@@ -6,7 +7,7 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
+    
     AreaChart,
     Area
 } from "recharts";
@@ -74,7 +75,7 @@ const PerformanceDeepDive = () => {
                         Views & Reach
                     </h3>
                     <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <SafeChart height="100%">
                             <AreaChart data={DATA}>
                                 <defs>
                                     <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
@@ -91,7 +92,7 @@ const PerformanceDeepDive = () => {
                                 />
                                 <Area type="monotone" dataKey="views" stroke="#6366f1" fillOpacity={1} fill="url(#colorViews)" strokeWidth={3} />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </SafeChart>
                     </div>
                 </div>
 
@@ -101,7 +102,7 @@ const PerformanceDeepDive = () => {
                         Conversions & Clicks
                     </h3>
                     <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <SafeChart height="100%">
                             <BarChart data={DATA}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
@@ -112,7 +113,7 @@ const PerformanceDeepDive = () => {
                                 />
                                 <Bar dataKey="clicks" fill="#a855f7" radius={[4, 4, 0, 0]} />
                             </BarChart>
-                        </ResponsiveContainer>
+                        </SafeChart>
                     </div>
                 </div>
             </div>

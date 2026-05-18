@@ -118,6 +118,7 @@ function App() {
         <Route path="support" element={<SupportCenterPage />} />
         <Route path="contact" element={<Navigate to="/brand/support" replace />} />
         <Route path="content-hub" element={<ContentHub />} />
+        <Route path="creators" element={<CreatorDiscovery />} />
       </Route>
 
       {/* Creator Dashboard Routes — Workflow-based architecture */}

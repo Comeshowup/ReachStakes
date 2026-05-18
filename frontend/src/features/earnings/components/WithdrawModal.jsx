@@ -5,7 +5,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DollarSign, X, AlertCircle, CheckCircle2, Loader2, Shield } from 'lucide-react';
-import { useWithdraw } from '../hooks/useEarnings';
+import { useWithdraw, EARNINGS_KEYS } from '../hooks/useEarnings';
+import { useQueryClient } from '@tanstack/react-query';
 
 const fmt$ = (v) =>
   `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -17,6 +18,7 @@ const WithdrawModal = ({ isOpen, onClose, availableBalance = 0 }) => {
   const [step, setStep] = useState('input'); // input | confirm | success | error
   const [error, setError] = useState(null);
   const withdraw = useWithdraw();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isOpen) {
@@ -45,9 +47,24 @@ const WithdrawModal = ({ isOpen, onClose, availableBalance = 0 }) => {
   const handleConfirm = async () => {
     try {
       await withdraw.mutateAsync(parsedAmount);
+      // Immediately refresh earnings data so balance updates
+      queryClient.invalidateQueries({ queryKey: EARNINGS_KEYS.summary });
+      queryClient.invalidateQueries({ queryKey: ['payout-history'] });
       setStep('success');
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Withdrawal failed');
+      // Extract the most specific error message from the backend response
+      const backendMessage = err?.response?.data?.message;
+      const statusCode = err?.response?.status;
+      let displayMessage = backendMessage || err?.message || 'Withdrawal failed';
+
+      // Add context for specific error codes
+      if (statusCode === 409) {
+        displayMessage = backendMessage || 'You already have a withdrawal being processed.';
+      } else if (statusCode === 502) {
+        displayMessage = backendMessage || 'Payment processing temporarily unavailable. Please try again.';
+      }
+
+      setError(displayMessage);
       setStep('error');
     }
   };

@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -6,7 +7,7 @@ import {
     XAxis,
     YAxis,
     Tooltip,
-    ResponsiveContainer,
+    
     Area,
     AreaChart
 } from 'recharts';
@@ -157,7 +158,7 @@ const PredictiveAnalytics = () => {
                     <span className="text-xs text-brand-sky">Projected: 9.1x</span>
                 </div>
                 <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <SafeChart height="100%">
                         <AreaChart data={ROAS_PROJECTIONS}>
                             <defs>
                                 <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
@@ -210,7 +211,7 @@ const PredictiveAnalytics = () => {
                                 name="Actual"
                             />
                         </AreaChart>
-                    </ResponsiveContainer>
+                    </SafeChart>
                 </div>
                 <div className="flex items-center justify-center gap-6 mt-2">
                     <div className="flex items-center gap-2 text-xs">

@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 /**
  * @deprecated Replaced by `features/earnings/pages/TransactionsPage.jsx`.
  * Safe to delete after confirming no other references remain.
@@ -28,7 +29,7 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
+    
     BarChart,
     Bar
 } from "recharts";
@@ -287,7 +288,7 @@ const InvoiceCenter = () => {
                     Monthly Earnings
                 </h3>
                 <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <SafeChart height="100%">
                         <BarChart data={monthlyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                             <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} />
@@ -303,7 +304,7 @@ const InvoiceCenter = () => {
                             />
                             <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} />
                         </BarChart>
-                    </ResponsiveContainer>
+                    </SafeChart>
                 </div>
             </motion.div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import toast from 'react-hot-toast';
 import paymentService from '../../../api/paymentService';
+import { fundCampaignEscrow } from '../../../api/escrowService';
 import { formatCurrency } from '../../../utils/formatCurrency';
 
 /**
@@ -8,7 +9,7 @@ import { formatCurrency } from '../../../utils/formatCurrency';
  * Displays campaign info, calculates fees, and initiates Tazapay payment.
  * Uses vault-modal design tokens for visual consistency.
  */
-function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
+function VaultFundModal({ isOpen, onClose, campaign, availableBalance = 0, onFundSuccess }) {
     const [amount, setAmount] = useState('');
     const [fees, setFees] = useState(null);
     const [loadingFees, setLoadingFees] = useState(false);
@@ -16,11 +17,12 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
     const [agreed, setAgreed] = useState(false);
     const [error, setError] = useState('');
     const [redirecting, setRedirecting] = useState(false);
+    const [fundMethod, setFundMethod] = useState('gateway'); // 'vault' or 'gateway'
 
     // Reset state when modal opens/closes
     useEffect(() => {
         if (isOpen && campaign) {
-            const remaining = Math.max(0, (campaign.targetBudget || 0) - (campaign.fundedAmount || 0));
+            const remaining = Math.max(0, (campaign.requiredAmount || 0) - (campaign.fundedAmount || 0));
             setAmount(remaining > 0 ? remaining.toFixed(2) : '');
             setFees(null);
             setAgreed(false);
@@ -72,7 +74,7 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
         // Must fund at least the full remaining balance
         const rem = Math.max(
             0,
-            (campaign?.targetBudget || 0) - (campaign?.fundedAmount || 0)
+            (campaign?.requiredAmount || 0) - (campaign?.fundedAmount || 0)
         );
         if (numAmt < rem) {
             setError(
@@ -90,31 +92,45 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
         setError('');
 
         try {
-            const result = await paymentService.initiateCampaignPayment(
-                campaign.id,
-                numAmt
-            );
+            if (fundMethod === 'vault') {
+                if (numAmt > availableBalance) {
+                    setError('Insufficient vault balance for this allocation.');
+                    setSubmitting(false);
+                    return;
+                }
 
-            if (result?.url) {
-                setRedirecting(true);
-                toast.success('Redirecting to payment gateway...');
-                window.location.href = result.url;
-            } else {
+                // Call internal allocation endpoint
+                await fundCampaignEscrow(campaign.id, numAmt);
+                toast.success('Funds successfully allocated from vault!');
                 onFundSuccess?.(campaign.id, numAmt);
-                toast.success(`Campaign "${campaign.name}" funded successfully!`);
                 onClose();
+            } else {
+                // Initiate payment via Tazapay
+                const result = await paymentService.initiateCampaignPayment(
+                    campaign.id,
+                    numAmt
+                );
+
+                if (result?.url) {
+                    setRedirecting(true);
+                    window.location.href = result.url;
+                } else {
+                    // Direct funding (fallback)
+                    onFundSuccess?.(campaign.id, numAmt);
+                    onClose();
+                }
             }
         } catch (err) {
             const userMessage = err?.userMessage || err?.message || 'Payment initiation failed. Please try again.';
             setError(userMessage);
             setSubmitting(false);
         }
-    }, [amount, agreed, campaign, onFundSuccess, onClose]);
+    }, [amount, agreed, campaign, onFundSuccess, onClose, fundMethod, availableBalance]);
 
     if (!isOpen || !campaign) return null;
 
     const numAmount = parseFloat(amount) || 0;
-    const targetBudget = campaign.targetBudget || 0;
+    const targetBudget = campaign.requiredAmount || 0;
     const fundedAmount = campaign.fundedAmount || 0;
     const remaining = Math.max(0, targetBudget - fundedAmount);
     const fundedPct = targetBudget > 0 ? Math.min(100, (fundedAmount / targetBudget) * 100) : 0;
@@ -140,24 +156,57 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
                     </button>
                 </div>
 
+                {/* ─── Form ─── */}
                 <form onSubmit={handleSubmit}>
                     <div className="vault-modal__body">
                         {/* ─── Campaign Progress Card ─── */}
                         <div className="vault-fund-modal__progress-card">
-                            <div className="vault-fund-modal__progress-stats">
-                                <div className="vault-fund-modal__stat">
-                                    <span className="vault-fund-modal__stat-label">Target Budget</span>
-                                    <span className="vault-fund-modal__stat-value">{formatCurrency(targetBudget)}</span>
+                            <div className="ev-modal__info-row">
+                                <div className="ev-modal__info-item">
+                                    <span className="ev-modal__info-label">Available Liquidity</span>
+                                    <span className={`ev-modal__info-value ${availableBalance > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                        {formatCurrency(availableBalance)}
+                                    </span>
                                 </div>
-                                <div className="vault-fund-modal__stat">
-                                    <span className="vault-fund-modal__stat-label">Already Funded</span>
-                                    <span className="vault-fund-modal__stat-value vault-fund-modal__stat-value--success">{formatCurrency(fundedAmount)}</span>
-                                </div>
-                                <div className="vault-fund-modal__stat">
-                                    <span className="vault-fund-modal__stat-label">Remaining</span>
-                                    <span className="vault-fund-modal__stat-value vault-fund-modal__stat-value--warning">{formatCurrency(remaining)}</span>
+                                <div className="ev-modal__info-item">
+                                    <span className="ev-modal__info-label">Campaign Gap</span>
+                                    <span className="ev-modal__info-value text-amber-500">{formatCurrency(remaining)}</span>
                                 </div>
                             </div>
+                            
+                            {/* Funding Method */}
+                            <div className="ev-modal__section">
+                                <h4 className="ev-modal__section-title">Funding Method</h4>
+                                <div className="ev-modal__methods">
+                                    <button
+                                        className={`ev-modal__method ${fundMethod === 'vault' ? 'ev-modal__method--active' : ''} ${availableBalance < numAmount ? 'ev-modal__method--disabled' : ''}`}
+                                        onClick={() => availableBalance >= numAmount && setFundMethod('vault')}
+                                        type="button"
+                                        disabled={availableBalance < numAmount}
+                                    >
+                                        <span className="material-symbols-outlined">account_balance_wallet</span>
+                                        <div className="ev-modal__method-content">
+                                            <span className="ev-modal__method-name">Vault Balance</span>
+                                            <span className="ev-modal__method-desc">Allocate existing liquidity</span>
+                                        </div>
+                                        {fundMethod === 'vault' && <span className="material-symbols-outlined ev-modal__method-check">check_circle</span>}
+                                    </button>
+
+                                    <button
+                                        className={`ev-modal__method ${fundMethod === 'gateway' ? 'ev-modal__method--active' : ''}`}
+                                        onClick={() => setFundMethod('gateway')}
+                                        type="button"
+                                    >
+                                        <span className="material-symbols-outlined">payments</span>
+                                        <div className="ev-modal__method-content">
+                                            <span className="ev-modal__method-name">External Payment</span>
+                                            <span className="ev-modal__method-desc">Pay via Card or Wire</span>
+                                        </div>
+                                        {fundMethod === 'gateway' && <span className="material-symbols-outlined ev-modal__method-check">check_circle</span>}
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Progress Bar */}
                             <div className="vault-fund-modal__progress-bar">
                                 <div className="vault-fund-modal__progress-track">
@@ -199,20 +248,8 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
                                     </div>
                                 </label>
 
-                                {/* Quick Fill */}
-                                {remaining > 0 && (
-                                    <button
-                                        type="button"
-                                        className="vault-fund-modal__quick-fill"
-                                        onClick={() => { setAmount(remaining.toFixed(2)); setError(''); }}
-                                    >
-                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>bolt</span>
-                                        Fill remaining: {formatCurrency(remaining)}
-                                    </button>
-                                )}
-
                                 {/* ─── Fee Breakdown ─── */}
-                                {numAmount > 0 && (
+                                {fundMethod === 'gateway' && numAmount > 0 && (
                                     <div className="vault-modal__fee-breakdown">
                                         <p className="vault-modal__fee-title">Fee Breakdown</p>
                                         <div className="vault-modal__fee-row vault-modal__fee-row--sub">
@@ -254,7 +291,12 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
                                     />
                                     <div className="vault-fund-modal__terms-content">
                                         <span className="material-symbols-outlined vault-fund-modal__terms-icon">shield</span>
-                                        <span>I agree that funds will be held in escrow and released only upon milestone approval.</span>
+                                        <span>
+                                            {fundMethod === 'vault'
+                                                ? `Confirming this will allocate ${formatCurrency(numAmount)} from your vault to this campaign escrow. This action is immediate.`
+                                                : `I agree to the escrow terms and acknowledge that a processing fee will be added to the total charge.`
+                                            }
+                                        </span>
                                     </div>
                                 </label>
                             </>
@@ -270,28 +312,23 @@ function VaultFundModal({ isOpen, onClose, campaign, onFundSuccess }) {
                             Cancel
                         </button>
                         {!isFullyFunded && (
-                            <button
-                                type="submit"
-                                className="vault-modal__btn vault-modal__btn--submit"
-                                disabled={!isValid || submitting || redirecting}
-                            >
-                                {redirecting ? (
-                                    <>
-                                        <span className="vault-modal__spinner" />
-                                        Redirecting...
-                                    </>
-                                ) : submitting ? (
-                                    <>
-                                        <span className="vault-modal__spinner" />
-                                        Processing...
-                                    </>
+                            <>
+                                
+                                <button
+                                    className={`ev-modal__btn ev-modal__btn--primary ${(!agreed || submitting || redirecting || (fundMethod === 'vault' && availableBalance < numAmount)) ? 'ev-modal__btn--disabled' : ''}`}
+                                    type="submit"
+                                    disabled={!agreed || submitting || redirecting || (fundMethod === 'vault' && availableBalance < numAmount)}
+                                >
+                                {submitting || redirecting ? (
+                                    <span className="ev-modal__btn-spinner" />
                                 ) : (
                                     <>
                                         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>shield</span>
-                                        Fund Escrow {numAmount > 0 ? formatCurrency(numAmount) : ''}
+                                        {fundMethod === 'vault' ? 'Allocate from Vault' : `Fund Escrow ${numAmount > 0 ? formatCurrency(numAmount) : ''}`}
                                     </>
                                 )}
-                            </button>
+                                </button>
+                            </>
                         )}
                     </div>
                 </form>

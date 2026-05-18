@@ -1800,3 +1800,133 @@
     cursor: not-allowed;
     box-shadow: none;
 }
+/* ─── Vault Funding Modal Enhancements ─── */
+.ev-modal__section {
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.ev-modal__section-title {
+    font-size: 0.75rem;
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+.ev-modal__methods {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.ev-modal__method {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--bd-radius-lg);
+    background: var(--bd-bg-tertiary);
+    border: 1px solid var(--bd-border-default);
+    cursor: pointer;
+    text-align: left;
+    transition: all 150ms ease;
+    position: relative;
+    width: 100%;
+}
+
+.ev-modal__method:hover:not(:disabled) {
+    border-color: var(--bd-accent);
+    background: color-mix(in srgb, var(--bd-accent) 4%, var(--bd-bg-tertiary));
+}
+
+.ev-modal__method--active {
+    border-color: var(--bd-accent);
+    background: color-mix(in srgb, var(--bd-accent) 8%, var(--bd-bg-tertiary));
+    box-shadow: 0 0 0 1px var(--bd-accent);
+}
+
+.ev-modal__method--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.8);
+}
+
+.ev-modal__method .material-symbols-outlined {
+    font-size: 24px;
+    color: var(--bd-text-muted);
+}
+
+.ev-modal__method--active .material-symbols-outlined {
+    color: var(--bd-accent);
+}
+
+.ev-modal__method-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ev-modal__method-name {
+    font-size: 0.875rem;
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-primary);
+}
+
+.ev-modal__method-desc {
+    font-size: 0.6875rem;
+    color: var(--bd-text-muted);
+}
+
+.ev-modal__method-check {
+    position: absolute !important;
+    top: 8px;
+    right: 8px;
+    font-size: 16px !important;
+    color: var(--bd-accent) !important;
+}
+
+.ev-modal__info-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.ev-modal__info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ev-modal__info-label {
+    font-size: 0.6875rem;
+    color: var(--bd-text-muted);
+    font-weight: var(--bd-font-weight-medium);
+}
+
+.ev-modal__info-value {
+    font-size: 1.125rem;
+    font-weight: var(--bd-font-weight-bold);
+    color: var(--bd-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ev-modal__btn-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ev-spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes ev-spin {
+    to { transform: rotate(360deg); }
+}
+
+.ev-modal__btn--primary.ev-modal__btn--disabled {
+    pointer-events: none;
+    opacity: 0.6;
+}

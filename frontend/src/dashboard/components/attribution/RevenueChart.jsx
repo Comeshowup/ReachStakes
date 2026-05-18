@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -7,7 +8,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, Calendar } from 'lucide-react';
 import api from '../../../api/axios';
@@ -162,7 +162,7 @@ const RevenueChart = ({ campaignId }) => {
             </div>
 
             <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+                <SafeChart height="100%">
                     <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -207,7 +207,7 @@ const RevenueChart = ({ campaignId }) => {
                             }}
                         />
                     </AreaChart>
-                </ResponsiveContainer>
+                </SafeChart>
             </div>
 
             {/* Stats Summary */}

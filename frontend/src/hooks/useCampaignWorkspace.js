@@ -89,9 +89,17 @@ export const useCampaignWorkspace = (campaignId) => {
     // Derive payment info
     const payment = campaign
         ? {
-              campaignFee: campaign.rate || campaign.campaign?.budget || null,
+              // agreedPrice is the per-video/per-collaboration negotiated fee
+              agreedPrice: campaign.agreedPrice ?? null,
+              campaignFee: campaign.agreedPrice ?? campaign.rate ?? campaign.campaign?.budget ?? null,
               escrowStatus: campaign.escrowStatus || (campaign.campaign?.escrowBalance > 0 ? 'Locked' : 'Not Funded'),
-              paymentStatus: campaign.paymentStatus || 'Awaiting Approval',
+              paymentStatus: campaign.payoutReleased
+                  ? 'Released'
+                  : campaign.status === 'Approved'
+                  ? 'Pending Release'
+                  : 'Awaiting Approval',
+              payoutReleased: campaign.payoutReleased || false,
+              payoutDate: campaign.payoutDate || null,
               milestones: campaign.milestones || [],
           }
         : null;

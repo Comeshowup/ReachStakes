@@ -1,3 +1,4 @@
+import SafeChart from '@/components/SafeChart';
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Tooltip } from 'react-tooltip';
@@ -13,7 +14,7 @@ import {
 import {
     AreaChart,
     Area,
-    ResponsiveContainer,
+    
 } from 'recharts';
 import { formatCurrency } from '../../../utils/formatCurrency';
 
@@ -122,7 +123,7 @@ const SparklineChart = ({ data = [], color, height = 36, id }) => {
 
     return (
         <div className="ev-kpi__sparkline" aria-hidden="true">
-            <ResponsiveContainer width="100%" height={height}>
+            <SafeChart height={height}>
                 <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                     <defs>
                         <linearGradient id={`kpi-gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -140,7 +141,7 @@ const SparklineChart = ({ data = [], color, height = 36, id }) => {
                         isAnimationActive={false}
                     />
                 </AreaChart>
-            </ResponsiveContainer>
+            </SafeChart>
         </div>
     );
 };

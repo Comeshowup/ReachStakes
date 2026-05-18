@@ -4,8 +4,7 @@
  */
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, Calendar, ArrowRight, Building2, Loader2, CheckCircle } from 'lucide-react';
-import { useWithdraw } from '../hooks/useEarnings';
+import { DollarSign, Calendar, ArrowRight, Building2 } from 'lucide-react';
 import SecureOnboardingModal from '../../../dashboard/components/SecureOnboardingModal';
 
 const fmt$ = (v) =>
@@ -36,6 +35,7 @@ export const WithdrawCardSkeleton = () => (
  *   bankConnected: boolean;
  *   loading?: boolean;
  *   onBankConnected?: (data: any) => void;
+ *   onWithdrawClick?: () => void;
  * }} props
  */
 const WithdrawCard = memo(({
@@ -44,21 +44,9 @@ const WithdrawCard = memo(({
   bankConnected = false,
   loading = false,
   onBankConnected,
+  onWithdrawClick,
 }) => {
   const [bankModalOpen, setBankModalOpen] = useState(false);
-  const [withdrawSuccess, setWithdrawSuccess] = useState(false);
-  const withdraw = useWithdraw();
-
-  const handleWithdraw = async () => {
-    if (availableBalance <= 0) return;
-    try {
-      await withdraw.mutateAsync(availableBalance);
-      setWithdrawSuccess(true);
-      setTimeout(() => setWithdrawSuccess(false), 3000);
-    } catch {
-      // Error toast could be added here; for now the button reverts
-    }
-  };
 
   if (loading) return <WithdrawCardSkeleton />;
 
@@ -96,45 +84,22 @@ const WithdrawCard = memo(({
                 </div>
               )}
 
-              <AnimatePresence mode="wait">
-                {withdrawSuccess ? (
-                  <motion.div
-                    key="success"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}
-                  >
-                    <CheckCircle size={15} />
-                    Withdrawal requested!
-                  </motion.div>
-                ) : (
-                  <motion.button
-                    key="btn"
-                    onClick={handleWithdraw}
-                    disabled={availableBalance <= 0 || withdraw.isPending}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2"
-                    style={{
-                      background: availableBalance > 0 ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--bd-surface-input)',
-                      color: availableBalance > 0 ? '#fff' : 'var(--bd-text-secondary)',
-                      boxShadow: availableBalance > 0 ? '0 4px 14px rgba(16,185,129,0.3)' : 'none',
-                      cursor: availableBalance <= 0 ? 'not-allowed' : 'pointer',
-                      opacity: availableBalance <= 0 ? 0.6 : 1,
-                    }}
-                    title={availableBalance <= 0 ? 'No funds available to withdraw' : undefined}
-                  >
-                    {withdraw.isPending ? <Loader2 size={14} className="animate-spin" /> : <DollarSign size={14} />}
-                    {withdraw.isPending ? 'Processing…' : 'Withdraw Funds'}
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              {withdraw.isError && (
-                <p className="text-xs mt-2 text-center" style={{ color: '#f87171' }}>
-                  Withdrawal failed. Please try again or contact support.
-                </p>
-              )}
+              <motion.button
+                onClick={onWithdrawClick}
+                disabled={availableBalance <= 0}
+                className="w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2"
+                style={{
+                  background: availableBalance > 0 ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--bd-surface-input)',
+                  color: availableBalance > 0 ? '#fff' : 'var(--bd-text-secondary)',
+                  boxShadow: availableBalance > 0 ? '0 4px 14px rgba(16,185,129,0.3)' : 'none',
+                  cursor: availableBalance <= 0 ? 'not-allowed' : 'pointer',
+                  opacity: availableBalance <= 0 ? 0.6 : 1,
+                }}
+                title={availableBalance <= 0 ? 'No funds available to withdraw' : undefined}
+              >
+                <DollarSign size={14} />
+                Withdraw Funds
+              </motion.button>
             </>
           ) : (
             /* ── No bank connected view ── */
@@ -178,3 +143,4 @@ const WithdrawCard = memo(({
 
 WithdrawCard.displayName = 'WithdrawCard';
 export default WithdrawCard;
+

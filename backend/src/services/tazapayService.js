@@ -293,6 +293,17 @@ export const tazapayService = {
         try {
             const result = await tazapayApiRequest('post', '/v3/checkout', payload);
             console.log('Tazapay Checkout Response ID:', result?.data?.id || result?.id || 'unknown');
+
+            // Rewrite deprecated checkout domain: digitrade.app → tazapay.com
+            // Old API keys return checkout-sandbox.digitrade.app (NXDOMAIN/dead).
+            // checkout-sandbox.tazapay.com is the current live domain (same Tazapay platform).
+            if (result?.data?.url) {
+                result.data.url = result.data.url.replace(
+                    'checkout-sandbox.digitrade.app',
+                    'checkout-sandbox.tazapay.com'
+                );
+            }
+
             return result;
         } catch (error) {
             throw parseTazapayApiError(error, 'creating checkout session');

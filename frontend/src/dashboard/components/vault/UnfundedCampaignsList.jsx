@@ -30,7 +30,7 @@ function UnfundedCampaignsList({ campaigns, isLoading, onFund }) {
 
     // Filter to only unfunded/partially funded campaigns
     const unfundedCampaigns = (campaigns || []).filter(c => {
-        const target = c.targetBudget || 0;
+        const target = c.requiredAmount || 0;
         const funded = c.fundedAmount || 0;
         return target > 0 && funded < target;
     });
@@ -69,7 +69,7 @@ function UnfundedCampaignsList({ campaigns, isLoading, onFund }) {
                     </div>
                 ) : (
                     unfundedCampaigns.map(campaign => {
-                        const target = campaign.targetBudget || 0;
+                        const target = campaign.requiredAmount || 0;
                         const funded = campaign.fundedAmount || 0;
                         const remaining = Math.max(0, target - funded);
                         const pct = target > 0 ? Math.min(100, (funded / target) * 100) : 0;

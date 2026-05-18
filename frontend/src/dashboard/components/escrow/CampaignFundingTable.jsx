@@ -23,7 +23,8 @@ import { formatCurrency } from '../../../utils/formatCurrency';
 
 // ─── Health logic ────────────────────────────────
 const getHealthIndicator = (campaign) => {
-    const { targetBudget, fundedAmount, releasedAmount } = campaign;
+    const { requiredAmount, fundedAmount, releasedAmount } = campaign;
+    const targetBudget = requiredAmount || 0;
     const balance = (fundedAmount || 0) - (releasedAmount || 0);
 
     if (!targetBudget || targetBudget === 0) {
@@ -54,7 +55,7 @@ const STATUS_STYLES = {
 // ─── Expanded Row ────────────────────────────────
 const ExpandedContent = ({ campaign, onFund, onRelease }) => {
     const milestones = campaign.milestones || [];
-    const gap = Math.max(0, (campaign.targetBudget || 0) - (campaign.fundedAmount || 0));
+    const gap = Math.max(0, (campaign.requiredAmount || 0) - (campaign.fundedAmount || 0));
     const recentTx = campaign.recentTransactions || [];
 
     return (
@@ -114,7 +115,7 @@ const ExpandedContent = ({ campaign, onFund, onRelease }) => {
                     <div className="ev-exp__kpi-grid">
                         <div className="ev-exp__kpi">
                             <span className="ev-exp__kpi-label">Target</span>
-                            <span className="ev-exp__kpi-value">{formatCurrency(campaign.targetBudget, { whole: true })}</span>
+                            <span className="ev-exp__kpi-value">{formatCurrency(campaign.requiredAmount || 0, { whole: true })}</span>
                         </div>
                         <div className="ev-exp__kpi">
                             <span className="ev-exp__kpi-label">Funded</span>
@@ -195,7 +196,7 @@ const SortHeader = ({ label, sortKey, currentSort, onSort, align }) => {
 const CampaignRow = ({ campaign, isExpanded, onToggle, onFund, onRelease }) => {
     const statusStyle = STATUS_STYLES[campaign.status] || STATUS_STYLES.Draft;
     const health = getHealthIndicator(campaign);
-    const target = campaign.targetBudget || 0;
+    const target = campaign.requiredAmount || 0;
     const funded = campaign.fundedAmount || 0;
     const released = campaign.releasedAmount || 0;
     const locked = Math.max(0, funded - released);
@@ -363,7 +364,7 @@ const CampaignFundingTable = ({ campaigns, loading, onFund, onRelease }) => {
                                 <th className="ev-th ev-th--expand" aria-label="Expand" />
                                 <th className="ev-th">Campaign</th>
                                 <th className="ev-th">Status</th>
-                                <SortHeader label="Target" sortKey="targetBudget" currentSort={sort} onSort={handleSort} align="right" />
+                                <SortHeader label="Target" sortKey="requiredAmount" currentSort={sort} onSort={handleSort} align="right" />
                                 <SortHeader label="Funded" sortKey="fundedAmount" currentSort={sort} onSort={handleSort} align="right" />
                                 <SortHeader label="Released" sortKey="releasedAmount" currentSort={sort} onSort={handleSort} align="right" />
                                 <th className="ev-th ev-th--num">Locked</th>

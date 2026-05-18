@@ -551,6 +551,87 @@ export const getTransactionHistory = async (req, res) => {
     }
 };
 
+/**
+ * [DEV / SANDBOX ONLY] — Simulate a successful payment for a pending transaction.
+ * This replicates exactly what the Tazapay webhook does when a payment succeeds,
+ * without needing the checkout-sandbox.digitrade.app domain to be reachable.
+ *
+ * ⚠️  This endpoint is DISABLED in production.
+ */
+export const simulatePaymentSuccess = async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ error: 'Not found' });
+    }
+
+    try {
+        const { transactionId } = req.params;
+        const userId = req.user.id;
+
+        const transaction = await prisma.transaction.findFirst({
+            where: { id: parseInt(transactionId), userId },
+            include: { campaign: { select: { id: true, title: true } } },
+        });
+
+        if (!transaction) {
+            return sendError(res, 404, 'Transaction not found', 'NOT_FOUND');
+        }
+        if (transaction.status === 'Completed') {
+            return res.json({ status: 'Completed', message: 'Transaction already completed.' });
+        }
+        if (transaction.status === 'Failed') {
+            return sendError(res, 400, 'Transaction already failed — create a new checkout session.', 'ALREADY_FAILED');
+        }
+
+        // Mark transaction as completed (mirrors webhook handler)
+        await prisma.transaction.update({
+            where: { id: transaction.id },
+            data: {
+                status: 'Completed',
+                processedAt: new Date(),
+                gatewayStatus: 'simulated_success',
+                receivedAmount: transaction.netAmount || transaction.amount,
+                receivedCurrency: 'USD',
+            },
+        });
+
+        // Credit campaign escrow balance
+        if (transaction.campaignId) {
+            const incrementAmount = transaction.netAmount || transaction.amount || 0;
+            if (Number(incrementAmount) > 0) {
+                await prisma.campaign.update({
+                    where: { id: transaction.campaignId },
+                    data: {
+                        escrowBalance: { increment: incrementAmount },
+                        totalFunded: { increment: incrementAmount },
+                        escrowFundedAt: new Date(),
+                        isGuaranteedPay: true,
+                    },
+                });
+                console.log(`[DEV] Simulated payment: Campaign ${transaction.campaignId} credited +$${incrementAmount}`);
+            }
+        }
+
+        // Notify brand
+        createNotification(
+            transaction.userId,
+            'payment_received',
+            'Campaign Funded Successfully (Simulated)',
+            `Your campaign escrow was funded. Amount: $${parseFloat(transaction.netAmount || transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            { campaignId: transaction.campaignId, transactionId: transaction.id }
+        );
+
+        return res.json({
+            status: 'Completed',
+            message: '[DEV] Payment simulated successfully. Campaign escrow credited.',
+            transactionId: transaction.id,
+            campaignId: transaction.campaignId,
+        });
+    } catch (error) {
+        console.error('[DEV] Simulate Payment Error:', error);
+        sendError(res, 500, 'Simulation failed', 'INTERNAL');
+    }
+};
+
 // Get single transaction status
 export const getTransactionStatus = async (req, res) => {
     try {
