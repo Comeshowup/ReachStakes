@@ -67,6 +67,20 @@ const getAuthHeader = () => {
     return `Basic ${token}`;
 };
 
+const getBankCodeLabel = (code) => {
+    const labels = {
+        aba_code: 'Routing Number (ABA)',
+        swift_code: 'SWIFT/BIC Code',
+        ifsc_code: 'IFSC Code',
+        sort_code: 'Sort Code',
+        bsb_code: 'BSB Code',
+        bank_code: 'Bank Code',
+        branch_code: 'Branch Code',
+    };
+
+    return code ? (labels[code] || code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())) : null;
+};
+
 /**
  * Custom error class for Tazapay API errors.
  * Preserves the original error details for frontend consumption.
@@ -507,9 +521,61 @@ export const tazapayService = {
     // PAYOUT / BENEFICIARY METHODS
     // ============================================
 
-    getBankFieldsForCountry: (country) => {
+    getPayoutBankMetadata: async (country, currency) => {
+        try {
+            return await tazapayApiRequest('get', `/v3/metadata/payout/bank?country=${encodeURIComponent(country)}&currency=${encodeURIComponent(currency)}`);
+        } catch (error) {
+            throw parseTazapayApiError(error, 'fetching payout bank metadata');
+        }
+    },
+
+    getBankFieldsForCountry: async (country, currency = 'USD') => {
+        try {
+            const result = await tazapayService.getPayoutBankMetadata(country, currency);
+            const payoutMethods = result?.data?.payout_methods || [];
+            const localMethod = payoutMethods.find(method => method.payout_type === 'local') || payoutMethods[0];
+
+            if (localMethod) {
+                const requiredBankFields = localMethod.required_bank_fields || [];
+                const recommendedBankFields = localMethod.recommended_fields?.recommended_bank_fields || [];
+                const requiredBankCodes = localMethod.required_bank_codes || [];
+                const recommendedBankCodes = localMethod.recommended_fields?.recommended_bank_codes || [];
+                const requiredBeneficiaryFields = localMethod.required_beneficiary_fields || [];
+                const recommendedBeneficiaryFields = localMethod.recommended_fields?.recommended_beneficiary_fields || [];
+                const bankFields = [...new Set([...requiredBankFields, ...recommendedBankFields])];
+                const bankCodes = [...new Set([...requiredBankCodes, ...recommendedBankCodes])];
+
+                return {
+                    source: 'tazapay',
+                    payoutType: localMethod.payout_type,
+                    fundTransferNetworks: localMethod.fund_transfer_networks || [],
+                    transferLimit: localMethod.transfer_limit || null,
+                    beneficiaryTypes: localMethod.beneficiary_type || [],
+                    requiredBankFields,
+                    recommendedBankFields,
+                    requiredBankCodes,
+                    recommendedBankCodes,
+                    requiredBeneficiaryFields,
+                    recommendedBeneficiaryFields,
+                    fields: bankFields,
+                    bankCodes,
+                    bankCodeType: requiredBankCodes[0] || recommendedBankCodes[0] || null,
+                    bankCodeLabel: getBankCodeLabel(requiredBankCodes[0] || recommendedBankCodes[0]),
+                    accountLabel: bankFields.includes('iban') ? 'IBAN' : 'Account Number',
+                    useIban: bankFields.includes('iban'),
+                    requiresAccountType: bankFields.includes('account_type'),
+                    requiresTransferType: bankFields.includes('transfer_type'),
+                    requiresPurposeCode: bankFields.includes('purpose_code'),
+                    requiresAddress: requiredBeneficiaryFields.some(field => field.startsWith('address.')),
+                    recommendedAddress: recommendedBeneficiaryFields.some(field => field.startsWith('address.')),
+                };
+            }
+        } catch (error) {
+            console.warn(`[Tazapay] Falling back to static bank fields for ${country}/${currency}:`, error.message);
+        }
+
         const fieldConfigs = {
-            'US': { fields: ['account_number', 'bank_name'], bankCodeType: 'aba_code', bankCodeLabel: 'Routing Number (ABA)', accountLabel: 'Account Number' },
+            'US': { fields: ['account_holder_name', 'account_number', 'bank_name'], bankCodeType: 'aba_code', bankCodeLabel: 'Routing Number (ABA)', accountLabel: 'Account Number' },
             'GB': { fields: ['account_number', 'bank_name'], bankCodeType: 'sort_code', bankCodeLabel: 'Sort Code', accountLabel: 'Account Number' },
             'IN': { fields: ['account_number', 'bank_name'], bankCodeType: 'ifsc_code', bankCodeLabel: 'IFSC Code', accountLabel: 'Account Number' },
             'AU': { fields: ['account_number', 'bank_name'], bankCodeType: 'bsb_code', bankCodeLabel: 'BSB Code', accountLabel: 'Account Number' },
@@ -538,23 +604,40 @@ export const tazapayService = {
 
     createBeneficiary: async ({
         name, email, type = 'individual', country, currency,
-        accountNumber, bankName, bankCode, bankCodeType, iban, pixKey,
-        addressLine1, addressCity, addressState, addressPostalCode
+        accountHolderName, accountNumber, accountType, bankName, bankCode, bankCodeType,
+        bankCodes, branchName, iban, pixKey, transferType, purposeCode,
+        addressLine1, addressLine2, addressCity, addressState, addressPostalCode,
+        phoneNumber, phoneCallingCode, nationality
     }) => {
         let destinationDetails;
         if (pixKey) {
-            destinationDetails = { type: 'pix_brl', pix_brl: { key: pixKey } };
+            destinationDetails = {
+                type: 'local_payment_network',
+                local_payment_network: {
+                    currency,
+                    deposit_key: pixKey,
+                    type: 'pix_brl'
+                }
+            };
         } else {
             const bankObj = { country, currency, firc_required: false };
+            if (accountHolderName || name) bankObj.account_holder_name = accountHolderName || name;
             if (bankName) bankObj.bank_name = bankName;
+            if (accountType) bankObj.account_type = accountType;
+            if (branchName) bankObj.branch_name = branchName;
+            if (transferType) bankObj.transfer_type = transferType;
+            if (purposeCode) bankObj.purpose_code = purposeCode;
             if (iban) {
                 bankObj.iban = iban;
             } else if (accountNumber) {
                 bankObj.account_number = accountNumber;
             }
-            // Only add bank_codes if we have a code — empty object causes validation error
+            const normalizedBankCodes = { ...(bankCodes || {}) };
             if (bankCode && bankCodeType) {
-                bankObj.bank_codes = { [bankCodeType]: bankCode };
+                normalizedBankCodes[bankCodeType] = bankCode;
+            }
+            if (Object.keys(normalizedBankCodes).length > 0) {
+                bankObj.bank_codes = normalizedBankCodes;
             }
             destinationDetails = { type: 'bank', bank: bankObj };
         }
@@ -562,6 +645,7 @@ export const tazapayService = {
         // Address goes at TOP LEVEL of payload (not inside bank) — Tazapay error 20320
         const address = (addressLine1 || addressCity) ? {
             line1: addressLine1 || '',
+            line2: addressLine2 || '',
             city: addressCity || '',
             state: addressState || '',
             postal_code: addressPostalCode || '',
@@ -570,9 +654,15 @@ export const tazapayService = {
 
         const payload = { type, name, email, destination_details: destinationDetails };
         if (address) payload.address = address;
+        if (phoneNumber || phoneCallingCode) {
+            payload.phone = {
+                number: phoneNumber || '',
+                calling_code: phoneCallingCode || ''
+            };
+        }
+        if (nationality) payload.nationality = nationality;
 
-        // DIAGNOSTIC — remove after fix
-        console.log('[Tazapay] Payload:', JSON.stringify(payload, null, 2));
+        safeLog('[Tazapay] Creating beneficiary:', payload);
 
         try {
             return await tazapayApiRequest('post', '/v3/beneficiary', payload);

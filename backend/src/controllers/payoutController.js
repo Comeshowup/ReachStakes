@@ -7,11 +7,25 @@ import { sanitize } from '../utils/validator.js';
 
 const prisma = new PrismaClient();
 
-const getPayoutFailureReason = (data) =>
-    data?.failure?.description
-    || data?.failure_reason
-    || data?.status_description
-    || 'Payout failed';
+const TAZAPAY_REVERSAL_REASONS = {
+    PR1001: 'Invalid or closed beneficiary account',
+    PR1002: 'Incorrect beneficiary details',
+    PR1003: 'Account not eligible for cross-border credits',
+    PR1004: 'Dormant or restricted account',
+    PR2001: 'Sanctions or screening failure',
+    PR3001: 'Unclaimed or expired payout',
+    PR3002: 'Beneficiary declined payment',
+    PR0001: 'Other payout reversal issue',
+};
+
+const getPayoutFailureReason = (data) => {
+    const statusDescription = data?.status_description;
+    return data?.failure?.description
+        || data?.failure_reason
+        || TAZAPAY_REVERSAL_REASONS[statusDescription]
+        || statusDescription
+        || 'Payout failed';
+};
 
 const findPayoutForTazapayEvent = async (data) => {
     const referenceId = data?.reference_id;
@@ -49,7 +63,7 @@ export const getBankFields = async (req, res) => {
             });
         }
 
-        const fieldConfig = tazapayService.getBankFieldsForCountry(country.toUpperCase(), currency);
+        const fieldConfig = await tazapayService.getBankFieldsForCountry(country.toUpperCase(), currency.toUpperCase());
 
         return res.json({
             success: true,
@@ -408,6 +422,16 @@ const sanitizeString = (str) => {
     return str.replace(/[<>"'&;(){}]/g, '').trim();
 };
 
+const sanitizeStringMap = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+    return Object.fromEntries(
+        Object.entries(value)
+            .map(([key, val]) => [sanitizeString(key), sanitizeString(val).toUpperCase()])
+            .filter(([key, val]) => key && val)
+    );
+};
+
 const isValidCountryCode = (code) => /^[A-Z]{2}$/.test(code);
 const isValidCurrencyCode = (code) => /^[A-Z]{3}$/.test(code);
 const isValidAccountNumber = (num) => /^[0-9]{4,34}$/.test(num);
@@ -466,15 +490,25 @@ export const connectBank = async (req, res) => {
         const country = sanitizeString(req.body.country).toUpperCase();
         const currency = sanitizeString(req.body.currency).toUpperCase();
         const bankName = sanitizeString(req.body.bankName);
+        const accountHolderName = sanitizeString(req.body.accountHolderName);
         const accountNumber = sanitizeString(req.body.accountNumber);
+        const accountType = sanitizeString(req.body.accountType).toLowerCase();
         const bankCode = sanitizeString(req.body.bankCode).toUpperCase();
         const bankCodeType = sanitizeString(req.body.bankCodeType);
+        const bankCodes = sanitizeStringMap(req.body.bankCodes);
+        const branchName = sanitizeString(req.body.branchName);
         const iban = sanitizeString(req.body.iban).toUpperCase().replace(/\s/g, '');
         const pixKey = sanitizeString(req.body.pixKey);
+        const transferType = sanitizeString(req.body.transferType).toLowerCase();
+        const purposeCode = sanitizeString(req.body.purposeCode);
         const addressLine1 = sanitizeString(req.body.addressLine1);
+        const addressLine2 = sanitizeString(req.body.addressLine2);
         const addressCity = sanitizeString(req.body.addressCity);
         const addressState = sanitizeString(req.body.addressState);
         const addressPostalCode = sanitizeString(req.body.addressPostalCode);
+        const phoneNumber = sanitizeString(req.body.phoneNumber).replace(/[^\d]/g, '');
+        const phoneCallingCode = sanitizeString(req.body.phoneCallingCode).replace(/[^\d]/g, '');
+        const nationality = sanitizeString(req.body.nationality).toUpperCase();
 
         // ── Validate required fields ──
         if (!country || !isValidCountryCode(country)) {
@@ -491,9 +525,16 @@ export const connectBank = async (req, res) => {
             });
         }
 
-        // ── Validate bank-specific fields based on type ──
-        const isPix = bankCodeType === 'pix_brl' || country === 'BR';
+        const fieldConfig = await tazapayService.getBankFieldsForCountry(country, currency);
+        const requiredBankFields = fieldConfig.requiredBankFields || [];
+        const requiredBankCodes = fieldConfig.requiredBankCodes || (fieldConfig.bankCodeType ? [fieldConfig.bankCodeType] : []);
+        const requiredBeneficiaryFields = fieldConfig.requiredBeneficiaryFields || [];
+
+        // ── Validate bank-specific fields based on Tazapay metadata ──
+        const isPix = bankCodeType === 'pix_brl' || country === 'BR' || fieldConfig.isPix;
         const isIban = iban && iban.length > 0;
+        const requiresIban = fieldConfig.useIban || requiredBankFields.includes('iban');
+        const requiresAccountNumber = requiredBankFields.includes('account_number') || (!requiresIban && !isPix);
 
         if (isPix) {
             if (!pixKey || !isValidPixKey(pixKey)) {
@@ -502,7 +543,7 @@ export const connectBank = async (req, res) => {
                     message: 'Invalid PIX key. Must be a valid email, phone number, CPF, or random key.'
                 });
             }
-        } else if (isIban) {
+        } else if (requiresIban || isIban) {
             if (!isValidIBAN(iban)) {
                 return res.status(400).json({
                     success: false,
@@ -516,7 +557,7 @@ export const connectBank = async (req, res) => {
                 });
             }
         } else {
-            if (!accountNumber || !isValidAccountNumber(accountNumber)) {
+            if (requiresAccountNumber && (!accountNumber || !isValidAccountNumber(accountNumber))) {
                 return res.status(400).json({
                     success: false,
                     message: 'Invalid account number. Must be 4-34 digits only.'
@@ -528,6 +569,33 @@ export const connectBank = async (req, res) => {
                     message: 'Invalid bank name. Must be 2-100 characters, letters, numbers, spaces, periods, and hyphens only.'
                 });
             }
+            if (accountType && !['savings', 'checking', 'payment'].includes(accountType)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid account type. Must be savings, checking, or payment.'
+                });
+            }
+            if (transferType && !['swift', 'local', 'any'].includes(transferType)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid transfer type. Must be swift, local, or any.'
+                });
+            }
+            for (const requiredCode of requiredBankCodes) {
+                const value = bankCodes[requiredCode] || (bankCodeType === requiredCode ? bankCode : '');
+                if (!value) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `${fieldConfig.bankCodeLabel || requiredCode} is required for ${country}/${currency} payouts.`
+                    });
+                }
+                if (!isValidBankCode(value, requiredCode, country)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Invalid ${fieldConfig.bankCodeLabel || requiredCode}.`
+                    });
+                }
+            }
             if (bankCode && !isValidBankCode(bankCode, bankCodeType, country)) {
                 let errorMsg = `Invalid ${bankCodeType || 'bank code'}.`;
                 if (country === 'IN' || bankCodeType === 'ifsc_code') {
@@ -536,6 +604,36 @@ export const connectBank = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     message: errorMsg
+                });
+            }
+        }
+
+        if (requiredBankFields.includes('account_type') && !accountType) {
+            return res.status(400).json({ success: false, message: 'Account type is required.' });
+        }
+        if (requiredBankFields.includes('branch_name') && !branchName) {
+            return res.status(400).json({ success: false, message: 'Branch name is required.' });
+        }
+        if (requiredBankFields.includes('transfer_type') && !transferType) {
+            return res.status(400).json({ success: false, message: 'Transfer type is required.' });
+        }
+        if (requiredBankFields.includes('purpose_code') && !purposeCode) {
+            return res.status(400).json({ success: false, message: 'Bank purpose code is required.' });
+        }
+
+        const requiredAddressFields = requiredBeneficiaryFields.filter(field => field.startsWith('address.'));
+        if (requiredAddressFields.length > 0) {
+            const addressValues = {
+                'address.line1': addressLine1,
+                'address.city': addressCity,
+                'address.state': addressState,
+                'address.postal_code': addressPostalCode,
+            };
+            const missingAddress = requiredAddressFields.find(field => !addressValues[field]);
+            if (missingAddress) {
+                return res.status(400).json({
+                    success: false,
+                    message: `${missingAddress.replace('address.', 'Address ')} is required for ${country}/${currency} payouts.`
                 });
             }
         }
@@ -563,6 +661,9 @@ export const connectBank = async (req, res) => {
             });
         }
 
+        const beneficiaryName = user.creatorProfile.fullName || user.name || 'Creator';
+        const finalAccountHolderName = accountHolderName || beneficiaryName;
+
         // Check if already connected
         if (user.creatorProfile.tazapayBeneficiaryId) {
             return res.status(400).json({
@@ -573,21 +674,31 @@ export const connectBank = async (req, res) => {
 
         // ── Create beneficiary in Tazapay (PII is sent ONLY here) ──
         const beneficiaryResult = await tazapayService.createBeneficiary({
-            name: user.creatorProfile.fullName || user.name,
+            name: beneficiaryName,
             email: user.email,
             type: 'individual',
             country,
             currency,
-            accountNumber: isPix ? undefined : (isIban ? undefined : accountNumber),
+            accountHolderName: finalAccountHolderName,
+            accountNumber: isPix ? undefined : (requiresIban ? undefined : accountNumber),
+            accountType: accountType || undefined,
             bankName: isPix ? undefined : bankName,
             bankCode: bankCode || undefined,
             bankCodeType: bankCodeType || undefined,
-            iban: isIban ? iban : undefined,
+            bankCodes: Object.keys(bankCodes).length > 0 ? bankCodes : undefined,
+            branchName: branchName || undefined,
+            iban: requiresIban ? iban : undefined,
             pixKey: isPix ? pixKey : undefined,
+            transferType: transferType || undefined,
+            purposeCode: purposeCode || undefined,
             addressLine1,
+            addressLine2,
             addressCity,
             addressState,
             addressPostalCode,
+            phoneNumber: phoneNumber || undefined,
+            phoneCallingCode: phoneCallingCode || undefined,
+            nationality: isValidCountryCode(nationality) ? nationality : undefined,
         });
 
         if (beneficiaryResult.status !== 'success') {

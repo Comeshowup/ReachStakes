@@ -30,11 +30,25 @@ function buildTimeseries(paidTransactions) {
         .map(([date, amount]) => ({ date, amount: Math.round(amount * 100) / 100 }));
 }
 
-const getPayoutFailureReason = (payoutData) =>
-    payoutData?.failure?.description
-    || payoutData?.failure_reason
-    || payoutData?.status_description
-    || 'Payout failed';
+const TAZAPAY_REVERSAL_REASONS = {
+    PR1001: 'Invalid or closed beneficiary account',
+    PR1002: 'Incorrect beneficiary details',
+    PR1003: 'Account not eligible for cross-border credits',
+    PR1004: 'Dormant or restricted account',
+    PR2001: 'Sanctions or screening failure',
+    PR3001: 'Unclaimed or expired payout',
+    PR3002: 'Beneficiary declined payment',
+    PR0001: 'Other payout reversal issue',
+};
+
+const getPayoutFailureReason = (payoutData) => {
+    const statusDescription = payoutData?.status_description;
+    return payoutData?.failure?.description
+        || payoutData?.failure_reason
+        || TAZAPAY_REVERSAL_REASONS[statusDescription]
+        || statusDescription
+        || 'Payout failed';
+};
 
 const syncProcessingPayouts = async (creatorId) => {
     const processingPayouts = await prisma.creatorPayout.findMany({
