@@ -195,14 +195,15 @@ const parseTazapayApiError = (error, context) => {
  * Make a Tazapay API request with retry logic for transient failures.
  * Retries up to maxRetries times with exponential backoff for 5xx errors.
  */
-const tazapayApiRequest = async (method, endpoint, data = null, maxRetries = 2) => {
+const tazapayApiRequest = async (method, endpoint, data = null, maxRetries = 2, extraHeaders = {}) => {
     const url = `${TAZAPAY_API_BASE_URL}${endpoint}`;
     const config = {
         method,
         url,
         headers: {
             'Authorization': getAuthHeader(),
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...extraHeaders,
         },
         timeout: 30000, // 30s timeout
     };
@@ -676,7 +677,7 @@ export const tazapayService = {
         beneficiaryId, amount, currency = 'USD',
         holdingCurrency = 'USD', payoutType = 'local',
         purpose = 'PYR030',
-        reason = 'Creator payout', referenceId
+        reason = 'Creator payout', referenceId, idempotencyKey
     }) => {
         const amountInCents = Math.round(parseFloat(amount) * 100);
         const payload = {
@@ -694,7 +695,8 @@ export const tazapayService = {
         safeLog('Creating Tazapay payout:', { beneficiaryId: '***' + beneficiaryId?.slice(-6), amount, currency });
 
         try {
-            return await tazapayApiRequest('post', '/v3/payout', payload);
+            const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {};
+            return await tazapayApiRequest('post', '/v3/payout', payload, 2, headers);
         } catch (error) {
             throw parseTazapayApiError(error, 'creating payout');
         }

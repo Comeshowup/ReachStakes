@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Instagram, Youtube, Twitter, ExternalLink, Unlink, Plus, BadgeCheck } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../../../api/axios'; // Adjust if path is different
+import { getInstagramRedirectUri, startInstagramOAuth } from '../../../features/settings/utils/instagramOAuth';
 
 const TikTokIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -70,7 +71,7 @@ const SocialAccounts = () => {
                 // Default to Instagram flow
                 const linkInstagram = async () => {
                     try {
-                        const currentRedirectUri = `${window.location.origin}/creator/social-accounts`;
+                        const currentRedirectUri = getInstagramRedirectUri('/creator/social-accounts');
                         await api.post('/social/instagram/link', {
                             code: code,
                             userId: userId,
@@ -146,18 +147,14 @@ const SocialAccounts = () => {
             bg: 'bg-pink-50 dark:bg-pink-900/20',
             maxAccounts: 5,
             connectAction: () => {
-                const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-                if (!clientId || clientId === 'YOUR_INSTAGRAM_CLIENT_ID') {
-                    alert("Instagram Client ID is missing! Please check your .env file and RESTART the dev server.");
-                    return;
+                try {
+                    startInstagramOAuth({
+                        path: '/creator/social-accounts',
+                        state: 'social-page',
+                    });
+                } catch (err) {
+                    alert(err.message);
                 }
-                const redirectUri = `${window.location.origin}/creator/social-accounts`;
-                // Scopes MUST match the Meta Dashboard use case: 'Manage messaging & content on Instagram'
-                const scope = 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights';
-                const state = 'social-page';
-                const authUrl = `https://www.instagram.com/oauth/authorize?force_reauth=true&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code&state=${state}`;
-
-                window.location.href = authUrl;
             },
         },
         {

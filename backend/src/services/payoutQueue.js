@@ -61,6 +61,7 @@ const processPayout = async (payout) => {
             payoutType: 'local',
             reason: `Payout for ${creatorProfile.fullName || 'Creator'}`,
             referenceId: payout.idempotencyKey || `payout_${id}`,
+            idempotencyKey: payout.idempotencyKey || `payout_${id}`,
         });
 
         // Update with Tazapay payout ID

@@ -51,17 +51,24 @@ const getPayoutFailureReason = (payoutData) => {
 };
 
 const syncProcessingPayouts = async (creatorId) => {
-    const processingPayouts = await prisma.creatorPayout.findMany({
+    const recentCompletedCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const payoutsToSync = await prisma.creatorPayout.findMany({
         where: {
             creatorId,
-            status: 'Processing',
+            OR: [
+                { status: 'Processing' },
+                {
+                    status: 'Completed',
+                    completedAt: { gte: recentCompletedCutoff },
+                },
+            ],
             tazapayPayoutId: { not: null },
         },
         select: { id: true, tazapayPayoutId: true },
         take: 10,
     });
 
-    for (const payout of processingPayouts) {
+    for (const payout of payoutsToSync) {
         try {
             const result = await tazapayService.getPayoutStatus(payout.tazapayPayoutId);
             const payoutData = result?.data ?? result;
@@ -82,6 +89,7 @@ const syncProcessingPayouts = async (creatorId) => {
                     data: {
                         status: 'Failed',
                         failureReason: getPayoutFailureReason(payoutData).substring(0, 255),
+                        completedAt: null,
                     },
                 });
             }

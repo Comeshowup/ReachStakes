@@ -978,7 +978,8 @@ export const initiatePayout = async (req, res) => {
                 holdingCurrency: currency,
                 payoutType: 'local',
                 reason: reason || `Payout for ${creatorProfile.fullName}`,
-                referenceId: `payout_${payoutRecord.id}`
+                referenceId: `payout_${payoutRecord.id}`,
+                idempotencyKey: `payout_${payoutRecord.id}`
             });
 
             // Update payout record with Tazapay ID
@@ -1038,7 +1039,10 @@ export const handlePayoutWebhook = async (req, res) => {
 
         const event = req.body.type || req.body.event;
         const { data } = req.body;
-        const webhookEventId = data?.id || data?.reference_id || `${event}_${Date.now()}`;
+        const providerEventId = req.body.id || req.body.event_id || req.body.webhook_id;
+        const webhookEventId = providerEventId
+            || [event, data?.id || data?.reference_id].filter(Boolean).join(':')
+            || `${event}_${Date.now()}`;
 
         safeLog('Tazapay webhook received:', { event, id: webhookEventId });
 
@@ -1232,16 +1236,18 @@ export const handlePayoutWebhook = async (req, res) => {
             const payout = await findPayoutForTazapayEvent(data);
 
             if (payout) {
+                const failureReason = getPayoutFailureReason(data).substring(0, 255);
                 await prisma.creatorPayout.update({
                     where: { id: payout.id },
                     data: {
                         status: 'Failed',
                         tazapayPayoutId: data.id || payout.tazapayPayoutId,
-                        failureReason: getPayoutFailureReason(data).substring(0, 255)
+                        failureReason,
+                        completedAt: null
                     }
                 });
 
-                console.log(`Payout ${payout.id} failed`);
+                console.log(`Payout ${payout.id} failed: ${failureReason}`);
             }
         }
 

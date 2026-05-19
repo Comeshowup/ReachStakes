@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../../../api/axios";
 import { useGoogleLogin } from "@react-oauth/google";
+import {
+  getInstagramRedirectUri,
+  startInstagramOAuth,
+} from "../utils/instagramOAuth";
 
 /**
  * useSocialAccounts — Manages social account connections/disconnections.
@@ -70,7 +74,9 @@ const useSocialAccounts = () => {
       } else {
         const linkInstagram = async () => {
           try {
-            const currentRedirectUri = `${window.location.origin}${window.location.pathname}`;
+            const currentRedirectUri = getInstagramRedirectUri(
+              window.location.pathname
+            );
             await api.post("/social/instagram/link", {
               code,
               userId,
@@ -136,18 +142,14 @@ const useSocialAccounts = () => {
   });
 
   const connectInstagram = () => {
-    const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-    if (!clientId || clientId === "YOUR_INSTAGRAM_CLIENT_ID") {
-      alert(
-        "Instagram Client ID is missing! Please check your .env file and RESTART the dev server."
-      );
-      return;
+    try {
+      startInstagramOAuth({
+        path: window.location.pathname,
+        state: "instagram",
+      });
+    } catch (err) {
+      alert(err.message);
     }
-    const redirectUri = `${window.location.origin}${window.location.pathname}`;
-    // Scopes MUST match the Meta Dashboard use case: 'Manage messaging & content on Instagram'
-    const scope = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish,instagram_business_manage_insights";
-    const authUrl = `https://www.instagram.com/oauth/authorize?force_reauth=true&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
-    window.location.href = authUrl;
   };
 
   const connectTikTok = () => {
