@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import paymentService from '../../../api/paymentService';
 import { fundCampaignEscrow } from '../../../api/escrowService';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import '../../../styles/escrow-vault.css';
 
 /**
  * VaultFundModal — Premium modal for funding a campaign escrow.
@@ -164,13 +165,13 @@ function VaultFundModal({ isOpen, onClose, campaign, availableBalance = 0, onFun
                             <div className="ev-modal__info-row">
                                 <div className="ev-modal__info-item">
                                     <span className="ev-modal__info-label">Available Liquidity</span>
-                                    <span className={`ev-modal__info-value ${availableBalance > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                    <span className={`ev-modal__info-value ${availableBalance > 0 ? 'ev-modal__info-value--success' : 'ev-modal__info-value--muted'}`}>
                                         {formatCurrency(availableBalance)}
                                     </span>
                                 </div>
                                 <div className="ev-modal__info-item">
                                     <span className="ev-modal__info-label">Campaign Gap</span>
-                                    <span className="ev-modal__info-value text-amber-500">{formatCurrency(remaining)}</span>
+                                    <span className="ev-modal__info-value ev-modal__info-value--warning">{formatCurrency(remaining)}</span>
                                 </div>
                             </div>
                             

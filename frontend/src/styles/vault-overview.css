@@ -1004,8 +1004,8 @@
     position: fixed;
     inset: 0;
     background: var(--bd-vault-modal-overlay);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -1080,31 +1080,37 @@
     border: 1px solid var(--bd-border-default);
     border-radius: var(--bd-radius-lg);
     overflow: hidden;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
-    background: var(--bd-vault-surface-3);
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+    background: var(--bd-surface-input);
+    height: 44px;
 }
 
 .vault-modal__input-wrap:focus-within {
     border-color: var(--bd-accent);
-    box-shadow: 0 0 0 3px var(--bd-vault-focus-ring);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bd-accent) 25%, transparent);
 }
 
 .vault-modal__input-prefix {
-    padding: 10px 0 10px 14px;
-    color: var(--bd-text-muted);
+    padding: 0 0 0 var(--bd-space-4);
+    color: var(--bd-text-secondary);
     font-weight: var(--bd-font-weight-semibold);
-    font-size: var(--bd-font-size-md);
+    font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .vault-modal__input {
     flex: 1;
     border: none;
     outline: none;
-    padding: 10px 14px 10px 4px;
-    font-size: var(--bd-font-size-md);
+    padding: 0 var(--bd-space-4) 0 var(--bd-space-2);
+    font-size: 1.125rem;
+    font-weight: var(--bd-font-weight-semibold);
     background: transparent;
     color: var(--bd-text-primary);
-    font-family: inherit;
+    font-family: var(--bd-font-mono);
+    font-variant-numeric: tabular-nums;
 }
 
 .vault-modal__input::-webkit-inner-spin-button,
@@ -1278,20 +1284,20 @@
 .vault-modal__fee-breakdown {
     background: var(--bd-bg-secondary);
     border: 1px solid var(--bd-border-subtle);
-    border-radius: var(--bd-radius-lg);
-    padding: var(--bd-space-4);
+    border-radius: var(--bd-radius-xl);
+    padding: var(--bd-space-5);
     display: flex;
     flex-direction: column;
-    gap: var(--bd-space-2);
+    gap: var(--bd-space-3);
 }
 
 .vault-modal__fee-title {
     font-size: var(--bd-font-size-xs);
-    font-weight: var(--bd-font-weight-semibold);
+    font-weight: var(--bd-font-weight-bold);
     color: var(--bd-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 var(--bd-space-1) 0;
+    letter-spacing: 0.075em;
+    margin: 0 0 var(--bd-space-2) 0;
 }
 
 .vault-modal__fee-row {
@@ -1300,17 +1306,26 @@
     align-items: center;
     font-size: var(--bd-font-size-sm);
     color: var(--bd-text-primary);
+    line-height: 1.4;
+}
+
+.vault-modal__fee-row span:last-child {
+    font-family: var(--bd-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--bd-font-weight-semibold);
 }
 
 .vault-modal__fee-row--sub {
     color: var(--bd-text-secondary);
-    font-size: var(--bd-font-size-xs);
-    padding-left: var(--bd-space-2);
+    font-size: var(--bd-font-size-sm);
+    padding-left: 0;
 }
 
 .vault-modal__fee-row--total {
-    font-weight: var(--bd-font-weight-bold);
-    font-size: var(--bd-font-size-md);
+    font-weight: var(--bd-font-weight-extrabold);
+    font-size: 1.125rem;
+    color: var(--bd-text-primary);
+    padding-top: var(--bd-space-1);
 }
 
 .vault-modal__fee-row--lock {
@@ -1321,8 +1336,8 @@
 
 .vault-modal__fee-divider {
     height: 1px;
-    background: var(--bd-border-default);
-    margin: var(--bd-space-1) 0;
+    background: var(--bd-border-subtle);
+    margin: var(--bd-space-2) 0;
 }
 
 /* ─── Insufficient Funds Warning ──────────────────── */
@@ -1920,12 +1935,12 @@
     display: flex;
     align-items: flex-start;
     gap: var(--bd-space-3);
-    padding: var(--bd-space-3) var(--bd-space-4);
+    padding: var(--bd-space-4);
     background: var(--bd-bg-secondary);
     border: 1px solid var(--bd-border-subtle);
-    border-radius: var(--bd-radius-lg);
+    border-radius: var(--bd-radius-xl);
     cursor: pointer;
-    transition: border-color 150ms ease, background 150ms ease;
+    transition: border-color 150ms ease, background-color 150ms ease;
 }
 
 .vault-fund-modal__terms:hover {
@@ -1936,7 +1951,7 @@
 .vault-fund-modal__checkbox {
     width: 16px;
     height: 16px;
-    margin-top: 2px;
+    margin-top: 3px;
     accent-color: var(--bd-accent);
     cursor: pointer;
     flex-shrink: 0;
@@ -1946,9 +1961,9 @@
     display: flex;
     align-items: flex-start;
     gap: var(--bd-space-2);
-    font-size: var(--bd-font-size-xs);
+    font-size: 0.75rem;
     color: var(--bd-text-secondary);
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .vault-fund-modal__terms-icon {
@@ -2342,5 +2357,360 @@
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* ============================================================
+   Vault Fund Modal — Detailed Scoped Overrides
+   ============================================================ */
+.vault-fund-modal {
+    max-width: 520px;
+    border: 1px solid var(--bd-border-strong);
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.vault-fund-modal .vault-modal__body {
+    padding: var(--bd-space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-5);
+}
+
+/* Header Cleanup */
+.vault-fund-modal .vault-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--bd-space-5) var(--bd-space-6);
+    border-bottom: 1px solid var(--bd-border-subtle);
+}
+
+.vault-fund-modal__header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-4);
+}
+
+.vault-fund-modal__header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--bd-radius-lg);
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bd-accent);
+    flex-shrink: 0;
+}
+
+.vault-fund-modal .vault-modal__title {
+    font-size: 1.125rem;
+    font-weight: var(--bd-font-weight-bold);
+    color: var(--bd-text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.vault-fund-modal__campaign-name {
+    margin: var(--bd-space-1) 0 0;
+    font-size: var(--bd-font-size-xs);
+    color: var(--bd-text-muted);
+    font-weight: var(--bd-font-weight-medium);
+    line-height: 1.2;
+}
+
+.vault-fund-modal .vault-modal__close {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--bd-radius-md);
+    border: none;
+    background: transparent;
+    color: var(--bd-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.vault-fund-modal .vault-modal__close:hover {
+    background: var(--bd-surface-hover);
+    color: var(--bd-text-primary);
+}
+
+/* Progress Card inside Fund Campaign Modal */
+.vault-fund-modal .vault-fund-modal__progress-card {
+    background: var(--bd-bg-secondary);
+    border: 1px solid var(--bd-border-subtle);
+    border-radius: var(--bd-radius-xl);
+    padding: var(--bd-space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-5);
+}
+
+/* Info Row inside progress card */
+.vault-fund-modal .ev-modal__info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--bd-space-4);
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border-radius: 0;
+}
+
+.vault-fund-modal .ev-modal__info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-1);
+}
+
+.vault-fund-modal .ev-modal__info-label {
+    font-size: var(--bd-font-size-xs);
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+}
+
+.vault-fund-modal .ev-modal__info-value {
+    font-size: 1.25rem;
+    font-weight: var(--bd-font-weight-bold);
+    color: var(--bd-text-primary);
+    font-family: var(--bd-font-mono);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.vault-fund-modal .ev-modal__info-value--success {
+    color: var(--bd-success) !important;
+}
+
+.vault-fund-modal .ev-modal__info-value--warning {
+    color: var(--bd-warning) !important;
+}
+
+.vault-fund-modal .ev-modal__info-value--muted {
+    color: var(--bd-text-muted) !important;
+}
+
+/* Section & Spacing */
+.vault-fund-modal .ev-modal__section {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--bd-space-3);
+    padding-top: var(--bd-space-4);
+    border-top: 1px solid var(--bd-border-subtle);
+}
+
+.vault-fund-modal .ev-modal__section-title {
+    font-size: var(--bd-font-size-xs);
+    font-weight: var(--bd-font-weight-bold);
+    color: var(--bd-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+}
+
+/* Method buttons grid */
+.vault-fund-modal .ev-modal__methods {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--bd-space-3);
+}
+
+.vault-fund-modal .ev-modal__method {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-3);
+    padding: var(--bd-space-4);
+    border-radius: var(--bd-radius-lg);
+    background: var(--bd-bg-primary);
+    border: 1px solid var(--bd-border-default);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+    position: relative;
+    width: 100%;
+}
+
+.vault-fund-modal .ev-modal__method:hover:not(:disabled) {
+    border-color: var(--bd-accent);
+    background: var(--bd-surface-hover);
+}
+
+.vault-fund-modal .ev-modal__method--active {
+    border-color: var(--bd-accent);
+    background: var(--bd-vault-modal-method-active-bg);
+    box-shadow: 0 0 0 1px var(--bd-accent);
+}
+
+.vault-fund-modal .ev-modal__method--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(0.8);
+    border-color: var(--bd-border-muted);
+}
+
+.vault-fund-modal .ev-modal__method .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--bd-text-muted);
+}
+
+.vault-fund-modal .ev-modal__method--active .material-symbols-outlined {
+    color: var(--bd-accent);
+}
+
+.vault-fund-modal .ev-modal__method-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vault-fund-modal .ev-modal__method-name {
+    font-size: var(--bd-font-size-sm);
+    font-weight: var(--bd-font-weight-semibold);
+    color: var(--bd-text-primary);
+    line-height: 1.2;
+}
+
+.vault-fund-modal .ev-modal__method-desc {
+    font-size: 11px;
+    color: var(--bd-text-muted);
+    line-height: 1.2;
+}
+
+.vault-fund-modal .ev-modal__method-check {
+    position: absolute !important;
+    top: var(--bd-space-3);
+    right: var(--bd-space-3);
+    font-size: 16px !important;
+    color: var(--bd-accent) !important;
+}
+
+/* Progress Bar in progress card */
+.vault-fund-modal .vault-fund-modal__progress-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--bd-space-3);
+    padding-top: var(--bd-space-4);
+    border-top: 1px solid var(--bd-border-subtle);
+}
+
+.vault-fund-modal .vault-fund-modal__progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bd-border-subtle);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.vault-fund-modal .vault-fund-modal__progress-fill {
+    height: 100%;
+    background: var(--bd-accent);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vault-fund-modal .vault-fund-modal__progress-pct {
+    font-size: 11px;
+    font-weight: var(--bd-font-weight-bold);
+    color: var(--bd-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Footer & Buttons */
+.vault-fund-modal .vault-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--bd-space-3);
+    padding: var(--bd-space-5) var(--bd-space-6);
+    border-top: 1px solid var(--bd-border-subtle);
+    background: var(--bd-bg-secondary);
+    border-bottom-left-radius: var(--bd-radius-xl);
+    border-bottom-right-radius: var(--bd-radius-xl);
+}
+
+.vault-fund-modal .vault-modal__btn--cancel,
+.vault-fund-modal .ev-modal__btn--primary {
+    height: 40px;
+    padding: 0 var(--bd-space-5);
+    font-size: var(--bd-font-size-sm);
+    font-weight: var(--bd-font-weight-semibold);
+    border-radius: var(--bd-radius-lg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--bd-space-2);
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.vault-fund-modal .vault-modal__btn--cancel {
+    background: transparent;
+    color: var(--bd-text-secondary);
+    border: 1px solid var(--bd-border-default);
+}
+
+.vault-fund-modal .vault-modal__btn--cancel:hover {
+    background: var(--bd-surface-hover);
+    border-color: var(--bd-border-strong);
+    color: var(--bd-text-primary);
+}
+
+.vault-fund-modal .ev-modal__btn--primary {
+    background: var(--bd-primary);
+    color: var(--bd-primary-fg);
+    border: none;
+    box-shadow: var(--bd-shadow-primary-btn);
+}
+
+.vault-fund-modal .ev-modal__btn--primary:hover:not(:disabled) {
+    background: var(--bd-primary-hover);
+    box-shadow: var(--bd-shadow-primary-btn-hover);
+    transform: translateY(-1px);
+}
+
+.vault-fund-modal .ev-modal__btn--primary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.vault-fund-modal .ev-modal__btn--primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* Responsiveness */
+@media (max-width: 560px) {
+    .vault-fund-modal {
+        max-width: 100%;
+        margin: 0;
+        border-radius: var(--bd-radius-xl);
+    }
+    
+    .vault-fund-modal .vault-modal__body {
+        padding: var(--bd-space-4);
+        gap: var(--bd-space-4);
+    }
+    
+    .vault-fund-modal .vault-fund-modal__progress-card {
+        padding: var(--bd-space-4);
+        gap: var(--bd-space-4);
+    }
+    
+    .vault-fund-modal .ev-modal__methods {
+        grid-template-columns: 1fr;
+        gap: var(--bd-space-2);
+    }
+    
+    .vault-fund-modal .vault-modal__footer {
+        padding: var(--bd-space-4);
     }
 }
