@@ -24,6 +24,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, isLoading, item }) => {
     }, [isOpen, isLoading, onClose]);
 
     if (!item) return null;
+    const hasEscrow = Number(item.escrow || 0) > 0;
 
     return (
         <AnimatePresence>
@@ -105,14 +106,14 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, isLoading, item }) => {
                             </span>
                         </div>
 
-                        {item.escrow === 0 && (
+                        {!hasEscrow && (
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 fontSize: 13, color: 'var(--bd-warning)',
                                 marginBottom: 'var(--bd-space-4)'
                             }}>
                                 <AlertTriangle size={14} />
-                                No escrow attached to this approval.
+                                No escrow attached to this approval. Set an agreed deal and fund escrow before release.
                             </div>
                         )}
 
@@ -136,9 +137,9 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, isLoading, item }) => {
                             <button
                                 ref={confirmRef}
                                 onClick={onConfirm}
-                                disabled={isLoading}
+                                disabled={isLoading || !hasEscrow}
                                 className="aq-btn-approve"
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, opacity: hasEscrow ? 1 : 0.5, cursor: hasEscrow ? 'pointer' : 'not-allowed' }}
                             >
                                 {isLoading ? (
                                     <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>

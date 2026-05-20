@@ -60,7 +60,7 @@ export const useCampaignWorkspace = (campaignId) => {
                       ...flatCollab,
                       campaign: richCollab.campaign,
                       deadline: richCollab.campaign?.endDate || flatCollab.deadline,
-                      rate: richCollab.campaign?.targetBudget || richCollab.campaign?.budget || flatCollab.rate,
+                      rate: flatCollab.agreedPrice || flatCollab.proposedPrice || flatCollab.rate,
                   }
                 : flatCollab;
 
@@ -91,7 +91,8 @@ export const useCampaignWorkspace = (campaignId) => {
         ? {
               // agreedPrice is the per-video/per-collaboration negotiated fee
               agreedPrice: campaign.agreedPrice ?? null,
-              campaignFee: campaign.agreedPrice ?? campaign.rate ?? campaign.campaign?.budget ?? null,
+              proposedPrice: campaign.proposedPrice ?? null,
+              campaignFee: campaign.agreedPrice ?? null,
               escrowStatus: campaign.escrowStatus || (campaign.campaign?.escrowBalance > 0 ? 'Locked' : 'Not Funded'),
               paymentStatus: campaign.payoutReleased
                   ? 'Released'

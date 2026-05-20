@@ -63,5 +63,10 @@ export const collaborationsApi = {
         // data: { status, feedback }
         const response = await collabApi.patch(`/${id}/decision`, data);
         return response.data;
+    },
+
+    negotiate: async (id, data) => {
+        const response = await collabApi.patch(`/${id}/negotiate`, data);
+        return response.data;
     }
 };

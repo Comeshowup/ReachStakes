@@ -8,6 +8,7 @@ import BrandCommandCenter from "./dashboard/pages/BrandCommandCenter";
 import CampaignManagement from "./dashboard/pages/CampaignManagement";
 import CreateCampaignPage from "./dashboard/pages/CreateCampaignPage";
 import CampaignDetailPage from "./dashboard/pages/CampaignDetailPage";
+import CampaignInvitationsPage from "./dashboard/pages/CampaignInvitationsPage";
 import AdminControlCenter from './dashboard/pages/admin/AdminControlCenter';
 // Network
 import AdminCreatorListPage from './dashboard/pages/admin/network/creators';
@@ -106,6 +107,7 @@ function App() {
         <Route index element={<BrandCommandCenter />} />
         <Route path="executive" element={<Navigate to="/brand" replace />} />
         <Route path="campaigns/create" element={<CreateCampaignPage />} />
+        <Route path="campaigns/:id/invitations" element={<CampaignInvitationsPage />} />
         <Route path="campaigns/:id" element={<CampaignDetailPage />} />
         <Route path="campaigns" element={<CampaignManagement />} />
         <Route path="profile" element={<BrandProfile />} />

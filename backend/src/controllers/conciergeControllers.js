@@ -103,8 +103,8 @@ export const executePayout = async (collaborationId, userId) => {
         if (collab.payoutReleased) throw new Error("Payout already released for this collaboration");
         if (collab.status !== 'Approved') throw new Error("Collaboration must be Approved before payout");
 
-        // Use agreedPrice if set; fall back to campaign targetBudget (for self-applied creators)
-        const payoutAmount = Number(collab.agreedPrice || collab.campaign.targetBudget || 0);
+        // Payouts must be based on an explicit negotiated deal, never the total campaign budget.
+        const payoutAmount = Number(collab.agreedPrice || 0);
 
         if (!payoutAmount || payoutAmount <= 0) {
             throw new Error("No payout amount set for this collaboration. Please set an agreed price before releasing.");

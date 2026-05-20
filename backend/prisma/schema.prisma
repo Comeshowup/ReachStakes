@@ -212,6 +212,15 @@ model Campaign {
   targetBudget     Decimal?        @map("target_budget") @db.Decimal(10, 2)
   deadline         DateTime?       @db.Date
 
+  // Pricing & negotiation guardrails
+  pricingModel            String?  @default("flat_fee") @map("pricing_model") @db.VarChar(50)
+  budgetGuardrailMin      Decimal? @map("budget_guardrail_min") @db.Decimal(10, 2)
+  budgetGuardrailMax      Decimal? @map("budget_guardrail_max") @db.Decimal(10, 2)
+  targetCpm               Decimal? @map("target_cpm") @db.Decimal(10, 2)
+  maxCpm                  Decimal? @map("max_cpm") @db.Decimal(10, 2)
+  maxCreatorPayout        Decimal? @map("max_creator_payout") @db.Decimal(10, 2)
+  negotiationInstructions String?  @map("negotiation_instructions") @db.Text
+
   // Campaign Wizard Fields
   objective          String?   @db.VarChar(100)
   targetRoas         Decimal?  @map("target_roas") @db.Decimal(10, 4)
@@ -301,6 +310,15 @@ model CampaignCollaboration {
   creatorId   Int           @map("creator_id")
   status      CollabStatus? @default(Applied)
   agreedPrice Decimal?      @map("agreed_price") @db.Decimal(10, 2)
+
+  // Deal negotiation
+  proposedPrice Decimal?  @map("proposed_price") @db.Decimal(10, 2)
+  pricingModel  String?   @default("flat_fee") @map("pricing_model") @db.VarChar(50)
+  estimatedViews Int?     @map("estimated_views")
+  calculatedCpm Decimal?  @map("calculated_cpm") @db.Decimal(10, 2)
+  offerTerms    Json?     @map("offer_terms")
+  offerExpiresAt DateTime? @map("offer_expires_at")
+  offerAcceptedAt DateTime? @map("offer_accepted_at")
 
   // Submission & Deliverables
   deliverables       Json? // Tracking specific items (e.g. { "script": "done", "draft": "pending" })

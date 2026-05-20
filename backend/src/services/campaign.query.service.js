@@ -160,7 +160,14 @@ export class CampaignQueryService {
             cpa: 0,
             status: collab.status || 'Applied',
             // Payment negotiation fields
+            proposedPrice: collab.proposedPrice ? parseFloat(collab.proposedPrice) : null,
             agreedPrice: collab.agreedPrice ? parseFloat(collab.agreedPrice) : null,
+            pricingModel: collab.pricingModel || campaign.pricingModel || 'flat_fee',
+            estimatedViews: collab.estimatedViews || null,
+            calculatedCpm: collab.calculatedCpm ? parseFloat(collab.calculatedCpm) : null,
+            offerTerms: collab.offerTerms || null,
+            offerExpiresAt: collab.offerExpiresAt || null,
+            offerAcceptedAt: collab.offerAcceptedAt || null,
             payoutReleased: collab.payoutReleased || false,
         }));
 
@@ -198,6 +205,13 @@ export class CampaignQueryService {
                 startDate: campaign.startDate,
                 endDate: campaign.endDate,
                 paymentModel: campaign.paymentModel,
+                pricingModel: campaign.pricingModel,
+                budgetGuardrailMin: campaign.budgetGuardrailMin,
+                budgetGuardrailMax: campaign.budgetGuardrailMax,
+                targetCpm: campaign.targetCpm,
+                maxCpm: campaign.maxCpm,
+                maxCreatorPayout: campaign.maxCreatorPayout,
+                negotiationInstructions: campaign.negotiationInstructions,
                 escrowPercentage: campaign.escrowPercentage,
                 riskScoreCached: campaign.riskScoreCached,
                 createdAt: campaign.createdAt,

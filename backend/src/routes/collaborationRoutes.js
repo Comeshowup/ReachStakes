@@ -3,6 +3,7 @@ import { prisma } from "../config/db.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { fetchVideoStats, getSocialAccountForUser, fetchAudienceDemographics } from "../utils/videoStats.js";
 import { executePayout } from "../controllers/conciergeControllers.js";
+import { DealPricingService } from "../services/dealPricing.service.js";
 
 const router = express.Router();
 
@@ -44,15 +45,25 @@ router.get("/my-submissions", protect, async (req, res) => {
             platform: collab.submissionPlatform || collab.campaign.platformRequired || "Other",
             status: collab.status,
             date: collab.updatedAt,
+            createdAt: collab.createdAt,
+            deadline: collab.offerExpiresAt || collab.campaign.deadline || null,
             link: collab.submissionUrl,
             stats: collab.videoStats,
             feedback: collab.feedbackNotes,
             // Payment negotiation
+            proposedPrice: collab.proposedPrice ? parseFloat(collab.proposedPrice) : null,
             agreedPrice: collab.agreedPrice ? parseFloat(collab.agreedPrice) : null,
+            pricingModel: collab.pricingModel || collab.campaign.pricingModel || 'flat_fee',
+            estimatedViews: collab.estimatedViews || null,
+            calculatedCpm: collab.calculatedCpm ? parseFloat(collab.calculatedCpm) : null,
+            offerTerms: collab.offerTerms || null,
+            offerExpiresAt: collab.offerExpiresAt || null,
+            offerAcceptedAt: collab.offerAcceptedAt || null,
             payoutReleased: collab.payoutReleased || false,
             payoutDate: collab.payoutDate || null,
             escrowStatus: collab.campaign.escrowBalance > 0 ? 'Locked' : 'Not Funded',
             // New Fields
+            deliverables: collab.deliverables,
             milestones: collab.milestones,
             usageAgreed: collab.usageAgreed,
             isWhitelisted: collab.isWhitelisted
@@ -126,7 +137,8 @@ router.get("/brand/:brandId/approvals", protect, async (req, res) => {
                         escrowBalance: true,
                         targetBudget: true,
                         payoutSpeed: true,
-                        platformRequired: true
+                        platformRequired: true,
+                        pricingModel: true
                     }
                 },
                 creator: {
@@ -258,10 +270,14 @@ router.get("/brand/:brandId/approvals", protect, async (req, res) => {
                 sponsorTimestamp: null,
                 ctaTimestamp: null,
                 // Financial
-                // agreedPrice is set when brand invites/accepts with a price;
-                // fall back to campaign targetBudget when creator self-applied without a negotiated price.
-                escrow: Number(c.agreedPrice || c.campaign.targetBudget || 0),
-                creatorFee: Number(c.agreedPrice || c.campaign.targetBudget || 0),
+                // agreedPrice is set only once a brand creates/accepts a deal.
+                // Never fall back to total campaign budget as an implicit creator fee.
+                escrow: Number(c.agreedPrice || 0),
+                creatorFee: Number(c.agreedPrice || 0),
+                proposedPrice: Number(c.proposedPrice || 0),
+                pricingModel: c.pricingModel || c.campaign.pricingModel || 'flat_fee',
+                estimatedViews: c.estimatedViews || null,
+                calculatedCpm: c.calculatedCpm ? Number(c.calculatedCpm) : null,
                 budgetRemaining: Number(c.campaign.escrowBalance || 0),
                 roas: null,
                 // Content
@@ -328,20 +344,199 @@ router.patch("/:id/milestones", protect, async (req, res) => {
     }
 });
 
+// Negotiate a campaign deal offer.
+// Either the brand or creator may counter; acceptance converts proposedPrice into agreedPrice.
+router.patch("/:id/negotiate", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { action = 'counter', message, deliverables, milestones } = req.body;
+
+        if (!['counter', 'accept', 'decline'].includes(action)) {
+            return res.status(400).json({ error: "action must be 'counter', 'accept', or 'decline'" });
+        }
+
+        const existing = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            include: {
+                campaign: {
+                    include: {
+                        collaborations: {
+                            select: { id: true, status: true, agreedPrice: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!existing) return res.status(404).json({ error: "Collaboration not found" });
+
+        const isBrand = existing.campaign.brandId === req.user.id;
+        const isCreator = existing.creatorId === req.user.id;
+        if (!isBrand && !isCreator && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorized to negotiate this deal." });
+        }
+
+        const actorRole = isBrand ? 'brand' : 'creator';
+        const offer = DealPricingService.buildOffer({
+            ...req.body,
+            proposedPrice: req.body.proposedPrice ?? req.body.amount ?? existing.proposedPrice,
+            pricingModel: req.body.pricingModel ?? existing.pricingModel,
+            estimatedViews: req.body.estimatedViews ?? existing.estimatedViews,
+        });
+
+        if (action === 'counter' && !offer.proposedPrice) {
+            return res.status(400).json({ error: "Counter offers require an amount." });
+        }
+
+        const currentOfferOwner = existing.offerTerms?.currentOffer?.proposedBy || null;
+        if (action === 'accept' && currentOfferOwner === actorRole) {
+            return res.status(400).json({ error: "You cannot accept your own offer. Wait for the other party to respond." });
+        }
+
+        const acceptedPrice = Number(req.body.agreedPrice || existing.proposedPrice || existing.agreedPrice || 0);
+        DealPricingService.assertOfferAllowed({
+            campaign: existing.campaign,
+            currentCollaboration: existing,
+            agreedPrice: action === 'accept' ? acceptedPrice : undefined,
+            proposedPrice: action === 'counter' ? offer.proposedPrice : undefined,
+            estimatedViews: offer.estimatedViews,
+            nextStatus: action === 'accept' ? 'In_Progress' : action === 'decline' ? 'Rejected' : existing.status,
+        });
+
+        const offerTerms = DealPricingService.buildOfferTerms({
+            existingTerms: existing.offerTerms,
+            actorRole,
+            action,
+            offer: action === 'accept'
+                ? { agreedPrice: acceptedPrice, pricingModel: offer.pricingModel }
+                : offer,
+            message,
+            deliverables,
+            milestones,
+        });
+
+        const data = {
+            feedbackNotes: message || existing.feedbackNotes,
+            offerTerms,
+        };
+
+        if (action === 'counter') {
+            data.status = existing.status === 'Applied' ? 'Applied' : 'Invited';
+            data.proposedPrice = offer.proposedPrice;
+            data.agreedPrice = null;
+            data.pricingModel = offer.pricingModel;
+            data.estimatedViews = offer.estimatedViews;
+            data.calculatedCpm = offer.calculatedCpm;
+            data.offerExpiresAt = offer.offerExpiresAt;
+            if (deliverables) data.deliverables = deliverables;
+            if (milestones) data.milestones = milestones;
+        } else if (action === 'accept') {
+            if (!acceptedPrice) {
+                return res.status(400).json({ error: "No offer amount is available to accept." });
+            }
+            data.status = 'In_Progress';
+            data.agreedPrice = acceptedPrice;
+            data.offerAcceptedAt = new Date();
+        } else if (action === 'decline') {
+            data.status = 'Rejected';
+        }
+
+        const updated = await prisma.campaignCollaboration.update({
+            where: { id },
+            data,
+            include: { campaign: true }
+        });
+
+        if (message) {
+            await prisma.campaignMessage.create({
+                data: {
+                    campaignId: existing.campaignId,
+                    collaborationId: existing.id,
+                    threadId: `collab-${existing.id}`,
+                    senderId: req.user.id,
+                    content: message,
+                    type: 'Text',
+                }
+            });
+        }
+
+        await prisma.campaignEvent.create({
+            data: {
+                campaignId: existing.campaignId,
+                type: `deal_${action}`,
+                description: `${actorRole} ${action === 'counter' ? 'sent a counter offer' : action === 'accept' ? 'accepted the deal' : 'declined the deal'}`,
+                createdBy: req.user.id,
+                metadata: {
+                    collaborationId: existing.id,
+                    actorRole,
+                    amount: action === 'accept' ? acceptedPrice : offer.proposedPrice,
+                    pricingModel: offer.pricingModel,
+                },
+            },
+        });
+
+        res.json({ status: 'success', data: updated });
+    } catch (error) {
+        console.error("Error negotiating deal:", error);
+        res.status(400).json({ error: error.message || "Failed to negotiate deal" });
+    }
+});
+
 // Submit Content URL
 // Update Collaboration Status (Brand Decision)
 router.patch("/:id/decision", protect, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { status, feedback, agreedPrice } = req.body;
+        const { status, feedback } = req.body;
+        const offer = DealPricingService.buildOffer(req.body);
+
+        const existing = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            include: {
+                campaign: {
+                    include: {
+                        collaborations: {
+                            select: {
+                                id: true,
+                                status: true,
+                                agreedPrice: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: "Collaboration not found" });
+        }
+
+        if (existing.campaign.brandId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Only the campaign owner can make deal decisions." });
+        }
+
+        DealPricingService.assertOfferAllowed({
+            campaign: existing.campaign,
+            currentCollaboration: existing,
+            agreedPrice: offer.agreedPrice,
+            nextStatus: status || existing.status,
+        });
 
         // Build update payload — only include agreedPrice if explicitly provided
         const updateData = {
-            status: status,
             feedbackNotes: feedback,
         };
-        if (agreedPrice !== undefined && agreedPrice !== null && !isNaN(parseFloat(agreedPrice))) {
-            updateData.agreedPrice = parseFloat(agreedPrice);
+        if (status) updateData.status = status;
+        if (offer.agreedPrice !== undefined && offer.agreedPrice !== null) {
+            updateData.agreedPrice = offer.agreedPrice;
+            updateData.pricingModel = offer.pricingModel;
+            updateData.estimatedViews = offer.estimatedViews;
+            updateData.calculatedCpm = offer.calculatedCpm;
+            updateData.offerTerms = offer.offerTerms;
+            updateData.offerExpiresAt = offer.offerExpiresAt;
+            if (status === 'In_Progress') {
+                updateData.offerAcceptedAt = new Date();
+            }
         }
 
         const updated = await prisma.campaignCollaboration.update({

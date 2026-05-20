@@ -12,7 +12,8 @@ const DecisionBar = ({ item, onApprove, onRequestChanges, isLoading, batchMode, 
         ? `${batchCount} item${batchCount > 1 ? 's' : ''} selected`
         : item?.escrow > 0
             ? `₹${item.escrow.toLocaleString('en-IN')} will be released upon approval`
-            : 'No escrow attached';
+            : 'No agreed escrow attached';
+    const canRelease = batchMode || Number(item?.escrow || 0) > 0;
 
     return (
         <div className="aq-decision-bar">
@@ -40,7 +41,8 @@ const DecisionBar = ({ item, onApprove, onRequestChanges, isLoading, batchMode, 
                 <button
                     className="aq-btn-approve"
                     onClick={onApprove}
-                    disabled={isLoading}
+                    disabled={isLoading || !canRelease}
+                    style={{ opacity: canRelease ? 1 : 0.5, cursor: canRelease ? 'pointer' : 'not-allowed' }}
                 >
                     {isLoading ? (
                         <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />

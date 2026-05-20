@@ -42,3 +42,16 @@ export const useUpdateCollaborationDecision = (campaignId) => {
         },
     });
 };
+
+export const useNegotiateCollaborationDeal = (campaignId) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ collabId, data }) => collaborationsApi.negotiate(collabId, data),
+        onSuccess: () => {
+            if (campaignId) {
+                queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+            }
+        },
+    });
+};

@@ -11,7 +11,8 @@ import {
     TrendingUp,
     DollarSign,
     X,
-    Loader2
+    Loader2,
+    Repeat2
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
@@ -64,6 +65,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
 const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite, preselectedCampaignId }) => {
     const [selectedCampaign, setSelectedCampaign] = useState("");
+    const suggestedRate = calculateSuggestedRate(creator.followerValue, parseFloat(creator.engagement) || 2.5);
+    const [pricingModel, setPricingModel] = useState("flat_fee");
+    const [amount, setAmount] = useState("");
+    const [estimatedViews, setEstimatedViews] = useState("");
+    const [deliverables, setDeliverables] = useState("1 video");
+    const [notes, setNotes] = useState("");
     const [isInviting, setIsInviting] = useState(false);
 
     // Pre-select the campaign if we arrived from a campaign's "Assign Creators" button
@@ -71,17 +78,30 @@ const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite, preselecte
         if (isOpen && preselectedCampaignId) {
             setSelectedCampaign(String(preselectedCampaignId));
         }
-    }, [isOpen, preselectedCampaignId]);
+        if (isOpen && !amount) {
+            setAmount(String(suggestedRate || ""));
+        }
+    }, [isOpen, preselectedCampaignId, amount, suggestedRate]);
 
     if (!isOpen) return null;
 
     const handleInvite = async () => {
         if (!selectedCampaign) return alert("Please select a campaign");
+        if (!amount || Number(amount) <= 0) return alert("Please set an offer amount");
         setIsInviting(true);
         try {
             const token = localStorage.getItem('token');
             await axios.post(`${API_BASE_URL}/campaigns/${selectedCampaign}/invite`, {
-                creatorId: creator.id
+                creatorId: creator.id,
+                proposedPrice: Number(amount),
+                amount: Number(amount),
+                pricingModel,
+                estimatedViews: estimatedViews ? Number(estimatedViews) : undefined,
+                deliverables: deliverables.split("\n").map(item => item.trim()).filter(Boolean),
+                milestones: pricingModel === "milestone"
+                    ? deliverables.split("\n").map((title, index) => ({ title: title.trim(), status: "pending", order: index + 1 })).filter(item => item.title)
+                    : undefined,
+                notes: notes || undefined
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -112,7 +132,7 @@ const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite, preselecte
                     onClick={e => e.stopPropagation()}
                 >
                     <h3 className="text-xl font-bold mb-2">Invite {creator.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">Select one of your active campaigns to invite this creator.</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">Send a deal offer the creator can accept or negotiate.</p>
 
                     <div className="space-y-4 mb-8">
                         {campaigns.length === 0 ? (
@@ -129,6 +149,64 @@ const InviteModal = ({ isOpen, onClose, creator, campaigns, onInvite, preselecte
                                 ))}
                             </select>
                         )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <select
+                                value={pricingModel}
+                                onChange={(e) => setPricingModel(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                            >
+                                <option value="flat_fee">Flat per video</option>
+                                <option value="cpm">CPM based</option>
+                                <option value="hybrid">Hybrid</option>
+                                <option value="milestone">Milestone based</option>
+                            </select>
+                            <div className="relative">
+                                <DollarSign className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    placeholder="Offer amount"
+                                    className="w-full p-4 pl-10 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                            </div>
+                        </div>
+                        {(pricingModel === "cpm" || pricingModel === "hybrid") && (
+                            <div>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={estimatedViews}
+                                    onChange={(e) => setEstimatedViews(e.target.value)}
+                                    placeholder="Estimated views"
+                                    className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                                {Number(amount) > 0 && Number(estimatedViews) > 0 && (
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+                                        Implied CPM: ${(Number(amount) / Number(estimatedViews) * 1000).toFixed(2)}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        <textarea
+                            rows={pricingModel === "milestone" ? 4 : 3}
+                            value={deliverables}
+                            onChange={(e) => setDeliverables(e.target.value)}
+                            placeholder={pricingModel === "milestone" ? "Concept approval\nDraft delivery\nFinal live post" : "1 video\n2 story frames"}
+                            className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                        />
+                        <textarea
+                            rows={2}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Optional note or negotiation context"
+                            className="w-full p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                        />
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
+                            <Repeat2 className="w-3.5 h-3.5" />
+                            Creator can counter this offer before accepting.
+                        </div>
                     </div>
 
                     <div className="flex gap-3">

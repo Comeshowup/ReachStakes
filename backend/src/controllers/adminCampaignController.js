@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js';
+import { DealPricingService } from '../services/dealPricing.service.js';
 
 const parsePagination = (query) => {
   const page = Math.max(1, parseInt(query.page) || 1);
@@ -408,7 +409,49 @@ export const inviteCampaignCreators = async (req, res) => {
       return res.status(400).json({ error: 'creatorIds required' });
     }
 
-    const { amount, deliverables } = offer || {};
+    const { deliverables, milestones } = offer || {};
+    const dealOffer = DealPricingService.buildOffer(offer || {});
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: {
+        collaborations: {
+          select: { id: true, status: true, agreedPrice: true },
+        },
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    DealPricingService.assertOfferAllowed({
+      campaign,
+      currentCollaboration: { id: 0, agreedPrice: null, estimatedViews: dealOffer.estimatedViews },
+      proposedPrice: dealOffer.proposedPrice,
+      estimatedViews: dealOffer.estimatedViews,
+      nextStatus: 'Invited',
+    });
+
+    const committed = campaign.collaborations
+      .filter((collab) => !['Rejected'].includes(collab.status))
+      .reduce((sum, collab) => sum + Number(collab.agreedPrice || 0), 0);
+    const targetBudget = Number(campaign.targetBudget || 0);
+    const batchExposure = Number(dealOffer.proposedPrice || 0) * creatorIds.length;
+    if (targetBudget > 0 && committed + batchExposure > targetBudget) {
+      return res.status(400).json({
+        error: `Batch invites exceed campaign budget. Remaining negotiable budget is $${Math.max(0, targetBudget - committed).toLocaleString()}.`,
+      });
+    }
+
+    const offerTerms = DealPricingService.buildOfferTerms({
+      actorRole: 'brand',
+      action: 'invite',
+      offer: dealOffer,
+      message,
+      deliverables: deliverables || [],
+      milestones: milestones || [],
+    });
 
     const results = await Promise.all(
       creatorIds.map(async (creatorId) => {
@@ -421,8 +464,15 @@ export const inviteCampaignCreators = async (req, res) => {
             where: { id: collab.id },
             data: {
               status: 'Invited',
-              agreedPrice: amount,
+              proposedPrice: dealOffer.proposedPrice,
+              agreedPrice: null,
+              pricingModel: dealOffer.pricingModel,
+              estimatedViews: dealOffer.estimatedViews,
+              calculatedCpm: dealOffer.calculatedCpm,
+              offerTerms,
+              offerExpiresAt: dealOffer.offerExpiresAt,
               deliverables,
+              milestones: milestones || collab.milestones,
             },
           });
         }
@@ -432,8 +482,14 @@ export const inviteCampaignCreators = async (req, res) => {
             campaignId,
             creatorId,
             status: 'Invited',
-            agreedPrice: amount,
+            proposedPrice: dealOffer.proposedPrice,
+            pricingModel: dealOffer.pricingModel,
+            estimatedViews: dealOffer.estimatedViews,
+            calculatedCpm: dealOffer.calculatedCpm,
+            offerTerms,
+            offerExpiresAt: dealOffer.offerExpiresAt,
             deliverables,
+            milestones: milestones || null,
           },
         });
       })
@@ -481,6 +537,15 @@ export const updateCreatorInviteStatus = async (req, res) => {
 
     const collab = await prisma.campaignCollaboration.findUnique({
       where: { id: collaborationId },
+      include: {
+        campaign: {
+          include: {
+            collaborations: {
+              select: { id: true, status: true, agreedPrice: true },
+            },
+          },
+        },
+      },
     });
 
     if (!collab || collab.campaignId !== campaignId) {
@@ -513,9 +578,37 @@ export const updateCreatorInviteStatus = async (req, res) => {
       });
       res.json({ success: true, status: collab.status });
     } else if (action === 'accept') {
+      if (collab.status === 'Invited' && collab.offerTerms?.currentOffer?.proposedBy === 'brand') {
+        return res.status(400).json({ error: 'Brand offer is waiting for creator response.' });
+      }
+
+      const acceptedPrice = Number(collab.agreedPrice || collab.proposedPrice || 0);
+      DealPricingService.assertOfferAllowed({
+        campaign: collab.campaign,
+        currentCollaboration: collab,
+        agreedPrice: acceptedPrice,
+        estimatedViews: collab.estimatedViews,
+        nextStatus: 'In_Progress',
+      });
+
+      const offerTerms = DealPricingService.buildOfferTerms({
+        existingTerms: collab.offerTerms,
+        actorRole: 'brand',
+        action: 'accept',
+        offer: {
+          agreedPrice: acceptedPrice,
+          pricingModel: collab.pricingModel || collab.campaign.pricingModel || 'flat_fee',
+        },
+      });
+
       await prisma.campaignCollaboration.update({
         where: { id: collaborationId },
-        data: { status: 'In_Progress' },
+        data: {
+          status: 'In_Progress',
+          agreedPrice: acceptedPrice,
+          offerAcceptedAt: new Date(),
+          offerTerms,
+        },
       });
 
       await prisma.campaignEvent.create({

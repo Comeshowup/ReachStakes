@@ -1,5 +1,6 @@
 import { prisma } from "../config/db.js";
 import { createNotification } from "../services/notificationService.js";
+import { DealPricingService } from "../services/dealPricing.service.js";
 
 // @desc    Create a new campaign
 // @route   POST /api/campaigns
@@ -20,7 +21,14 @@ export const createCampaign = async (req, res) => {
             usageCategory,
             exclusivity,
             exclusivityPeriod,
-            isWhitelistingRequired
+            isWhitelistingRequired,
+            pricingModel,
+            budgetGuardrailMin,
+            budgetGuardrailMax,
+            targetCpm,
+            maxCpm,
+            maxCreatorPayout,
+            negotiationInstructions
         } = req.body;
 
         // Ensure user is a brand
@@ -33,10 +41,16 @@ export const createCampaign = async (req, res) => {
                 description,
                 platformRequired,
                 campaignType,
-                campaignType,
                 targetBudget: budgetMin ? parseFloat(budgetMin) : (targetBudget ? parseFloat(targetBudget) : null), // Handle legacy or new
                 deadline: deadline ? new Date(deadline) : null,
                 status: 'Draft', // Default to Draft for new requests
+                pricingModel: DealPricingService.normalizePricingModel(pricingModel),
+                budgetGuardrailMin: budgetGuardrailMin ? parseFloat(budgetGuardrailMin) : null,
+                budgetGuardrailMax: budgetGuardrailMax ? parseFloat(budgetGuardrailMax) : null,
+                targetCpm: targetCpm ? parseFloat(targetCpm) : null,
+                maxCpm: maxCpm ? parseFloat(maxCpm) : null,
+                maxCreatorPayout: maxCreatorPayout ? parseFloat(maxCreatorPayout) : null,
+                negotiationInstructions: negotiationInstructions || null,
                 // New Contractual Fields
                 usageRights,
                 usageCategory,
@@ -66,7 +80,8 @@ export const createCampaign = async (req, res) => {
 export const applyToCampaign = async (req, res) => {
     try {
         const campaignId = parseInt(req.params.id);
-        const { agreedPrice, pitch } = req.body; // 'pitch' is not in schema but maybe 'feedbackNotes' or we just create simple access
+        const { pitch } = req.body;
+        const proposal = DealPricingService.buildProposal(req.body);
 
         // Verify campaign exists
         const campaign = await prisma.campaign.findUnique({
@@ -101,7 +116,14 @@ export const applyToCampaign = async (req, res) => {
                 campaignId,
                 creatorId: req.user.id,
                 status: 'Applied',
-                agreedPrice: agreedPrice && !isNaN(parseFloat(agreedPrice)) ? parseFloat(agreedPrice) : null,
+                proposedPrice: proposal.proposedPrice,
+                pricingModel: proposal.pricingModel,
+                estimatedViews: proposal.estimatedViews,
+                calculatedCpm: proposal.calculatedCpm,
+                offerTerms: proposal.proposedPrice ? {
+                    source: 'creator_application',
+                    pitch: pitch || null
+                } : null,
                 feedbackNotes: pitch || null,
                 milestones: {
                     "Concept": "pending",
@@ -119,7 +141,12 @@ export const applyToCampaign = async (req, res) => {
             'creator_applied',
             'New Creator Application',
             `A creator applied to your campaign "${campaign.title}"`,
-            { campaignId, collaborationId: collaboration.id }
+            {
+                campaignId,
+                collaborationId: collaboration.id,
+                proposedPrice: proposal.proposedPrice,
+                pricingModel: proposal.pricingModel
+            }
         );
 
         res.status(201).json({
@@ -433,11 +460,17 @@ export const getCampaignById = async (req, res) => {
 export const inviteToCampaign = async (req, res) => {
     try {
         const campaignId = parseInt(req.params.id);
-        const { creatorId, agreedPrice, notes } = req.body;
+        const { creatorId, notes, deliverables, milestones } = req.body;
+        const offer = DealPricingService.buildOffer(req.body);
 
         const campaign = await prisma.campaign.findUnique({
             where: { id: campaignId },
-            include: { brand: { include: { brandProfile: true } } }
+            include: {
+                brand: { include: { brandProfile: true } },
+                collaborations: {
+                    select: { id: true, status: true, agreedPrice: true }
+                }
+            }
         });
 
         if (!campaign) {
@@ -466,20 +499,43 @@ export const inviteToCampaign = async (req, res) => {
             });
         }
 
+        DealPricingService.assertOfferAllowed({
+            campaign,
+            currentCollaboration: { id: 0, agreedPrice: null, estimatedViews: offer.estimatedViews },
+            proposedPrice: offer.proposedPrice,
+            estimatedViews: offer.estimatedViews,
+            nextStatus: 'Invited',
+        });
+
+        const offerTerms = DealPricingService.buildOfferTerms({
+            actorRole: 'brand',
+            action: 'invite',
+            offer,
+            message: notes,
+            deliverables: deliverables || [],
+            milestones: milestones || [],
+        });
+
         const collaboration = await prisma.campaignCollaboration.create({
             data: {
                 campaignId,
                 creatorId: parseInt(creatorId),
                 status: 'Invited',
-                agreedPrice: agreedPrice ? parseFloat(agreedPrice) : null,
+                proposedPrice: offer.proposedPrice,
+                pricingModel: offer.pricingModel,
+                estimatedViews: offer.estimatedViews,
+                calculatedCpm: offer.calculatedCpm,
+                offerTerms,
+                offerExpiresAt: offer.offerExpiresAt,
                 feedbackNotes: notes || null,
-                milestones: {
+                deliverables: deliverables || null,
+                milestones: milestones || {
                     "Concept": "pending",
                     "Script": "pending",
                     "Draft": "pending",
                     "Final": "pending",
                     "Live": "pending"
-                }
+                },
             },
             include: {
                 campaign: {
@@ -497,7 +553,12 @@ export const inviteToCampaign = async (req, res) => {
             'campaign_invite',
             'Campaign Invitation',
             `${brandName} invited you to collaborate on "${campaign.title}"`,
-            { campaignId, collaborationId: collaboration.id }
+            {
+                campaignId,
+                collaborationId: collaboration.id,
+                proposedPrice: offer.proposedPrice,
+                pricingModel: offer.pricingModel
+            }
         );
 
         res.status(201).json({ status: 'success', data: collaboration });
@@ -522,7 +583,13 @@ export const respondToInvite = async (req, res) => {
         const collaboration = await prisma.campaignCollaboration.findUnique({
             where: { id: collabId },
             include: {
-                campaign: true
+                campaign: {
+                    include: {
+                        collaborations: {
+                            select: { id: true, status: true, agreedPrice: true }
+                        }
+                    }
+                }
             }
         });
 
@@ -534,13 +601,48 @@ export const respondToInvite = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'This invitation is no longer pending' });
         }
 
-        // Accept → In_Progress (brand already confirmed by inviting)
+        if (action === 'accept' && !collaboration.proposedPrice && !collaboration.agreedPrice) {
+            return res.status(400).json({ status: 'error', message: 'This invitation has no offer amount to accept.' });
+        }
+
+        if (action === 'accept' && collaboration.offerTerms?.currentOffer?.proposedBy === 'creator') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'You cannot accept your own counter offer. Wait for the brand to respond.'
+            });
+        }
+
+        const acceptedPrice = Number(collaboration.agreedPrice || collaboration.proposedPrice || 0);
+        DealPricingService.assertOfferAllowed({
+            campaign: collaboration.campaign,
+            currentCollaboration: collaboration,
+            agreedPrice: acceptedPrice,
+            estimatedViews: collaboration.estimatedViews,
+            nextStatus: action === 'accept' ? 'In_Progress' : 'Rejected',
+        });
+
+        const offerTerms = DealPricingService.buildOfferTerms({
+            existingTerms: collaboration.offerTerms,
+            actorRole: 'creator',
+            action,
+            offer: {
+                agreedPrice: acceptedPrice,
+                pricingModel: collaboration.pricingModel || collaboration.campaign.pricingModel || 'flat_fee',
+            },
+        });
+
+        // Accept → In_Progress (deal becomes binding)
         // Decline → Rejected
         const newStatus = action === 'accept' ? 'In_Progress' : 'Rejected';
 
         const updated = await prisma.campaignCollaboration.update({
             where: { id: collabId },
-            data: { status: newStatus },
+            data: {
+                status: newStatus,
+                agreedPrice: action === 'accept' ? acceptedPrice : collaboration.agreedPrice,
+                offerAcceptedAt: action === 'accept' ? new Date() : collaboration.offerAcceptedAt,
+                offerTerms,
+            },
             include: {
                 campaign: {
                     include: {
@@ -566,4 +668,3 @@ export const respondToInvite = async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to respond to invitation' });
     }
 };
-

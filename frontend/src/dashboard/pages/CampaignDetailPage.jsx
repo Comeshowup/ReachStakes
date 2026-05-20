@@ -1,7 +1,7 @@
 import SafeChart from '@/components/SafeChart';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCampaignDetail, useUpdateCollaborationDecision } from '../../hooks/useCampaigns';
+import { useCampaignDetail, useNegotiateCollaborationDeal, useUpdateCollaborationDecision } from '../../hooks/useCampaigns';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
@@ -22,6 +22,13 @@ const CARD_STYLE = {
     background: 'var(--bd-surface-elevated)',
     boxShadow: 'var(--bd-shadow-sm)',
 };
+
+const paymentModelLabel = (model) => ({
+    flat_fee: 'Flat per video',
+    cpm: 'CPM based',
+    hybrid: 'Hybrid',
+    milestone: 'Milestone based',
+}[model] || String(model || 'flat_fee').replace(/_/g, ' '));
 
 /* ================================================================
    STATUS BADGE
@@ -284,6 +291,7 @@ const CampaignDetailPage = () => {
     const navigate = useNavigate();
     const { data, isLoading, error } = useCampaignDetail(id);
     const { mutate: updateDecision, isPending: isUpdating } = useUpdateCollaborationDecision(id);
+    const { mutate: negotiateDeal, isPending: isNegotiating } = useNegotiateCollaborationDeal(id);
     const [timeRange, setTimeRange] = useState('30d');
     const [sortCol, setSortCol] = useState('spend');
     const [sortDir, setSortDir] = useState('desc');
@@ -291,10 +299,14 @@ const CampaignDetailPage = () => {
     const [payModal, setPayModal] = useState(null);
     const [payAmount, setPayAmount] = useState('');
     const [payNote, setPayNote] = useState('');
+    const [counterModal, setCounterModal] = useState(null);
+    const [counterAmount, setCounterAmount] = useState('');
+    const [counterNote, setCounterNote] = useState('');
 
     const sortedCreators = useMemo(() => {
         if (!data?.creators) return [];
-        return [...data.creators].sort((a, b) => {
+        const performanceCreators = data.creators.filter((creator) => !['Invited', 'Applied', 'Rejected'].includes(creator.status));
+        return [...performanceCreators].sort((a, b) => {
             const val = sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol];
             return val;
         });
@@ -319,7 +331,7 @@ const CampaignDetailPage = () => {
     }, [sortCol]);
 
     const openPayModal = useCallback((creator, mode) => {
-        setPayAmount(creator.agreedPrice ? String(creator.agreedPrice) : '');
+        setPayAmount(creator.agreedPrice ? String(creator.agreedPrice) : (creator.proposedPrice ? String(creator.proposedPrice) : ''));
         setPayNote('');
         setPayModal({ collabId: creator.id, name: creator.name, mode });
     }, []);
@@ -340,6 +352,35 @@ const CampaignDetailPage = () => {
         updateDecision({ collabId: payModal.collabId, data: payload });
         closePayModal();
     }, [payModal, payAmount, updateDecision, closePayModal]);
+
+    const openCounterModal = useCallback((creator) => {
+        setCounterAmount(creator.proposedPrice ? String(creator.proposedPrice) : '');
+        setCounterNote('');
+        setCounterModal(creator);
+    }, []);
+
+    const closeCounterModal = useCallback(() => {
+        setCounterModal(null);
+        setCounterAmount('');
+        setCounterNote('');
+    }, []);
+
+    const confirmCounterModal = useCallback(() => {
+        if (!counterModal) return;
+        const amount = parseFloat(counterAmount);
+        if (!amount || amount <= 0) return;
+        negotiateDeal({
+            collabId: counterModal.id,
+            data: {
+                action: 'counter',
+                proposedPrice: amount,
+                pricingModel: counterModal.pricingModel || 'flat_fee',
+                estimatedViews: counterModal.estimatedViews || undefined,
+                message: counterNote || undefined,
+            },
+        });
+        closeCounterModal();
+    }, [counterModal, counterAmount, counterNote, negotiateDeal, closeCounterModal]);
 
     const SortIcon = ({ col }) => (
         sortCol === col
@@ -370,6 +411,7 @@ const CampaignDetailPage = () => {
     }
 
     const { campaign, performance_snapshot: perf, capital_intelligence: cap, creators, activity_feed, risk_flags, risk_level } = data;
+    const invitationDeals = (creators || []).filter((creator) => ['Invited', 'Applied'].includes(creator.status));
 
     // Data state checks
     const revenue = Number(perf?.revenue || 0);
@@ -430,6 +472,23 @@ const CampaignDetailPage = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <button
+                        onClick={() => navigate(`/brand/campaigns/${campaign.id}/invitations`)}
+                        className="bd-cm-btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
+                    >
+                        <UserPlus size={14} /> Invitations
+                        {invitationDeals.length > 0 && (
+                            <span style={{
+                                minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
+                                background: 'var(--bd-muted)', color: 'var(--bd-text-secondary)',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.6875rem', fontWeight: 700,
+                            }}>
+                                {invitationDeals.length}
+                            </span>
+                        )}
+                    </button>
                     <button className="bd-cm-btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
                         <Download size={14} /> Export
                     </button>
@@ -723,6 +782,15 @@ const CampaignDetailPage = () => {
                                                         <Edit3 size={12} />
                                                     </button>
                                                 </div>
+                                            ) : c.proposedPrice > 0 ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                    <span style={{ fontWeight: 600, color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                                                        ${Number(c.proposedPrice).toLocaleString()}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.6875rem', color: 'var(--bd-text-muted)' }}>
+                                                        {c.offerTerms?.currentOffer?.proposedBy === 'brand' ? 'Brand offer' : 'Creator counter'}
+                                                    </span>
+                                                </div>
                                             ) : (
                                                 <button
                                                     onClick={() => openPayModal(c, 'edit')}
@@ -962,6 +1030,91 @@ const CampaignDetailPage = () => {
                                 style={{ flex: 2, padding: '10px 0', fontWeight: 700, opacity: (!payAmount || parseFloat(payAmount) <= 0) ? 0.5 : 1 }}
                             >
                                 {payModal.mode === 'accept' ? '✓ Accept Creator & Set Pay' : '✓ Update Payment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {counterModal && (
+                <div
+                    onClick={closeCounterModal}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            width: '100%', maxWidth: 460,
+                            borderRadius: 'var(--bd-radius-xl)',
+                            background: 'var(--bd-surface-elevated)',
+                            border: '1px solid var(--bd-border-default)',
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                            padding: 32,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--bd-text-primary)', margin: 0 }}>
+                                    Send Counter Offer
+                                </h3>
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--bd-text-secondary)', margin: '6px 0 0' }}>
+                                    Counter {counterModal.name}'s current deal terms.
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeCounterModal}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--bd-text-muted)', lineHeight: 1 }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--bd-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Counter Amount (USD)
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={counterAmount}
+                            onChange={e => setCounterAmount(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && confirmCounterModal()}
+                            style={{
+                                width: '100%', padding: '12px 14px',
+                                borderRadius: 'var(--bd-radius-lg)',
+                                border: '1px solid var(--bd-border-default)',
+                                background: 'var(--bd-surface-input)',
+                                color: 'var(--bd-text-primary)',
+                                fontSize: '1.25rem', fontWeight: 700,
+                                outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+                            }}
+                        />
+                        <textarea
+                            rows={3}
+                            value={counterNote}
+                            onChange={e => setCounterNote(e.target.value)}
+                            placeholder="Optional note for the creator"
+                            style={{
+                                width: '100%', padding: 12,
+                                borderRadius: 'var(--bd-radius-lg)',
+                                border: '1px solid var(--bd-border-default)',
+                                background: 'var(--bd-surface-input)',
+                                color: 'var(--bd-text-primary)',
+                                outline: 'none', boxSizing: 'border-box', resize: 'none', marginBottom: 20,
+                            }}
+                        />
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button onClick={closeCounterModal} className="bd-cm-btn-secondary" style={{ flex: 1, padding: '10px 0', fontWeight: 600 }}>
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmCounterModal}
+                                disabled={!counterAmount || parseFloat(counterAmount) <= 0 || isNegotiating}
+                                className="bd-cm-btn-primary"
+                                style={{ flex: 2, padding: '10px 0', fontWeight: 700, opacity: (!counterAmount || parseFloat(counterAmount) <= 0) ? 0.5 : 1 }}
+                            >
+                                Send Counter
                             </button>
                         </div>
                     </div>

@@ -281,27 +281,64 @@ const Step2OfferSetup = ({ offer, setOffer, errors }) => {
   return (
     <div className="space-y-5">
       {/* Amount */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-          Compensation Amount <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-          <input
-            type="number"
-            min="0"
-            placeholder="500"
-            value={offer.amount}
-            onChange={(e) => setOffer((prev) => ({ ...prev, amount: e.target.value }))}
-            className={`w-full pl-7 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-900 dark:text-white ${
-              errors?.amount
-                ? 'border-red-400 dark:border-red-500'
-                : 'border-gray-200 dark:border-zinc-700'
-            }`}
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
+            Payment Model <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={offer.pricingModel}
+            onChange={(e) => setOffer((prev) => ({ ...prev, pricingModel: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="flat_fee">Flat per video</option>
+            <option value="cpm">CPM based</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="milestone">Milestone based</option>
+          </select>
         </div>
-        {errors?.amount && (
-          <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
+            {offer.pricingModel === 'cpm' ? 'Total Offer Cap' : 'Offer Amount'} <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="500"
+              value={offer.amount}
+              onChange={(e) => setOffer((prev) => ({ ...prev, amount: e.target.value }))}
+              className={`w-full pl-7 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-900 dark:text-white ${
+                errors?.amount
+                  ? 'border-red-400 dark:border-red-500'
+                  : 'border-gray-200 dark:border-zinc-700'
+              }`}
+            />
+          </div>
+          {errors?.amount && (
+            <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
+          )}
+        </div>
+        {(offer.pricingModel === 'cpm' || offer.pricingModel === 'hybrid') && (
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
+              Estimated Views
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="50000"
+              value={offer.estimatedViews}
+              onChange={(e) => setOffer((prev) => ({ ...prev, estimatedViews: e.target.value }))}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {Number(offer.amount) > 0 && Number(offer.estimatedViews) > 0 && (
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+                Implied CPM: ${(Number(offer.amount) / Number(offer.estimatedViews) * 1000).toFixed(2)}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -420,8 +457,13 @@ const Step4Review = ({ selected, offer, message }) => (
       <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase mb-1">Offer</p>
       <div className="flex items-baseline gap-1">
         <span className="text-2xl font-bold text-gray-900 dark:text-white">${Number(offer.amount).toLocaleString()}</span>
-        <span className="text-sm text-gray-500">fixed</span>
+        <span className="text-sm text-gray-500">{offer.pricingModel.replace('_', ' ')}</span>
       </div>
+      {Number(offer.estimatedViews) > 0 && (
+        <p className="text-xs text-gray-500 dark:text-zinc-400">
+          {Number(offer.estimatedViews).toLocaleString()} estimated views · ${(Number(offer.amount) / Number(offer.estimatedViews) * 1000).toFixed(2)} CPM
+        </p>
+      )}
       <div>
         <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1">Deliverables</p>
         <div className="flex flex-wrap gap-1.5">
@@ -457,7 +499,9 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState(new Map()); // id → creator
   const [offer, setOffer] = useState({
+    pricingModel: 'flat_fee',
     amount: '',
+    estimatedViews: '',
     deliverables: [''],
     deadline: '',
   });
@@ -469,7 +513,7 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
   const reset = useCallback(() => {
     setStep(0);
     setSelected(new Map());
-    setOffer({ amount: '', deliverables: [''], deadline: '' });
+    setOffer({ pricingModel: 'flat_fee', amount: '', estimatedViews: '', deliverables: [''], deadline: '' });
     setMessage(DEFAULT_MESSAGE);
     setErrors({});
   }, []);
@@ -511,7 +555,13 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
       creatorIds: Array.from(selected.keys()),
       offer: {
         amount: Number(offer.amount),
+        proposedPrice: Number(offer.amount),
+        pricingModel: offer.pricingModel,
+        estimatedViews: offer.estimatedViews ? Number(offer.estimatedViews) : undefined,
         deliverables: offer.deliverables.filter(Boolean),
+        milestones: offer.pricingModel === 'milestone'
+          ? offer.deliverables.filter(Boolean).map((title, index) => ({ title, status: 'pending', order: index + 1 }))
+          : undefined,
         deadline: offer.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       },
       message: message || undefined,
