@@ -428,6 +428,9 @@ export const getBrandCampaigns = async (req, res) => {
 
         const formattedCampaigns = campaigns.map(campaign => {
             const creatorCount = campaign.collaborations.length;
+            const targetBudget = parseFloat(campaign.targetBudget) || 0;
+            const totalFunded = parseFloat(campaign.totalFunded) || 0;
+            const escrowBalance = parseFloat(campaign.escrowBalance) || 0;
 
             let totalViews = 0;
             campaign.collaborations.forEach(collab => {
@@ -447,13 +450,14 @@ export const getBrandCampaigns = async (req, res) => {
                 status: campaign.status,
                 platform: campaign.platformRequired,
                 type: campaign.campaignType,
-                targetBudget: parseFloat(campaign.targetBudget) || 0,
-                escrowBalance: parseFloat(campaign.escrowBalance) || 0,
-                totalFunded: parseFloat(campaign.totalFunded) || 0,
+                targetBudget,
+                escrowBalance,
+                totalFunded,
                 totalReleased: parseFloat(campaign.totalReleased) || 0,
-                fundingProgress: campaign.targetBudget > 0
-                    ? Math.round((parseFloat(campaign.escrowBalance) / parseFloat(campaign.targetBudget)) * 100)
+                fundingProgress: targetBudget > 0
+                    ? Math.min(100, Math.round((totalFunded / targetBudget) * 100))
                     : 0,
+                isFullyFunded: targetBudget > 0 && totalFunded >= targetBudget,
                 deadline: campaign.deadline,
                 creators: creatorCount,
                 roi: roi,

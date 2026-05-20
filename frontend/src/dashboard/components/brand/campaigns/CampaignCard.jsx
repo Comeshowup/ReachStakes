@@ -20,6 +20,7 @@ const CampaignCard = ({ campaign, onView, onFund }) => {
     const utilized = calcProgress(campaign.spent, campaign.budget);
     const roi = formatROI(campaign.roi);
     const needsFunding = ['Draft', 'Pending Payment', 'Active'].includes(campaign.status)
+        && !campaign.isFullyFunded
         && campaign.fundingProgress < 100;
 
     return (

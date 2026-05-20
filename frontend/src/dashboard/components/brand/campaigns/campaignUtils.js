@@ -17,7 +17,15 @@ export function mapApiCampaign(raw) {
         creators: Number(raw.creators) || 0,
         roi: raw.roi != null ? Number(raw.roi) : null,
         startDate: raw.createdAt || raw.startDate || new Date().toISOString(),
-        fundingProgress: Number(raw.fundingProgress) || 0,
+        fundedAmount: Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0,
+        escrowBalance: Number(raw.escrowBalance) || 0,
+        fundingProgress: Number(raw.fundingProgress) || (
+            Number(raw.targetBudget) > 0
+                ? Math.min(100, Math.round(((Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0) / Number(raw.targetBudget)) * 100))
+                : 0
+        ),
+        isFullyFunded: Boolean(raw.isFullyFunded)
+            || (Number(raw.targetBudget) > 0 && (Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0) >= Number(raw.targetBudget)),
     };
 }
 
