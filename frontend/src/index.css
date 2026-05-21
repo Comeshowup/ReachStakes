@@ -10,6 +10,21 @@
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  :root,
+  [data-theme="light"] {
+    --bd-select-option-bg: #ffffff;
+    --bd-select-option-fg: #0a0a0f;
+    --bd-select-option-active-bg: #eef0ff;
+    --bd-select-option-active-fg: #0a0a0f;
+  }
+
+  [data-theme="dark"] {
+    --bd-select-option-bg: #16161d;
+    --bd-select-option-fg: #f0f0f5;
+    --bd-select-option-active-bg: #6366f1;
+    --bd-select-option-active-fg: #ffffff;
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 relative;
   }
@@ -19,6 +34,26 @@
     @apply fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] dark:opacity-[0.05];
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     filter: contrast(150%) brightness(100%);
+  }
+
+  .bd-form-select {
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] .bd-form-select {
+    color-scheme: dark;
+  }
+
+  .bd-form-select option {
+    background-color: var(--bd-select-option-bg);
+    color: var(--bd-select-option-fg);
+  }
+
+  .bd-form-select option:checked,
+  .bd-form-select option:hover,
+  .bd-form-select option:focus {
+    background-color: var(--bd-select-option-active-bg);
+    color: var(--bd-select-option-active-fg);
   }
 }
 

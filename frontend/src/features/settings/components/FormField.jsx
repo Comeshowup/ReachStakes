@@ -10,6 +10,11 @@ const inputBaseStyles = {
   color: "var(--bd-text-primary)",
 };
 
+const optionBaseStyles = {
+  background: "var(--bd-select-option-bg, var(--bd-surface))",
+  color: "var(--bd-select-option-fg, var(--bd-text-primary))",
+};
+
 const focusClass =
   "outline-none focus:ring-2 focus:ring-[var(--bd-accent)]/20 focus:border-[var(--bd-accent)]";
 
@@ -32,11 +37,22 @@ export const Textarea = ({ className = "", rows = 3, ...props }) => (
 
 export const Select = ({ children, className = "", ...props }) => (
   <select
-    className={`w-full px-3.5 py-2.5 rounded-xl text-sm transition-all appearance-none ${focusClass} ${className}`}
+    className={`bd-form-select w-full px-3.5 py-2.5 rounded-xl text-sm transition-all appearance-none ${focusClass} ${className}`}
     style={inputBaseStyles}
     {...props}
   >
-    {children}
+    {React.Children.map(children, (child) => {
+      if (!React.isValidElement(child) || child.type !== "option") {
+        return child;
+      }
+
+      return React.cloneElement(child, {
+        style: {
+          ...optionBaseStyles,
+          ...child.props.style,
+        },
+      });
+    })}
   </select>
 );
 

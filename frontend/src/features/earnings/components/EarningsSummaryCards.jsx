@@ -49,7 +49,7 @@ const MetricCard = ({ label, value, subtitle, accentColor, Icon, delay, tooltip 
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4, delay }}
-    className="rounded-2xl p-5 relative overflow-hidden group"
+    className="rounded-2xl p-5 relative group"
     style={{
       background: 'var(--bd-surface-card)',
       border: '1px solid var(--bd-border-subtle)',
