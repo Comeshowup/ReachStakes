@@ -157,13 +157,18 @@ const PublicMediaKit = () => {
 
   // ------- PAGE -------
   return (
-    <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30 font-sans">
+    <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30 font-sans relative overflow-hidden">
+      {/* Ambient background glows for fintech SaaS look */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-indigo-500/[0.03] blur-[120px] pointer-events-none" />
+      <div className="absolute top-[30%] right-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/[0.02] blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-[20%] left-1/3 w-[550px] h-[550px] rounded-full bg-cyan-500/[0.02] blur-[130px] pointer-events-none" />
+
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
         <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
           <Link
             to="/"
-            className="text-lg font-bold tracking-tight text-white"
+            className="text-lg font-bold tracking-tight text-white hover:opacity-90 transition-opacity"
           >
             REACHSTAKES
             <span className="text-indigo-500">.</span>
@@ -223,7 +228,7 @@ const PublicMediaKit = () => {
       </nav>
 
       {/* Content */}
-      <main className="pt-20 pb-28 sm:pb-20 px-6 max-w-[1100px] mx-auto space-y-12">
+      <main className="pt-20 pb-28 sm:pb-20 px-6 max-w-[1100px] mx-auto space-y-16 relative z-10">
         <HeroSection
           profile={{
             name: profile.name,
@@ -238,6 +243,8 @@ const PublicMediaKit = () => {
           onBook={handleBookMe}
         />
 
+        <PlatformsInline platforms={profile.platforms} />
+
         <AboutSection bio={profile.bio} niches={profile.niches} />
 
         <PerformanceSection
@@ -246,11 +253,9 @@ const PublicMediaKit = () => {
           platforms={profile.platforms}
         />
 
+        <ServicesSection services={profile.services} onBook={handleBookMe} />
+
         <SocialProofSection collaborations={profile.collaborations} />
-
-        <ServicesSection services={profile.services} />
-
-        <PlatformsInline platforms={profile.platforms} />
 
         <FinalCTA onBook={handleBookMe} />
       </main>
@@ -262,3 +267,4 @@ const PublicMediaKit = () => {
 };
 
 export default PublicMediaKit;
+
