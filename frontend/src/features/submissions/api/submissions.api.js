@@ -18,28 +18,35 @@ function authHeaders() {
 // ─── Normalise backend collab → frontend submission shape ─────────────────────
 
 function normaliseSubmission(collab) {
+  const contentUrl = collab.submissionUrl || collab.link || collab.contentUrl || '';
+  const updatedAt = collab.updatedAt || collab.date || collab.submittedAt || new Date().toISOString();
+  const createdAt = collab.createdAt || updatedAt;
+  const submittedAt = collab.submittedAt || (contentUrl ? updatedAt : null);
+
   return {
     // Core IDs
     id: String(collab.id),
     campaignId: String(collab.collaborationId || collab.id),
 
     // Content
-    platform: (collab.submissionPlatform || collab.platform || '').toLowerCase(),
+    platform: normalisePlatform(collab.submissionPlatform || collab.platform),
     type: collab.type || 'video',
-    contentUrl: collab.submissionUrl || collab.link || collab.contentUrl || '',
-    caption: collab.caption || '',
+    contentUrl,
+    caption: collab.caption || collab.submissionTitle || collab.title || '',
     notes: collab.submissionNotes || collab.notes || '',
+    revisionFeedback: collab.revisionFeedback || collab.feedbackNotes || collab.feedback || '',
 
     // Status — map backend CollabStatus to frontend SUBMISSION_STATUS keys
-    status: mapStatus(collab.status),
+    status: mapStatus(collab.status, { hasSubmission: Boolean(contentUrl) }),
 
     // Versioning (backend does not track versions yet — default 1)
     version: collab.version || 1,
     parentSubmissionId: collab.parentSubmissionId || null,
 
     // Meta
-    createdAt: collab.createdAt || collab.date || new Date().toISOString(),
-    updatedAt: collab.updatedAt || collab.date || new Date().toISOString(),
+    createdAt,
+    updatedAt,
+    submittedAt,
 
     // Stats
     stats: collab.stats || collab.videoStats || {},
@@ -50,19 +57,40 @@ function normaliseSubmission(collab) {
   };
 }
 
-function mapStatus(backendStatus) {
+function normaliseStatusKey(status) {
+  return String(status || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+}
+
+function normalisePlatform(platform) {
+  const key = String(platform || '').trim().toLowerCase();
+  if (key.includes('instagram')) return 'instagram';
+  if (key.includes('youtube')) return 'youtube';
+  if (key.includes('tiktok') || key.includes('tik_tok')) return 'tiktok';
+  return key || 'youtube';
+}
+
+function mapStatus(backendStatus, { hasSubmission = false } = {}) {
+  const statusKey = normaliseStatusKey(backendStatus);
   const STATUS_MAP = {
-    Applied:             SUBMISSION_STATUS.DRAFT,
-    Invited:             SUBMISSION_STATUS.DRAFT,
-    Accepted:            SUBMISSION_STATUS.DRAFT,
-    Under_Review:        SUBMISSION_STATUS.UNDER_REVIEW,
-    Submitted:           SUBMISSION_STATUS.SUBMITTED,
-    Approved:            SUBMISSION_STATUS.APPROVED,
-    Revision_Requested:  SUBMISSION_STATUS.CHANGES_REQUESTED,
-    Rejected:            SUBMISSION_STATUS.DRAFT,
-    Completed:           SUBMISSION_STATUS.APPROVED,
+    applied: SUBMISSION_STATUS.DRAFT,
+    invited: SUBMISSION_STATUS.DRAFT,
+    accepted: SUBMISSION_STATUS.DRAFT,
+    in_progress: hasSubmission ? SUBMISSION_STATUS.SUBMITTED : SUBMISSION_STATUS.DRAFT,
+    under_review: SUBMISSION_STATUS.UNDER_REVIEW,
+    submitted: SUBMISSION_STATUS.SUBMITTED,
+    revision: SUBMISSION_STATUS.CHANGES_REQUESTED,
+    revision_requested: SUBMISSION_STATUS.CHANGES_REQUESTED,
+    changes_requested: SUBMISSION_STATUS.CHANGES_REQUESTED,
+    approved: SUBMISSION_STATUS.APPROVED,
+    paid: SUBMISSION_STATUS.APPROVED,
+    completed: SUBMISSION_STATUS.APPROVED,
+    rejected: SUBMISSION_STATUS.REJECTED,
   };
-  return STATUS_MAP[backendStatus] || SUBMISSION_STATUS.DRAFT;
+
+  return STATUS_MAP[statusKey] || (hasSubmission ? SUBMISSION_STATUS.SUBMITTED : SUBMISSION_STATUS.DRAFT);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

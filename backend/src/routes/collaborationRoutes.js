@@ -46,8 +46,16 @@ router.get("/my-submissions", protect, async (req, res) => {
             status: collab.status,
             date: collab.updatedAt,
             createdAt: collab.createdAt,
+            updatedAt: collab.updatedAt,
+            submittedAt: collab.submissionUrl ? collab.updatedAt : null,
             deadline: collab.offerExpiresAt || collab.campaign.deadline || null,
             link: collab.submissionUrl,
+            submissionUrl: collab.submissionUrl,
+            submissionTitle: collab.submissionTitle,
+            submissionPlatform: collab.submissionPlatform,
+            submissionNotes: collab.submissionNotes,
+            feedbackNotes: collab.feedbackNotes,
+            revisionFeedback: collab.feedbackNotes,
             stats: collab.videoStats,
             feedback: collab.feedbackNotes,
             // Payment negotiation
@@ -545,6 +553,19 @@ router.patch("/:id/decision", protect, async (req, res) => {
             include: { campaign: true } // Fetch campaign for payout check
         });
 
+        if (feedback && String(feedback).trim()) {
+            await prisma.campaignMessage.create({
+                data: {
+                    campaignId: existing.campaignId,
+                    collaborationId: existing.id,
+                    threadId: `collab-${existing.id}`,
+                    senderId: req.user.id,
+                    content: String(feedback).trim(),
+                    type: 'Text',
+                }
+            });
+        }
+
         // Fast Payouts Logic: If Approved and Instant, trigger payout
         if (status === 'Approved' && updated.campaign.payoutSpeed === 'Instant') {
             console.log(`[Fast Payout] Triggering instant payout for Collaboration ${id}`);
@@ -650,6 +671,144 @@ router.post("/:id/submit", protect, async (req, res) => {
             error: "Failed to submit content",
             details: error.message
         });
+    }
+});
+
+// ── Collaboration messages ───────────────────────────────────────────────────
+// GET /api/collaborations/:id/messages
+router.get("/:id/messages", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({ error: "Invalid collaboration ID" });
+
+        const collab = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                campaignId: true,
+                creatorId: true,
+                feedbackNotes: true,
+                updatedAt: true,
+                campaign: {
+                    select: { brandId: true }
+                }
+            }
+        });
+
+        if (!collab) return res.status(404).json({ error: "Collaboration not found" });
+        if (collab.creatorId !== req.user.id && collab.campaign.brandId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorised" });
+        }
+
+        const messages = await prisma.campaignMessage.findMany({
+            where: {
+                collaborationId: id,
+                isInternal: false
+            },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        role: true,
+                        name: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const mapped = messages.map((m) => ({
+            id: m.id,
+            collaborationId: m.collaborationId,
+            senderId: m.senderId,
+            senderRole: m.senderId === collab.creatorId ? 'creator' : 'brand',
+            senderName: m.sender?.name,
+            type: m.type,
+            content: m.content,
+            createdAt: m.createdAt
+        }));
+
+        const feedback = collab.feedbackNotes?.trim();
+        const hasFeedbackMessage = feedback && mapped.some((m) => m.content?.trim() === feedback);
+        if (feedback && !hasFeedbackMessage) {
+            mapped.push({
+                id: `feedback-${collab.id}`,
+                collaborationId: collab.id,
+                senderId: collab.campaign.brandId,
+                senderRole: 'brand',
+                senderName: 'Brand',
+                type: 'Text',
+                content: feedback,
+                createdAt: collab.updatedAt
+            });
+        }
+
+        mapped.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        res.json(mapped);
+    } catch (error) {
+        console.error("Error fetching collaboration messages:", error);
+        res.status(500).json({ error: "Failed to fetch messages" });
+    }
+});
+
+// POST /api/collaborations/:id/messages
+router.post("/:id/messages", protect, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const content = String(req.body.content || '').trim();
+        if (isNaN(id)) return res.status(400).json({ error: "Invalid collaboration ID" });
+        if (!content) return res.status(400).json({ error: "Message is required" });
+
+        const collab = await prisma.campaignCollaboration.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                campaignId: true,
+                creatorId: true,
+                campaign: {
+                    select: { brandId: true }
+                }
+            }
+        });
+
+        if (!collab) return res.status(404).json({ error: "Collaboration not found" });
+        if (collab.creatorId !== req.user.id && collab.campaign.brandId !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: "Not authorised" });
+        }
+
+        const message = await prisma.campaignMessage.create({
+            data: {
+                campaignId: collab.campaignId,
+                collaborationId: collab.id,
+                threadId: `collab-${collab.id}`,
+                senderId: req.user.id,
+                content,
+                type: 'Text',
+            },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        role: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json({
+            id: message.id,
+            collaborationId: message.collaborationId,
+            senderId: message.senderId,
+            senderRole: message.senderId === collab.creatorId ? 'creator' : 'brand',
+            senderName: message.sender?.name,
+            type: message.type,
+            content: message.content,
+            createdAt: message.createdAt
+        });
+    } catch (error) {
+        console.error("Error creating collaboration message:", error);
+        res.status(500).json({ error: "Failed to create message" });
     }
 });
 

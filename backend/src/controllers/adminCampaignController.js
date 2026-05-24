@@ -385,9 +385,8 @@ export const updateApprovalDecision = async (req, res) => {
       data: {
         campaignId,
         type: `submission_${action}d`,
-        description: `Admin ${action}d submission from creator ${collab.creatorId}${
-          reason ? ` — ${reason}` : ''
-        }`,
+        description: `Admin ${action}d submission from creator ${collab.creatorId}${reason ? ` — ${reason}` : ''
+          }`,
         createdBy: req.user.id,
         metadata: { collabId, action, note, reason },
       },

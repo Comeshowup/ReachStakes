@@ -42,11 +42,13 @@ export const CONTENT_TYPES = /** @type {const} */ ({
  * @property {string} contentUrl
  * @property {string} [caption]
  * @property {string} [notes]
+ * @property {string} [revisionFeedback]
  * @property {SubmissionStatus} status
  * @property {number} version
  * @property {string} [parentSubmissionId]
  * @property {string} createdAt  - ISO timestamp
  * @property {string} updatedAt  - ISO timestamp
+ * @property {string | null} [submittedAt] - ISO timestamp
  */
 
 /**

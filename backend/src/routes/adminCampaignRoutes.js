@@ -1,5 +1,6 @@
 import express from 'express';
 import { requireAdmin } from '../middleware/adminMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
 import {
   listCampaigns,
   getCampaignDetail,
@@ -17,23 +18,24 @@ import {
 } from '../controllers/adminCampaignController.js';
 
 const router = express.Router();
-router.use(requireAdmin);
 
-router.get('/', listCampaigns);
-router.get('/:id', getCampaignDetail);
-router.put('/:id/status', updateCampaignStatus);
-router.get('/:id/creators', getCampaignCreators);
-router.get('/:id/deliverables', getCampaignDeliverables);
-router.get('/:id/timeline', getCampaignTimeline);
-router.get('/:id/payments', getCampaignPayments);
-router.get('/:id/activity', getCampaignActivity);
-router.get('/:id/stats', getCampaignStats);
+// Admin-only routes
+router.get('/', requireAdmin, listCampaigns);
+router.get('/:id', requireAdmin, getCampaignDetail);
+router.put('/:id/status', requireAdmin, updateCampaignStatus);
+router.get('/:id/deliverables', requireAdmin, getCampaignDeliverables);
+router.get('/:id/timeline', requireAdmin, getCampaignTimeline);
+router.get('/:id/payments', requireAdmin, getCampaignPayments);
+router.get('/:id/activity', requireAdmin, getCampaignActivity);
+router.get('/:id/stats', requireAdmin, getCampaignStats);
 
-// Approvals — campaign-scoped
-router.get('/:id/approvals', getCampaignApprovals);
-router.patch('/:id/approvals/:collabId/:action', updateApprovalDecision);
+// Approvals — admin-only
+router.get('/:id/approvals', requireAdmin, getCampaignApprovals);
+router.patch('/:id/approvals/:collabId/:action', requireAdmin, updateApprovalDecision);
 
-router.post('/:id/invite', inviteCampaignCreators);
-router.post('/:id/creators/:collaborationId/:action', updateCreatorInviteStatus);
+// Brand + Admin accessible (brand users manage their own campaigns)
+router.get('/:id/creators', protect, authorize('admin', 'brand'), getCampaignCreators);
+router.post('/:id/invite', protect, authorize('admin', 'brand'), inviteCampaignCreators);
+router.post('/:id/creators/:collaborationId/:action', protect, authorize('admin', 'brand'), updateCreatorInviteStatus);
 
 export default router;

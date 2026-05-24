@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft,
     CheckCircle,
@@ -142,6 +142,7 @@ const DealCard = ({ deal, onAccept, onReject, onCounter, isBusy }) => {
 const CampaignInvitationsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { data, isLoading, error } = useCampaignDetail(id);
     const { mutate: negotiateDeal, isPending: isNegotiating } = useNegotiateCollaborationDeal(id);
     const [inviteOpen, setInviteOpen] = useState(false);
@@ -150,6 +151,12 @@ const CampaignInvitationsPage = () => {
     const [counterModal, setCounterModal] = useState(null);
     const [counterAmount, setCounterAmount] = useState('');
     const [counterNote, setCounterNote] = useState('');
+
+    useEffect(() => {
+        if (searchParams.get('invite') !== '1') return;
+        setInviteOpen(true);
+        setSearchParams({}, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     const deals = useMemo(() => {
         const all = data?.creators || [];

@@ -8,24 +8,34 @@
  * for the Campaign Management Console components.
  */
 export function mapApiCampaign(raw) {
+    const fundedAmount = Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0;
+    const spent = Number(raw.spent ?? raw.totalReleased) || 0;
+    const targetBudget = Number(raw.targetBudget) || 0;
+
     return {
         id: raw.id,
         name: raw.name || raw.title || 'Untitled Campaign',
         status: normalizeStatus(raw.status),
-        budget: Number(raw.targetBudget) || 0,
-        spent: Number(raw.spent) || 0,
+        budget: targetBudget,
+        spent,
         creators: Number(raw.creators) || 0,
         roi: raw.roi != null ? Number(raw.roi) : null,
         startDate: raw.createdAt || raw.startDate || new Date().toISOString(),
-        fundedAmount: Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0,
+        fundedAmount,
+        committedSpend: Number(raw.committedSpend) || fundedAmount,
         escrowBalance: Number(raw.escrowBalance) || 0,
+        spendProgress: Number(raw.spendProgress) || (
+            targetBudget > 0
+                ? Math.min(100, Math.round((spent / targetBudget) * 100))
+                : 0
+        ),
         fundingProgress: Number(raw.fundingProgress) || (
-            Number(raw.targetBudget) > 0
-                ? Math.min(100, Math.round(((Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0) / Number(raw.targetBudget)) * 100))
+            targetBudget > 0
+                ? Math.min(100, Math.round((fundedAmount / targetBudget) * 100))
                 : 0
         ),
         isFullyFunded: Boolean(raw.isFullyFunded)
-            || (Number(raw.targetBudget) > 0 && (Number(raw.totalFunded ?? raw.fundedAmount ?? raw.escrowBalance) || 0) >= Number(raw.targetBudget)),
+            || (targetBudget > 0 && fundedAmount >= targetBudget),
     };
 }
 

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 
 import NewLandingPage from "./NewLandingPage/NewLandingPage";
 import HomePage from "./Homepage/HomePage";
@@ -39,7 +39,6 @@ import SystemAuditLogsPage from './dashboard/pages/admin/SystemAuditLogsPage';
 // Overview aux
 import ActivityPage from './dashboard/pages/admin/activity/index';
 
-import CreatorDiscovery from "./dashboard/pages/CreatorDiscovery";
 import CommunityHub from "./dashboard/pages/CommunityHub";
 import ApprovalQueue from "./dashboard/components/ApprovalQueue";
 import EscrowVault from "./dashboard/pages/EscrowVault";
@@ -81,6 +80,18 @@ import "./App.css";
 // Main App Component managing all application routes
 // Uses React Router for navigation between public pages and dashboards
 
+function BrandCreatorsRedirect() {
+  const [searchParams] = useSearchParams();
+  const campaignId = searchParams.get('campaignId');
+
+  return (
+    <Navigate
+      to={campaignId ? `/brand/campaigns/${campaignId}/invitations?invite=1` : '/brand/campaigns'}
+      replace
+    />
+  );
+}
+
 function App() {
   return (
     <Routes>
@@ -120,7 +131,7 @@ function App() {
         <Route path="support" element={<SupportCenterPage />} />
         <Route path="contact" element={<Navigate to="/brand/support" replace />} />
         <Route path="content-hub" element={<ContentHub />} />
-        <Route path="creators" element={<CreatorDiscovery />} />
+        <Route path="creators" element={<BrandCreatorsRedirect />} />
       </Route>
 
       {/* Creator Dashboard Routes — Workflow-based architecture */}

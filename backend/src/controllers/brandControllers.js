@@ -431,6 +431,8 @@ export const getBrandCampaigns = async (req, res) => {
             const targetBudget = parseFloat(campaign.targetBudget) || 0;
             const totalFunded = parseFloat(campaign.totalFunded) || 0;
             const escrowBalance = parseFloat(campaign.escrowBalance) || 0;
+            const totalReleased = parseFloat(campaign.totalReleased) || 0;
+            const committedSpend = totalFunded || (escrowBalance + totalReleased);
 
             let totalViews = 0;
             campaign.collaborations.forEach(collab => {
@@ -453,11 +455,16 @@ export const getBrandCampaigns = async (req, res) => {
                 targetBudget,
                 escrowBalance,
                 totalFunded,
-                totalReleased: parseFloat(campaign.totalReleased) || 0,
-                fundingProgress: targetBudget > 0
-                    ? Math.min(100, Math.round((totalFunded / targetBudget) * 100))
+                totalReleased,
+                spent: totalReleased,
+                committedSpend,
+                spendProgress: targetBudget > 0
+                    ? Math.min(100, Math.round((totalReleased / targetBudget) * 100))
                     : 0,
-                isFullyFunded: targetBudget > 0 && totalFunded >= targetBudget,
+                fundingProgress: targetBudget > 0
+                    ? Math.min(100, Math.round((committedSpend / targetBudget) * 100))
+                    : 0,
+                isFullyFunded: targetBudget > 0 && committedSpend >= targetBudget,
                 deadline: campaign.deadline,
                 creators: creatorCount,
                 roi: roi,

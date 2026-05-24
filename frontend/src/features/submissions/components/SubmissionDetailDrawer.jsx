@@ -14,6 +14,7 @@ import {
   GitBranch,
   Pencil,
   RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -99,6 +100,37 @@ const DRAWER_TABS = [
   { id: 'timeline', label: 'Timeline', icon: GitBranch },
 ];
 
+// ─── Revision Notice ──────────────────────────────────────────────────────────
+
+function RevisionNotice({ feedback, onResubmit }) {
+  if (!feedback) return null;
+
+  return (
+    <div className="rounded-xl border border-orange-500/25 bg-orange-500/10 p-4">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-orange-500/15 border border-orange-500/25 flex items-center justify-center flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-orange-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3 mb-1.5">
+            <h4 className="text-xs font-bold text-orange-300 uppercase tracking-widest">Revision Requested</h4>
+            {onResubmit && (
+              <button
+                onClick={onResubmit}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Resubmit
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-orange-50/90 leading-relaxed whitespace-pre-wrap">{feedback}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Copy Button ──────────────────────────────────────────────────────────────
 
 function CopyLinkButton({ url }) {
@@ -145,6 +177,7 @@ const SubmissionDetailDrawer = ({ submission, onClose, onEdit, onResubmit }) => 
 
   const canEdit = submission && ['draft', 'changes_requested'].includes(submission.status);
   const canResubmit = submission?.status === 'changes_requested';
+  const revisionFeedback = submission?.revisionFeedback?.trim();
 
   const handleClose = useCallback(() => {
     onClose();
@@ -176,7 +209,7 @@ const SubmissionDetailDrawer = ({ submission, onClose, onEdit, onResubmit }) => 
                   {submission.version > 1 ? ` v${submission.version}` : ''}
                 </h2>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  Submitted {format(new Date(submission.createdAt), 'MMM d, yyyy')}
+                  Submitted {format(new Date(submission.submittedAt || submission.updatedAt || submission.createdAt), 'MMM d, yyyy')}
                 </p>
               </div>
 
@@ -236,6 +269,11 @@ const SubmissionDetailDrawer = ({ submission, onClose, onEdit, onResubmit }) => 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {activeTab === 'overview' && (
                 <div className="p-6 space-y-6">
+                  <RevisionNotice
+                    feedback={revisionFeedback}
+                    onResubmit={canResubmit ? () => { onResubmit(submission); handleClose(); } : null}
+                  />
+
                   {/* Preview */}
                   <ContentPreview submission={submission} />
 
@@ -260,8 +298,8 @@ const SubmissionDetailDrawer = ({ submission, onClose, onEdit, onResubmit }) => 
                       <span className="capitalize">{contentLabel}</span>
                     </MetaRow>
                     <MetaRow label="Version">v{submission.version}</MetaRow>
-                    <MetaRow label="Created">
-                      {format(new Date(submission.createdAt), 'MMM d, yyyy')}
+                    <MetaRow label="Submitted">
+                      {format(new Date(submission.submittedAt || submission.updatedAt || submission.createdAt), 'MMM d, yyyy')}
                     </MetaRow>
                     <MetaRow label="Last Updated">
                       {format(new Date(submission.updatedAt), 'MMM d, yyyy · h:mm a')}

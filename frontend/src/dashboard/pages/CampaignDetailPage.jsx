@@ -229,7 +229,7 @@ const CreatorEmptyState = ({ campaignId }) => {
             </div>
             <button
                 className="bd-cm-btn-primary"
-                onClick={() => navigate(`/brand/creators${campaignId ? `?campaignId=${campaignId}` : ''}`)}
+                onClick={() => navigate(`/brand/campaigns/${campaignId}/invitations?invite=1`)}
                 style={{ marginTop: 12, padding: '8px 20px', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
                 <UserPlus size={15} /> Assign Creators

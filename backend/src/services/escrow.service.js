@@ -16,10 +16,7 @@ export class EscrowService {
      * Locked funds are derived from campaign escrow balances.
      */
     static async getOverview(brandId) {
-        // 1. Compute vault-level cash from Transaction records
-        const vaultBalance = await EscrowService._computeVaultBalance(brandId);
-
-        // 2. Get campaign-level data for locked/released/pending
+        // 1. Get campaign-level data for locked/released/pending principal.
         const campaigns = await prisma.campaign.findMany({
             where: { brandId },
             select: {
@@ -53,9 +50,10 @@ export class EscrowService {
         // Pending releases from active campaign milestones
         const pendingReleases = EscrowService._computePendingReleases(campaigns);
 
-        // Available = vault cash minus what's locked in campaigns
-        const totalBalance = vaultBalance;
-        const availableBalance = Math.max(0, vaultBalance - allocatedFunds - pendingReleases);
+        // Available liquidity is only unallocated principal. Fees charged to brands are
+        // not vault capital and campaign payments are represented by campaign escrow fields.
+        const availableBalance = await EscrowService._computeAvailableVaultPrincipal(brandId);
+        const totalBalance = parseFloat((availableBalance + allocatedFunds).toFixed(2));
 
         // Liquidity health
         const coverageRatio = pendingReleases > 0
@@ -552,39 +550,42 @@ export class EscrowService {
     // ──────────────────────────── Private Helpers ────────────────────────────
 
     /**
-     * Compute the vault-level cash balance from Transaction records.
-     * Deposits add, Withdrawals subtract.
-     * Campaign escrow allocations also subtract (they're Deposit type to campaigns).
+     * Compute unallocated vault principal from Transaction records.
+     * Fees are excluded, and campaign-scoped deposits are ignored because they are
+     * counted through Campaign.escrowBalance / totalFunded instead.
      */
-    static async _computeVaultBalance(brandId) {
+    static async _computeAvailableVaultPrincipal(brandId) {
         try {
-            const totals = await prisma.transaction.groupBy({
-                by: ['type'],
+            const transactions = await prisma.transaction.findMany({
                 where: {
                     userId: brandId,
                     status: 'Completed',
                 },
-                _sum: { amount: true },
+                select: {
+                    amount: true,
+                    netAmount: true,
+                    type: true,
+                    campaignId: true,
+                },
             });
 
             let balance = 0;
-            totals.forEach(t => {
-                const sum = parseFloat(t._sum.amount || 0);
-                if (t.type === 'Deposit') {
-                    balance += sum;
-                } else if (t.type === 'Withdrawal') {
-                    // Withdrawals are already negative in DB if created via withdrawFunds
-                    // If they are positive, we should subtract. Checking sign here for robustness.
-                    balance += sum < 0 ? sum : -sum;
-                } else if (t.type === 'Payment' || t.type === 'Refund') {
-                    // Payments and refunds decrease liquidity
-                    balance -= Math.abs(sum);
+            transactions.forEach(t => {
+                const principal = parseFloat(t.netAmount ?? t.amount ?? 0);
+                const amount = parseFloat(t.amount || 0);
+
+                if (t.type === 'Deposit' && !t.campaignId) {
+                    balance += principal;
+                } else if (t.type === 'Withdrawal' && !t.campaignId) {
+                    balance += amount < 0 ? amount : -Math.abs(amount);
+                } else if (t.type === 'Refund' && !t.campaignId) {
+                    balance -= Math.abs(principal);
                 }
             });
 
-            return balance;
+            return Math.max(0, parseFloat(balance.toFixed(2)));
         } catch (err) {
-            console.warn('[EscrowService] _computeVaultBalance error:', err.message);
+            console.warn('[EscrowService] _computeAvailableVaultPrincipal error:', err.message);
             return 0;
         }
     }

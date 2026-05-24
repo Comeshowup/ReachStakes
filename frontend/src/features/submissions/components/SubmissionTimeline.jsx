@@ -8,6 +8,8 @@ import { CheckCircle2, Circle, Clock } from 'lucide-react';
 
 function TimelineNode({ status, isCurrent, isCompleted, isPending, timestamp }) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.submitted;
+  const date = timestamp ? new Date(timestamp) : null;
+  const hasValidDate = date && !Number.isNaN(date.getTime());
 
   return (
     <div className="flex items-start gap-3">
@@ -50,9 +52,9 @@ function TimelineNode({ status, isCurrent, isCompleted, isPending, timestamp }) 
             </span>
           )}
         </div>
-        {timestamp && (isCompleted || isCurrent) && (
+        {hasValidDate && (isCompleted || isCurrent) && (
           <p className="text-[11px] text-slate-600 mt-0.5">
-            {format(new Date(timestamp), 'MMM d, yyyy · h:mm a')}
+            {format(date, 'MMM d, yyyy · h:mm a')}
           </p>
         )}
         {isPending && !isCurrent && !isCompleted && (
@@ -73,12 +75,21 @@ function TimelineNode({ status, isCurrent, isCompleted, isPending, timestamp }) 
  * }} props
  */
 const SubmissionTimeline = ({ submission }) => {
-  const currentIndex = STATUS_FLOW.indexOf(submission.status);
+  const currentStatus = STATUS_CONFIG[submission.status] ? submission.status : 'submitted';
+  const currentIndex = STATUS_FLOW.indexOf(currentStatus);
+  const submittedAt = submission.submittedAt || submission.updatedAt || submission.createdAt;
+  const statusTimestamps = {
+    submitted: submittedAt,
+    under_review: currentStatus === 'under_review' ? submission.updatedAt || submittedAt : null,
+    changes_requested: currentStatus === 'changes_requested' ? submission.updatedAt || submittedAt : null,
+    approved: currentStatus === 'approved' ? submission.updatedAt || submittedAt : null,
+    rejected: currentStatus === 'rejected' ? submission.updatedAt || submittedAt : null,
+  };
 
   // For terminal states that aren't in the flow
-  const isTerminal = ['approved', 'rejected'].includes(submission.status);
+  const isTerminal = ['approved', 'rejected'].includes(currentStatus);
   const flow = isTerminal
-    ? [...STATUS_FLOW.slice(0, 2), submission.status]
+    ? [...STATUS_FLOW.slice(0, 2), currentStatus]
     : STATUS_FLOW;
 
   return (
@@ -95,7 +106,7 @@ const SubmissionTimeline = ({ submission }) => {
           ? idx < flow.length - 1
           : currentIndex > stepIndex;
 
-        const isCurrent = submission.status === status;
+        const isCurrent = currentStatus === status;
 
         const isPending = !isCompleted && !isCurrent;
 
@@ -107,7 +118,7 @@ const SubmissionTimeline = ({ submission }) => {
             isCurrent={isCurrent}
             isPending={isPending}
             timestamp={
-              isCurrent ? submission.updatedAt : isCompleted ? submission.createdAt : null
+              isCurrent || isCompleted ? statusTimestamps[status] || submittedAt : null
             }
           />
         );
