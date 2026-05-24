@@ -1,5 +1,4 @@
 import React from 'react';
-import { MoreHorizontal } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import ProgressBar from './ProgressBar';
 import { formatCurrency, formatROI, calcProgress } from './campaignUtils';
@@ -31,7 +30,6 @@ const CampaignTable = ({ campaigns, onView }) => {
                             <HeadCell align="right">ROI</HeadCell>
                             <HeadCell align="center">Creators</HeadCell>
                             <HeadCell className="w-32">Progress</HeadCell>
-                            <th className="px-4 w-10 sticky right-0 z-10 bd-cm-sticky-surface" style={{ height: 44 }} />
                         </tr>
                     </thead>
                     <tbody>
@@ -91,15 +89,6 @@ const CampaignTable = ({ campaigns, onView }) => {
                                         <div className="w-full max-w-[120px]">
                                             <ProgressBar value={utilized} />
                                         </div>
-                                    </td>
-                                    <td className="px-4 sticky right-0 z-10 bd-cm-sticky-surface text-right" style={{ verticalAlign: 'middle' }}>
-                                        <button
-                                            className="bd-cm-icon-btn bd-cm-focus-ring"
-                                            onClick={(e) => e.stopPropagation()}
-                                            aria-label={`Options for ${campaign.name}`}
-                                        >
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </button>
                                     </td>
                                 </tr>
                             );

@@ -1,10 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
-    MoreHorizontal,
-    BarChart,
-    Copy,
-    Archive,
     ArrowRight,
     TrendingUp,
 } from 'lucide-react';
@@ -26,16 +21,11 @@ const CampaignCard = ({ campaign, onView, onFund }) => {
     return (
         <div className="bd-cm-card group relative flex flex-col p-6 gap-5">
             {/* Header */}
-            <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1.5 min-w-0">
-                    <StatusBadge status={campaign.status} />
-                    <h3 className="text-base font-semibold truncate" style={{ color: 'var(--bd-text-primary)' }}>
-                        {campaign.name}
-                    </h3>
-                </div>
-                <button className="bd-cm-icon-btn bd-cm-focus-ring flex-shrink-0" aria-label="More options">
-                    <MoreHorizontal className="w-4 h-4" />
-                </button>
+            <div className="flex flex-col gap-1.5 min-w-0">
+                <StatusBadge status={campaign.status} />
+                <h3 className="text-base font-semibold truncate" style={{ color: 'var(--bd-text-primary)' }}>
+                    {campaign.name}
+                </h3>
             </div>
 
             {/* Metrics Grid */}
@@ -89,15 +79,6 @@ const CampaignCard = ({ campaign, onView, onFund }) => {
                     </button>
                 )}
 
-                <button className="bd-cm-icon-btn bd-cm-focus-ring" aria-label="Analytics">
-                    <BarChart className="w-3.5 h-3.5" />
-                </button>
-                <button className="bd-cm-icon-btn bd-cm-focus-ring" aria-label="Duplicate">
-                    <Copy className="w-3.5 h-3.5" />
-                </button>
-                <button className="bd-cm-icon-btn bd-cm-focus-ring" aria-label="Archive">
-                    <Archive className="w-3.5 h-3.5" />
-                </button>
             </div>
         </div>
     );

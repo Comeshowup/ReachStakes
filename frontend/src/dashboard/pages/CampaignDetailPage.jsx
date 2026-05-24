@@ -418,7 +418,7 @@ const CampaignDetailPage = () => {
     const spend = Number(perf?.spend || 0);
     const roas = parseFloat(perf?.roas) || 0;
     const cpa = parseFloat(perf?.cpa) || 0;
-    const hasPerformanceData = revenue > 0 || spend > 0;
+    const hasPerformanceData = Boolean(perf?.hasData) || revenue > 0 || spend > 0;
     const budgetAllocated = Number(cap?.budgetAllocated || campaign?.totalBudget || 0);
     const budgetSpent = Number(cap?.budgetSpent || 0);
     const escrowLocked = Number(cap?.escrowLocked || 0);

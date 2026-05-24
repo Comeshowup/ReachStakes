@@ -70,13 +70,33 @@ export class CampaignQueryService {
         });
 
         // Compute Performance Snapshot
-        const totalSpend = parseFloat(analytics._sum.spendAmount) || 0;
-        const totalRevenue = parseFloat(analytics._sum.revenueGenerated) || 0;
+        const analyticsSpend = parseFloat(analytics._sum.spendAmount) || 0;
+        const analyticsRevenue = parseFloat(analytics._sum.revenueGenerated) || 0;
         const totalImpressions = analytics._sum.impressions || 0;
         const totalClicks = analytics._sum.clicks || 0;
+        const approvedCollaborations = campaign.collaborations.filter((collab) =>
+            ['Approved', 'Paid'].includes(collab.status)
+        );
+        const approvedContentCount = approvedCollaborations.length;
+        const approvedCollabSpend = approvedCollaborations.reduce(
+            (sum, collab) => sum + (parseFloat(collab.agreedPrice) || 0),
+            0
+        );
+        const approvedCollabRevenue = approvedCollaborations.reduce(
+            (sum, collab) => sum + (parseFloat(collab.estimatedEmv) || 0),
+            0
+        );
+        const totalSpend = analyticsSpend > 0 ? analyticsSpend : approvedCollabSpend;
+        const totalRevenue = analyticsRevenue > 0 ? analyticsRevenue : approvedCollabRevenue;
         const roas = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : '0.00';
-        const conversions = totalClicks;
+        const conversions = totalClicks || approvedContentCount;
         const cpa = conversions > 0 ? (totalSpend / conversions).toFixed(2) : '0.00';
+        const hasPerformanceData = totalSpend > 0
+            || totalRevenue > 0
+            || totalImpressions > 0
+            || totalClicks > 0
+            || approvedContentCount > 0
+            || trendData.length > 0;
 
         // Pacing calculation
         const now = new Date();
@@ -99,6 +119,8 @@ export class CampaignQueryService {
             cpa,
             conversions,
             impressions: totalImpressions,
+            approvedContentCount,
+            hasData: hasPerformanceData,
             pacing: Math.round(actualPacing),
             escrowRemaining,
             trend: trendData.map((d) => ({
