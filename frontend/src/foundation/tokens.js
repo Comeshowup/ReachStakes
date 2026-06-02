@@ -12,26 +12,30 @@
 export const colors = {
     // Background tiers
     bg: {
-        base: '#09090B',          // Page background
-        elevated: '#0F0F12',      // Cards, surfaces
-        muted: 'rgba(255, 255, 255, 0.02)',
-        hover: 'rgba(255, 255, 255, 0.04)',
-        overlay: 'rgba(0, 0, 0, 0.8)'
+        base: '#0A0A0B',
+        secondary: '#111214',
+        tertiary: '#17181C',
+        card: '#1C1D22',
+        elevated: '#23252B',
+        muted: '#17181C',
+        hover: '#2B2D34',
+        overlay: 'rgba(0, 0, 0, 0.62)'
     },
 
     // Text hierarchy
     text: {
         primary: '#FFFFFF',
-        secondary: 'rgba(255, 255, 255, 0.70)',
-        muted: 'rgba(255, 255, 255, 0.50)',
-        disabled: 'rgba(255, 255, 255, 0.30)'
+        secondary: '#B7BCC8',
+        muted: '#8A90A0',
+        disabled: '#626878',
+        inverse: '#0A0A0B'
     },
 
     // Borders
     border: {
-        subtle: 'rgba(255, 255, 255, 0.05)',
-        default: 'rgba(255, 255, 255, 0.10)',
-        strong: 'rgba(255, 255, 255, 0.20)'
+        subtle: '#2A2D34',
+        default: '#353944',
+        strong: '#4A4F5D'
     },
 
     // Semantic colors
@@ -39,15 +43,16 @@ export const colors = {
         success: '#10B981',       // Emerald
         warning: '#F59E0B',       // Amber
         error: '#EF4444',         // Rose
-        info: '#6366F1'           // Indigo
+        info: '#3B82F6'           // Blue
     },
 
     // Brand accents
     accent: {
         primary: '#6366F1',       // Indigo
-        primaryHover: '#818CF8',
-        secondary: '#8B5CF6',     // Violet
-        tertiary: '#EC4899'       // Pink
+        primaryHover: '#7477FF',
+        primaryPressed: '#5558E8',
+        secondary: '#10B981',
+        tertiary: '#22D3EE'
     },
 
     // Status backgrounds (10% opacity)
@@ -123,10 +128,10 @@ export const typography = {
 
 export const radii = {
     none: '0',
-    sm: '4px',
-    md: '8px',
-    lg: '12px',
-    xl: '16px',
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    xl: '20px',
     '2xl': '20px',
     '3xl': '24px',
     full: '9999px'
@@ -138,10 +143,11 @@ export const radii = {
 
 export const shadows = {
     none: 'none',
-    sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
-    md: '0 4px 6px rgba(0, 0, 0, 0.3)',
-    lg: '0 10px 15px rgba(0, 0, 0, 0.3)',
-    xl: '0 20px 25px rgba(0, 0, 0, 0.4)',
+    xs: '0 1px 1px rgba(0, 0, 0, 0.18)',
+    sm: '0 1px 2px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.02)',
+    md: '0 10px 30px rgba(0, 0, 0, 0.24)',
+    lg: '0 18px 48px rgba(0, 0, 0, 0.32)',
+    xl: '0 18px 48px rgba(0, 0, 0, 0.32)',
     glow: {
         primary: '0 0 20px rgba(99, 102, 241, 0.3)',
         success: '0 0 20px rgba(16, 185, 129, 0.3)',

@@ -1,5 +1,7 @@
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider as ReachStakesThemeProvider } from "../contexts/ThemeProvider";
 
-export function ThemeProvider({ children, ...props }) {
-    return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+export function ThemeProvider(props) {
+    return <ReachStakesThemeProvider {...props} />;
 }
+
+export default ThemeProvider;

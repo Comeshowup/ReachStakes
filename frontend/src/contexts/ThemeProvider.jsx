@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'bd-theme';
+const STORAGE_KEY = 'rs-theme';
 const VALID_THEMES = ['light', 'dark'];
 
 const ThemeContext = createContext({
@@ -15,25 +15,32 @@ const ThemeContext = createContext({
  * 2. System preference (prefers-color-scheme)
  * 3. Fallback to 'light'
  */
-function getInitialTheme() {
-    if (typeof window === 'undefined') return 'light';
+function getInitialTheme(defaultTheme) {
+    if (defaultTheme && VALID_THEMES.includes(defaultTheme)) return defaultTheme;
+    if (typeof window === 'undefined') return 'dark';
 
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored && VALID_THEMES.includes(stored)) return stored;
+        const legacy = localStorage.getItem('bd-theme');
+        if (legacy && VALID_THEMES.includes(legacy)) return legacy;
     } catch {
         // localStorage blocked
+    }
+
+    if (defaultTheme === 'system' && window.matchMedia?.('(prefers-color-scheme: light)').matches) {
+        return 'light';
     }
 
     if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
         return 'dark';
     }
 
-    return 'light';
+    return 'dark';
 }
 
-export function ThemeProvider({ children, defaultTheme }) {
-    const [theme, setThemeState] = useState(() => defaultTheme || getInitialTheme());
+export function ThemeProvider({ children, defaultTheme = 'dark' }) {
+    const [theme, setThemeState] = useState(() => getInitialTheme(defaultTheme));
 
     const setTheme = useCallback((newTheme) => {
         if (!VALID_THEMES.includes(newTheme)) return;
@@ -57,6 +64,7 @@ export function ThemeProvider({ children, defaultTheme }) {
         } else {
             root.classList.remove('dark');
         }
+        root.setAttribute('data-theme', theme);
     }, [theme]);
 
     // Listen for system preference changes (only when no stored preference)

@@ -3,7 +3,57 @@
 @import "./styles/design-polish.css";
 
 @theme {
-  --color-slate-950: #020617;
+  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+
+  --color-background: var(--rs-bg-primary);
+  --color-foreground: var(--rs-text-primary);
+  --color-card: var(--rs-surface-card);
+  --color-card-foreground: var(--rs-text-primary);
+  --color-popover: var(--rs-surface-elevated);
+  --color-popover-foreground: var(--rs-text-primary);
+  --color-primary: var(--rs-brand-primary);
+  --color-primary-hover: var(--rs-brand-primary-hover);
+  --color-primary-pressed: var(--rs-brand-primary-pressed);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--rs-surface-elevated);
+  --color-secondary-foreground: var(--rs-text-secondary);
+  --color-muted: var(--rs-bg-tertiary);
+  --color-muted-foreground: var(--rs-text-muted);
+  --color-accent: var(--rs-surface-hover);
+  --color-accent-foreground: var(--rs-text-primary);
+  --color-destructive: var(--rs-status-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--rs-border-default);
+  --color-input: var(--rs-border-default);
+  --color-ring: var(--rs-ring);
+
+  --color-surface-primary: var(--rs-bg-secondary);
+  --color-surface-card: var(--rs-surface-card);
+  --color-surface-elevated: var(--rs-surface-elevated);
+  --color-surface-hover: var(--rs-surface-hover);
+  --color-surface-input: var(--rs-surface-input);
+  --color-disabled: var(--rs-text-disabled);
+  --color-success: var(--rs-status-success);
+  --color-warning: var(--rs-status-warning);
+  --color-danger: var(--rs-status-danger);
+  --color-info: var(--rs-status-info);
+  --color-campaign-draft: var(--rs-campaign-draft);
+  --color-campaign-active: var(--rs-campaign-active);
+  --color-campaign-funded: var(--rs-campaign-funded);
+  --color-campaign-disputed: var(--rs-campaign-disputed);
+
+  --radius-sm: var(--rs-radius-sm);
+  --radius-md: var(--rs-radius-md);
+  --radius-lg: var(--rs-radius-lg);
+  --radius-xl: var(--rs-radius-xl);
+  --shadow-xs: var(--rs-shadow-xs);
+  --shadow-sm: var(--rs-shadow-sm);
+  --shadow-md: var(--rs-shadow-md);
+  --shadow-lg: var(--rs-shadow-lg);
+  --shadow-primary: var(--rs-shadow-primary);
+  --ease-standard: var(--rs-ease-standard);
+  --ease-emphasized: var(--rs-ease-emphasized);
 }
 
 /* Force class-based dark mode for Tailwind v4 */
@@ -25,8 +75,13 @@
     --bd-select-option-active-fg: #ffffff;
   }
 
+  html {
+    background: var(--rs-bg-primary);
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 relative;
+    @apply bg-background text-foreground transition-colors duration-300 relative antialiased;
+    font-family: var(--rs-font-sans);
   }
 
   body::after {
@@ -67,11 +122,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 dark:bg-slate-700 rounded-full;
+  background: var(--rs-border-default);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-300 dark:bg-slate-600;
+  background: var(--rs-border-strong);
 }
 
 @layer utilities {
@@ -96,6 +152,33 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full hover:bg-slate-600/80 transition-colors;
+    background: color-mix(in srgb, var(--rs-border-default), transparent 30%);
+    border-radius: 9999px;
+    transition: background var(--rs-duration-fast) var(--rs-ease-standard);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--rs-border-strong);
+  }
+
+  .rs-surface {
+    background: var(--rs-surface-card);
+    border: 1px solid var(--rs-border-subtle);
+    border-radius: var(--rs-radius-lg);
+    box-shadow: var(--rs-shadow-sm);
+  }
+
+  .rs-focus {
+    outline: none;
+  }
+
+  .rs-focus:focus-visible {
+    box-shadow: var(--rs-shadow-focus);
+  }
+
+  .rs-financial-amount {
+    font-family: var(--rs-font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
   }
 }

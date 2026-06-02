@@ -110,9 +110,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                 `}
                 style={{
                     background: 'var(--bd-sidebar-bg)',
-                    backdropFilter: 'blur(40px)',
-                    WebkitBackdropFilter: 'blur(40px)',
-                    borderRadius: '0 2.5rem 2.5rem 0',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    borderRadius: '0 var(--rs-radius-xl) var(--rs-radius-xl) 0',
                     borderRight: '1px solid var(--bd-sidebar-border)',
                     boxShadow: 'var(--bd-sidebar-shadow)',
                 }}
@@ -121,7 +121,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div className="px-8 pt-8 pb-6 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
                         <div
-                            className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                            className="w-10 h-10 rounded-md flex items-center justify-center"
                             style={{
                                 background: 'var(--bd-sidebar-logo-bg)',
                                 boxShadow: 'var(--bd-sidebar-logo-shadow)',
@@ -371,7 +371,7 @@ const Topbar = ({ onMenuClick }) => {
                         <input
                             type="search"
                             placeholder="Search campaigns, brands..."
-                            className="w-72 pl-9 pr-4 py-2 rounded-2xl text-sm outline-none transition-all"
+                        className="w-72 pl-9 pr-4 py-2 rounded-md text-sm outline-none transition-all focus-visible:ring-[3px]"
                             style={{
                                 background: 'var(--bd-surface-input)',
                                 border: '1px solid var(--bd-border-subtle)',
@@ -518,7 +518,7 @@ const CreatorContent = () => {
 
 const CreatorLayout = () => {
     return (
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="dark">
             <CreatorContent />
         </ThemeProvider>
     );

@@ -55,22 +55,26 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
       {/* Sidebar container */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-screen ${w} bg-[#0a0a0b] text-white
-          border-r border-zinc-900 transition-all duration-200 ease-in-out
+          fixed top-0 left-0 z-50 h-screen ${w} text-white
+          border-r transition-all duration-200 ease-in-out
           flex flex-col overflow-hidden
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
+        style={{
+          background: "var(--bd-sidebar-bg)",
+          borderColor: "var(--bd-sidebar-border)",
+        }}
       >
         {/* Logo row */}
-        <div className="h-14 flex items-center px-4 border-b border-zinc-900 shrink-0 gap-2">
+        <div className="h-14 flex items-center px-4 border-b shrink-0 gap-2" style={{ borderColor: "var(--bd-sidebar-border)" }}>
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: "var(--bd-sidebar-logo-bg)", boxShadow: "var(--bd-sidebar-logo-shadow)" }}>
               <Shield className="w-4 h-4 text-white" />
             </div>
             {!isCollapsed && (
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className="font-bold text-sm tracking-tight text-white truncate">ReachStakes</span>
-                <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ color: "var(--rs-brand-primary-light)", background: "var(--rs-brand-muted)", border: "1px solid var(--rs-brand-border)" }}>
                   ADMIN
                 </span>
               </div>
@@ -78,7 +82,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
           </div>
 
           {/* Mobile close */}
-          <button onClick={onClose} className="md:hidden text-zinc-500 hover:text-zinc-300 shrink-0">
+          <button onClick={onClose} className="md:hidden text-muted-foreground hover:text-foreground shrink-0">
             <X className="w-4 h-4" />
           </button>
 
@@ -86,7 +90,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
           {!isOpen && (
             <button
               onClick={onToggleCollapse}
-              className="hidden md:flex text-zinc-600 hover:text-zinc-300 transition-colors shrink-0"
+              className="hidden md:flex text-muted-foreground hover:text-foreground transition-colors shrink-0"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed
@@ -103,7 +107,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
             <div key={group.id}>
               {/* Section label — hidden when collapsed */}
               {!isCollapsed && (
-                <p className="px-2.5 mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                <p className="px-2.5 mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   {group.title}
                 </p>
               )}
@@ -123,8 +127,8 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
                           isCollapsed ? "justify-center" : ""
                         } ${
                           isActive
-                            ? "text-white font-medium bg-zinc-800"
-                            : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900"
+                            ? "text-white font-medium bg-surface-elevated"
+                            : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
                         }`
                       }
                     >
@@ -134,13 +138,13 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
                           {isActive && (
                             <motion.div
                               layoutId="adminActiveBar"
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-red-500 rounded-r-full"
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r-full"
                             />
                           )}
 
                           <item.icon
                             className={`w-4 h-4 shrink-0 stroke-[1.5px] ${
-                              isActive ? "text-red-500" : "text-zinc-600 group-hover:text-zinc-400"
+                              isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                             }`}
                           />
 
@@ -148,7 +152,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
                             <>
                               <span className="flex-1 truncate">{item.label}</span>
                               {badgeCount > 0 && (
-                                <span className="text-[10px] font-bold min-w-[18px] h-[18px] px-1 bg-red-600 text-white rounded-full flex items-center justify-center tabular-nums">
+                                <span className="text-[10px] font-bold min-w-[18px] h-[18px] px-1 bg-destructive text-white rounded-full flex items-center justify-center tabular-nums">
                                   {badgeCount > 99 ? "99+" : badgeCount}
                                 </span>
                               )}
@@ -157,7 +161,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
 
                           {/* Badge dot in collapsed mode */}
                           {isCollapsed && badgeCount > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full" />
                           )}
                         </>
                       )}
@@ -171,8 +175,8 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse, badges }) => 
 
         {/* Footer */}
         {!isCollapsed && (
-          <div className="px-5 py-3 border-t border-zinc-900 shrink-0">
-            <p className="text-[10px] text-zinc-700">v1.1.0 · Campaign Manager</p>
+          <div className="px-5 py-3 border-t shrink-0" style={{ borderColor: "var(--bd-sidebar-border)" }}>
+            <p className="text-[10px] text-muted-foreground">v1.1.0 · Campaign Manager</p>
           </div>
         )}
       </aside>
@@ -204,32 +208,38 @@ const Topbar = ({ onMenuClick }) => {
   const crumbLabel = (seg) => seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <header className="h-14 sticky top-0 z-40 bg-[#0a0a0b]/80 backdrop-blur-md border-b border-zinc-900 px-4 md:px-6 flex items-center justify-between">
+    <header
+      className="h-14 sticky top-0 z-40 backdrop-blur-md border-b px-4 md:px-6 flex items-center justify-between"
+      style={{
+        background: "var(--bd-topbar-bg)",
+        borderColor: "var(--bd-topbar-border)",
+      }}
+    >
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}
         <button
           onClick={onMenuClick}
-          className="md:hidden p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg transition-colors"
+          className="md:hidden p-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-hover rounded-md transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {/* Breadcrumbs */}
-        <nav className="hidden md:flex items-center gap-1 text-sm text-zinc-600" aria-label="Breadcrumb">
+        <nav className="hidden md:flex items-center gap-1 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <button
             onClick={() => navigate("/admin")}
-            className="hover:text-zinc-300 transition-colors text-zinc-500"
+            className="hover:text-foreground transition-colors text-muted-foreground"
           >
             Admin
           </button>
           {pathSegments.slice(1).map((seg, i) => (
             <React.Fragment key={`${seg}-${i}`}>
-              <ChevronRight className="w-3.5 h-3.5 text-zinc-800" />
+              <ChevronRight className="w-3.5 h-3.5 text-disabled" />
               <span
                 className={
                   i === pathSegments.slice(1).length - 1
-                    ? "font-medium text-zinc-300"
-                    : "text-zinc-600"
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground"
                 }
               >
                 {crumbLabel(seg)}
@@ -241,14 +251,14 @@ const Topbar = ({ onMenuClick }) => {
 
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <div className="h-5 w-px bg-zinc-800 hidden md:block mx-1" />
+        <div className="h-5 w-px bg-border hidden md:block mx-1" />
 
         {/* Admin avatar */}
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-red-700 flex items-center justify-center text-white text-xs font-bold select-none">
+          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold select-none">
             {adminInitial}
           </div>
-          <span className="hidden md:block text-sm font-medium text-zinc-400">{adminName}</span>
+          <span className="hidden md:block text-sm font-medium text-secondary-foreground">{adminName}</span>
         </div>
 
         {/* Logout */}
@@ -256,7 +266,7 @@ const Topbar = ({ onMenuClick }) => {
           id="admin-logout-btn"
           onClick={handleLogout}
           title="Sign out"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm text-zinc-500 hover:bg-red-950/40 hover:text-red-400 transition-all ml-1"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-[var(--rs-danger-muted)] hover:text-destructive transition-all ml-1"
         >
           <LogOut className="w-4 h-4" />
           <span className="hidden md:inline text-xs">Sign out</span>
@@ -282,7 +292,10 @@ const AdminLayout = () => {
   const sidebarWidth = isCollapsed ? "md:pl-[62px]" : "md:pl-60";
 
   return (
-    <div className="min-h-screen bg-zinc-950 font-sans text-zinc-100 selection:bg-red-900/30">
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/25"
+    >
       <Sidebar
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
