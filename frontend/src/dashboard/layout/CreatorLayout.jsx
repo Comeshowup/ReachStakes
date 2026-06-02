@@ -17,6 +17,8 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 import { getUnreadCount } from "../../api/notificationService";
 import { getCreatorProfile } from "../../api/creatorDashboardService";
 
+const MotionDiv = motion.div;
+
 // ===========================
 // SHARED HOOK — fetch creator identity once
 // ===========================
@@ -41,7 +43,9 @@ const useCreatorIdentity = () => {
                     email: stored.email || '',
                 }));
             }
-        } catch { }
+        } catch {
+            // Ignore malformed cached identity data.
+        }
 
         // Then fetch fresh data from the API
         getCreatorProfile()
@@ -67,7 +71,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     const displayName = creator.displayName || 'Creator Account';
     const creatorEmail = creator.email || '';
     const avatarLetter = displayName.charAt(0).toUpperCase();
-    const navigate = useNavigate();
     const location = useLocation();
 
     // Check if a nav item (or any of its children) matches the current path
@@ -86,7 +89,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Mobile Overlay */}
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
+                    <MotionDiv
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -322,12 +325,14 @@ const Sidebar = ({ isOpen, onClose }) => {
 // ===========================
 const Topbar = ({ onMenuClick }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const creator = useCreatorIdentity();
     const topbarName = creator.displayName || 'C';
     const topbarLetter = topbarName.charAt(0).toUpperCase();
+    const showSearch = location.pathname !== '/creator/campaigns/discover';
 
     // Fetch unread count on mount
     useEffect(() => {
@@ -357,23 +362,25 @@ const Topbar = ({ onMenuClick }) => {
                     <Menu className="w-5 h-5" />
                 </button>
 
-                <div className="relative hidden md:block">
-                    <Search
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                        style={{ color: 'var(--bd-text-secondary)' }}
-                    />
-                    <input
-                        type="search"
-                        placeholder="Search campaigns, brands..."
-                        className="w-72 pl-9 pr-4 py-2 rounded-2xl text-sm outline-none transition-all"
-                        style={{
-                            background: 'var(--bd-surface-input)',
-                            border: '1px solid var(--bd-border-subtle)',
-                            color: 'var(--bd-text-primary)',
-                        }}
-                        aria-label="Search campaigns and brands"
-                    />
-                </div>
+                {showSearch && (
+                    <div className="relative hidden md:block">
+                        <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                            style={{ color: 'var(--bd-text-secondary)' }}
+                        />
+                        <input
+                            type="search"
+                            placeholder="Search campaigns, brands..."
+                            className="w-72 pl-9 pr-4 py-2 rounded-2xl text-sm outline-none transition-all"
+                            style={{
+                                background: 'var(--bd-surface-input)',
+                                border: '1px solid var(--bd-border-subtle)',
+                                color: 'var(--bd-text-primary)',
+                            }}
+                            aria-label="Search campaigns and brands"
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Right */}
@@ -471,7 +478,7 @@ const CreatorContent = () => {
                     }
                 >
                     <AnimatePresence mode="wait">
-                        <motion.div
+                        <MotionDiv
                             key={location.pathname}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -480,7 +487,7 @@ const CreatorContent = () => {
                             className={location.pathname === "/creator/messages" ? "h-full" : ""}
                         >
                             <Outlet />
-                        </motion.div>
+                        </MotionDiv>
                     </AnimatePresence>
                 </main>
             </div>
