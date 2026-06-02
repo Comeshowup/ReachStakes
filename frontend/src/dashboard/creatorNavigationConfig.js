@@ -12,6 +12,7 @@ import {
     Settings,
     Headphones,
     LogOut,
+    Compass,
 } from 'lucide-react';
 
 // ─── Section definitions ────────────────────────────────────
@@ -32,48 +33,21 @@ export const CREATOR_NAV_CONFIG = [
     {
         section: SECTION_WORK,
         items: [
-            {
-                label: 'Campaigns',
-                path: '/creator/campaigns',
-                icon: Briefcase,
-                children: [
-                    { label: 'Discover', path: '/creator/campaigns/discover' },
-                    { label: 'Active', path: '/creator/campaigns/active' },
-                    { label: 'Submitted', path: '/creator/campaigns/submitted' },
-                    { label: 'Completed', path: '/creator/campaigns/completed' },
-                ],
-            },
+            { label: 'Discover', path: '/creator/campaigns/discover', icon: Compass },
+            { label: 'Campaigns', path: '/creator/campaigns', icon: Briefcase },
             { label: 'Analytics', path: '/creator/analytics', icon: BarChart3 },
         ],
     },
     {
         section: SECTION_FINANCE,
         items: [
-            {
-                label: 'Earnings',
-                path: '/creator/earnings',
-                icon: DollarSign,
-                children: [
-                    { label: 'Overview',        path: '/creator/earnings' },
-                    { label: 'Transactions',    path: '/creator/earnings/transactions' },
-                    { label: 'Payout Settings', path: '/creator/earnings/settings' },
-                ],
-            },
+            { label: 'Earnings', path: '/creator/earnings', icon: DollarSign },
         ],
     },
     {
         section: SECTION_ACCOUNT,
         items: [
-            {
-                label: 'Settings',
-                path: '/creator/settings',
-                icon: Settings,
-                children: [
-                    { label: 'Profile', path: '/creator/settings/profile' },
-                    { label: 'Social Accounts', path: '/creator/settings/social' },
-                    { label: 'Payouts', path: '/creator/settings/payouts' },
-                ],
-            },
+            { label: 'Settings', path: '/creator/settings', icon: Settings },
         ],
     },
 ];

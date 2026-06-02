@@ -140,6 +140,7 @@ function App() {
 
         {/* Campaigns — flat layout (no nested tabs) */}
         <Route path="campaigns" element={<CampaignsPage />} />
+        <Route path="campaigns/discover" element={<ExploreCampaigns />} />
         <Route path="campaigns/:campaignId" element={<CampaignWorkspacePage />} />
 
         {/* Analytics */}
@@ -170,7 +171,7 @@ function App() {
         <Route path="onboarding-status" element={<OnboardingStatusPage />} />
 
         {/* Discovery & Navigation */}
-        <Route path="explore" element={<ExploreCampaigns />} />
+        <Route path="explore" element={<Navigate to="/creator/campaigns/discover" replace />} />
         <Route path="submissions" element={<Navigate to="/creator/campaigns" replace />} />
         <Route path="financials" element={<Navigate to="/creator/earnings" replace />} />
         <Route path="invoices" element={<Navigate to="/creator/earnings/transactions" replace />} />

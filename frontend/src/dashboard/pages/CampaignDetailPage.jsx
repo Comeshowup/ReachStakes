@@ -755,85 +755,92 @@ const CampaignDetailPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedCreators.map((c) => (
-                                    <tr
-                                        key={c.id}
-                                        style={{ borderBottom: '1px solid var(--bd-border-subtle)', transition: 'background 150ms', cursor: 'default' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bd-surface-hover)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <div style={{ fontWeight: 500, color: 'var(--bd-text-primary)' }}>{c.name}</div>
-                                            {c.handle && <div style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>@{c.handle}</div>}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{c.content}</td>
-                                        {/* Agreed Fee column */}
-                                        <td style={{ padding: '12px 16px' }}>
-                                            {c.agreedPrice > 0 ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <span style={{ fontWeight: 600, color: 'rgb(52,211,153)', fontVariantNumeric: 'tabular-nums' }}>
-                                                        ${Number(c.agreedPrice).toLocaleString()}
-                                                    </span>
-                                                    <button
-                                                        title="Edit payment"
-                                                        onClick={() => openPayModal(c, 'edit')}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--bd-text-muted)', lineHeight: 1 }}
-                                                    >
-                                                        <Edit3 size={12} />
-                                                    </button>
-                                                </div>
-                                            ) : c.proposedPrice > 0 ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                                    <span style={{ fontWeight: 600, color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                                                        ${Number(c.proposedPrice).toLocaleString()}
-                                                    </span>
-                                                    <span style={{ fontSize: '0.6875rem', color: 'var(--bd-text-muted)' }}>
-                                                        {c.offerTerms?.currentOffer?.proposedBy === 'brand' ? 'Brand offer' : 'Creator counter'}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={() => openPayModal(c, 'edit')}
-                                                    style={{
-                                                        fontSize: '0.75rem', fontWeight: 500, padding: '2px 8px',
-                                                        borderRadius: 6, border: '1px dashed var(--bd-border-default)',
-                                                        background: 'none', color: 'var(--bd-text-muted)', cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    + Set Pay
-                                                </button>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>${Number(c.spend).toLocaleString()}</td>
-                                        <td style={{ padding: '12px 16px', color: 'var(--bd-success)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>${Number(c.revenue).toLocaleString()}</td>
-                                        <td style={{ padding: '12px 16px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: parseFloat(c.roas) >= 2 ? 'var(--bd-success)' : 'var(--bd-text-primary)' }}>{c.roas}x</td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <StatusBadge status={(c.status || '').replace('_', ' ')} />
-                                        </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                            {c.status === 'Applied' && (
-                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                                    <button
-                                                        className="bd-cm-btn-secondary"
-                                                        style={{ padding: '4px 12px', fontSize: '0.75rem' }}
-                                                        disabled={isUpdating}
-                                                        onClick={() => updateDecision({ collabId: c.id, data: { status: 'Rejected' } })}
-                                                    >
-                                                        Reject
-                                                    </button>
-                                                    <button
-                                                        className="bd-cm-btn-primary"
-                                                        style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}
-                                                        disabled={isUpdating}
-                                                        onClick={() => openPayModal(c, 'accept')}
-                                                    >
-                                                        <Banknote size={12} /> Accept + Set Pay
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {sortedCreators.map((c) => {
+                                    const isFinalized = c.status === 'Approved' || c.status === 'Paid' || c.status === 'Completed' || c.status === 'Paid_Out' || c.payoutReleased;
+                                    return (
+                                        <tr
+                                            key={c.id}
+                                            style={{ borderBottom: '1px solid var(--bd-border-subtle)', transition: 'background 150ms', cursor: 'default' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bd-surface-hover)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ fontWeight: 500, color: 'var(--bd-text-primary)' }}>{c.name}</div>
+                                                {c.handle && <div style={{ fontSize: '0.75rem', color: 'var(--bd-text-muted)' }}>@{c.handle}</div>}
+                                            </td>
+                                            <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{c.content}</td>
+                                            {/* Agreed Fee column */}
+                                            <td style={{ padding: '12px 16px' }}>
+                                                {c.agreedPrice > 0 ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ fontWeight: 600, color: 'rgb(52,211,153)', fontVariantNumeric: 'tabular-nums' }}>
+                                                            ${Number(c.agreedPrice).toLocaleString()}
+                                                        </span>
+                                                        {!isFinalized && (
+                                                            <button
+                                                                title="Edit payment"
+                                                                onClick={() => openPayModal(c, 'edit')}
+                                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--bd-text-muted)', lineHeight: 1 }}
+                                                            >
+                                                                <Edit3 size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : c.proposedPrice > 0 ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                        <span style={{ fontWeight: 600, color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                                                            ${Number(c.proposedPrice).toLocaleString()}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.6875rem', color: 'var(--bd-text-muted)' }}>
+                                                            {c.offerTerms?.currentOffer?.proposedBy === 'brand' ? 'Brand offer' : 'Creator counter'}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    !isFinalized && (
+                                                        <button
+                                                            onClick={() => openPayModal(c, 'edit')}
+                                                            style={{
+                                                                fontSize: '0.75rem', fontWeight: 500, padding: '2px 8px',
+                                                                borderRadius: 6, border: '1px dashed var(--bd-border-default)',
+                                                                background: 'none', color: 'var(--bd-text-muted)', cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            + Set Pay
+                                                        </button>
+                                                    )
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '12px 16px', color: 'var(--bd-text-primary)', fontVariantNumeric: 'tabular-nums' }}>${Number(c.spend).toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', color: 'var(--bd-success)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>${Number(c.revenue).toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: parseFloat(c.roas) >= 2 ? 'var(--bd-success)' : 'var(--bd-text-primary)' }}>{c.roas}x</td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <StatusBadge status={(c.status || '').replace('_', ' ')} />
+                                            </td>
+                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                {c.status === 'Applied' && (
+                                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                        <button
+                                                            className="bd-cm-btn-secondary"
+                                                            style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                                            disabled={isUpdating}
+                                                            onClick={() => updateDecision({ collabId: c.id, data: { status: 'Rejected' } })}
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                        <button
+                                                            className="bd-cm-btn-primary"
+                                                            style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                            disabled={isUpdating}
+                                                            onClick={() => openPayModal(c, 'accept')}
+                                                        >
+                                                            <Banknote size={12} /> Accept + Set Pay
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
