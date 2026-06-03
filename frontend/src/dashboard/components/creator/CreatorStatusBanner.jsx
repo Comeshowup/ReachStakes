@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, Camera, FileText, Link2, ChevronRight, X } from 'lucide-react';
 
 const ACTION_BUTTONS = [
-    { id: 'social', label: 'Connect TikTok', icon: Link2, path: '/creator/social-accounts', color: 'text-pink-600 bg-pink-50 dark:bg-pink-900/20 dark:text-pink-400' },
+    { id: 'social', label: 'Connect TikTok', icon: Link2, path: '/creator/social-accounts', color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20 dark:text-cyan-400' },
     { id: 'avatar', label: 'Upload Avatar', icon: Camera, path: '/creator/profile', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400' },
     { id: 'bio', label: 'Add Bio', icon: FileText, path: '/creator/profile', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
 ];
@@ -48,7 +48,7 @@ const CreatorStatusBanner = memo(({ profileCompletion, loading = false }) => {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="relative rounded-[14px] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-[1px] shadow-lg shadow-indigo-500/10"
+            className="relative rounded-[14px] bg-gradient-to-r from-indigo-600 to-cyan-500 p-[1px] shadow-lg shadow-indigo-500/10"
             role="banner"
             aria-label={`Profile completion: ${percentage}%`}
         >
@@ -65,7 +65,7 @@ const CreatorStatusBanner = memo(({ profileCompletion, loading = false }) => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     {/* Icon + Progress */}
                     <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shrink-0">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white shrink-0">
                             <Shield className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -80,7 +80,7 @@ const CreatorStatusBanner = memo(({ profileCompletion, loading = false }) => {
                             {/* Progress bar */}
                             <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden max-w-sm">
                                 <motion.div
-                                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-full"
                                     initial={{ width: 0 }}
                                     animate={{ width: `${percentage}%` }}
                                     transition={{ duration: 0.8, delay: 0.2 }}

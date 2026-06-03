@@ -54,7 +54,7 @@ export function Feature1() {
         <div className="flex flex-col md:flex-row md:items-center gap-8">
           <div className="md:w-1/2">
             <div className="h-11 w-11 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <ShieldCheck className="w-5 h-5 text-purple-300" />
+              <ShieldCheck className="w-5 h-5 text-indigo-300" />
             </div>
             <h3 className="text-xl tracking-tight font-normal mb-2 text-white">
               Financial Trust & Security
@@ -77,7 +77,7 @@ export function Feature1() {
 
           <div className="md:w-1/2">
             <div className="relative">
-              <div className="absolute inset-0 blur-2xl rounded-2xl bg-purple-500/10"></div>
+              <div className="absolute inset-0 blur-2xl rounded-2xl bg-indigo-500/10"></div>
               <div className="relative rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -87,14 +87,14 @@ export function Feature1() {
                   <span className="text-xs text-white/50">Auto‑renew</span>
                 </div>
                 <div className="mt-4 h-28 rounded-md border border-white/10 bg-white/5 grid place-items-center">
-                  <Lock className="w-8 h-8 text-purple-300" />
+                  <Lock className="w-8 h-8 text-indigo-300" />
                 </div>
                 <div className="mt-4 flex items-center justify-between text-xs text-white/60">
                   <span>Rotation interval</span>
                   <span>24h</span>
                 </div>
                 <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full w-3/5 bg-gradient-to-r from-purple-400/70 to-indigo-400/70"></div>
+                  <div className="h-full w-3/5 bg-gradient-to-r from-indigo-400/70 to-cyan-400/70"></div>
                 </div>
               </div>
             </div>
@@ -241,7 +241,7 @@ export function Feature3() {
         <div className="flex flex-col md:flex-row md:items-center gap-8">
           <div className="md:w-1/2">
             <div className="h-11 w-11 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <Workflow className="w-5 h-5 text-fuchsia-300" />
+              <Workflow className="w-5 h-5 text-cyan-300" />
             </div>
             <h3 className="text-xl tracking-tight font-normal mb-2 text-white">
               Automated Matching
@@ -252,16 +252,16 @@ export function Feature3() {
             </p>
             <div className="mt-6 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-400"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
                 <div className="h-1 flex-1 bg-white/10 rounded">
-                  <div className="h-1 w-3/5 rounded bg-fuchsia-300/80"></div>
+                  <div className="h-1 w-3/5 rounded bg-cyan-300/80"></div>
                 </div>
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
                 <div className="h-1 flex-1 bg-white/10 rounded">
-                  <div className="h-1 w-2/5 rounded bg-purple-300/80"></div>
+                  <div className="h-1 w-2/5 rounded bg-indigo-300/80"></div>
                 </div>
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
               </div>
@@ -276,11 +276,11 @@ export function Feature3() {
           </div>
           <div className="md:w-1/2">
             <div className="relative">
-              <div className="absolute inset-0 blur-2xl rounded-2xl bg-fuchsia-500/10"></div>
+              <div className="absolute inset-0 blur-2xl rounded-2xl bg-cyan-500/10"></div>
               <div className="relative rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Bot className="w-4 h-4 text-fuchsia-300" />
+                    <Bot className="w-4 h-4 text-cyan-300" />
                     <span className="text-sm text-white/70">
                       Process Status
                     </span>

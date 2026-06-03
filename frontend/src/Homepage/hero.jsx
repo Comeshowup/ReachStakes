@@ -40,7 +40,7 @@ function Hero() {
                         className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60"
                     >
                         Connect Brands with <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
                             World-Class Creators
                         </span>
                     </motion.h1>

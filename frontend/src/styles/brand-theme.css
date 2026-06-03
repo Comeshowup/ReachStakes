@@ -86,6 +86,16 @@
     --p-purple-600: #7c3aed;
     --p-purple-700: #6d28d9;
 
+    /* Cyan */
+    --p-cyan-50: rgba(34, 211, 238, 0.08);
+    --p-cyan-100: rgba(34, 211, 238, 0.15);
+    --p-cyan-200: rgba(34, 211, 238, 0.25);
+    --p-cyan-400: #22d3ee;
+    --p-cyan-500: #06b6d4;
+    --p-cyan-600: #0891b2;
+    --p-cyan-700: #0e7490;
+
+
     /* Teal */
     --p-teal-50: rgba(20, 184, 166, 0.08);
     --p-teal-100: rgba(20, 184, 166, 0.15);
@@ -163,7 +173,7 @@
     --bd-warning: var(--p-warning-600);
     --bd-danger: var(--p-danger-600);
     --bd-info: var(--p-info-600);
-    --bd-purple: var(--p-purple-600);
+    --bd-purple: var(--p-cyan-600);
     --bd-teal: var(--p-teal-600);
     --bd-orange: var(--p-orange-600);
 
@@ -172,7 +182,7 @@
     --bd-warning-muted: var(--p-warning-50);
     --bd-danger-muted: var(--p-danger-50);
     --bd-info-muted: var(--p-info-50);
-    --bd-purple-muted: var(--p-purple-50);
+    --bd-purple-muted: var(--p-cyan-50);
     --bd-teal-muted: var(--p-teal-50);
     --bd-orange-muted: var(--p-orange-50);
 
@@ -181,7 +191,7 @@
     --bd-warning-border: var(--p-warning-100);
     --bd-danger-border: var(--p-danger-100);
     --bd-info-border: var(--p-info-100);
-    --bd-purple-border: var(--p-purple-100);
+    --bd-purple-border: var(--p-cyan-100);
     --bd-teal-border: var(--p-teal-100);
     --bd-orange-border: var(--p-orange-100);
 
@@ -257,9 +267,9 @@
     --bd-fi-positive: var(--p-success-600);
     --bd-fi-positive-muted: var(--p-success-50);
     --bd-fi-positive-border: var(--p-success-100);
-    --bd-fi-roas: var(--p-brand-500);
-    --bd-fi-roas-muted: rgba(99, 102, 241, 0.08);
-    --bd-fi-escrow: var(--p-brand-500);
+    --bd-fi-roas: var(--p-cyan-600);
+    --bd-fi-roas-muted: rgba(34, 211, 238, 0.08);
+    --bd-fi-escrow: var(--p-success-600);
     --bd-fi-payout-badge: var(--p-warning-500);
     --bd-fi-payout-badge-muted: var(--p-warning-50);
     --bd-fi-payout-badge-border: var(--p-warning-100);
@@ -274,9 +284,9 @@
     --bd-cm-progress-fill: var(--p-success-500);
     --bd-cm-progress-fill-full: var(--p-info-500);
     --bd-cm-progress-fill-over: var(--p-danger-500);
-    --bd-cm-gradient-from: var(--p-purple-600);
-    --bd-cm-gradient-to: var(--p-brand-600);
-    --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.2);
+    --bd-cm-gradient-from: var(--p-brand-500);
+    --bd-cm-gradient-to: var(--p-cyan-600);
+    --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.15);
 
     /* --- Approvals Engine --- */
     --bd-aq-surface: var(--p-neutral-50);
@@ -516,7 +526,7 @@
     --bd-warning: var(--p-warning-400);
     --bd-danger: var(--p-danger-400);
     --bd-info: var(--p-info-400);
-    --bd-purple: var(--p-purple-400);
+    --bd-purple: var(--p-cyan-400);
     --bd-teal: var(--p-teal-400);
     --bd-orange: var(--p-orange-400);
 
@@ -525,7 +535,7 @@
     --bd-warning-muted: rgba(245, 158, 11, 0.12);
     --bd-danger-muted: rgba(212, 24, 61, 0.12);
     --bd-info-muted: rgba(59, 130, 246, 0.12);
-    --bd-purple-muted: rgba(139, 92, 246, 0.12);
+    --bd-purple-muted: rgba(34, 211, 238, 0.12);
     --bd-teal-muted: rgba(20, 184, 166, 0.12);
     --bd-orange-muted: rgba(249, 115, 22, 0.12);
 
@@ -534,7 +544,7 @@
     --bd-warning-border: rgba(245, 158, 11, 0.2);
     --bd-danger-border: rgba(212, 24, 61, 0.2);
     --bd-info-border: rgba(59, 130, 246, 0.2);
-    --bd-purple-border: rgba(139, 92, 246, 0.2);
+    --bd-purple-border: rgba(34, 211, 238, 0.2);
     --bd-teal-border: rgba(20, 184, 166, 0.2);
     --bd-orange-border: rgba(249, 115, 22, 0.2);
 
@@ -544,7 +554,7 @@
     --bd-sidebar-hover: rgba(255, 255, 255, 0.04);
     --bd-sidebar-border: rgba(255, 255, 255, 0.06);
     --bd-sidebar-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
-    --bd-sidebar-logo-bg: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --bd-sidebar-logo-bg: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
     --bd-sidebar-logo-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 
     /* --- Topbar --- */
@@ -610,9 +620,9 @@
     --bd-fi-positive: #16C784;
     --bd-fi-positive-muted: rgba(22, 199, 132, 0.12);
     --bd-fi-positive-border: rgba(22, 199, 132, 0.2);
-    --bd-fi-roas: var(--p-brand-400);
-    --bd-fi-roas-muted: rgba(99, 102, 241, 0.12);
-    --bd-fi-escrow: var(--p-brand-400);
+    --bd-fi-roas: #22d3ee;
+    --bd-fi-roas-muted: rgba(34, 211, 238, 0.12);
+    --bd-fi-escrow: #16C784;
     --bd-fi-payout-badge: var(--p-warning-400);
     --bd-fi-payout-badge-muted: rgba(245, 158, 11, 0.12);
     --bd-fi-payout-badge-border: rgba(245, 158, 11, 0.2);
@@ -627,9 +637,9 @@
     --bd-cm-progress-fill: var(--p-success-400);
     --bd-cm-progress-fill-full: var(--p-info-400);
     --bd-cm-progress-fill-over: var(--p-danger-400);
-    --bd-cm-gradient-from: #7c3aed;
-    --bd-cm-gradient-to: #4f46e5;
-    --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.3);
+    --bd-cm-gradient-from: #6366f1;
+    --bd-cm-gradient-to: #22d3ee;
+    --bd-cm-gradient-shadow: rgba(99, 102, 241, 0.2);
 
     /* --- Approvals Engine --- */
     --bd-aq-surface: var(--p-neutral-900);
@@ -1033,21 +1043,21 @@
     --bd-warning: var(--rs-status-warning);
     --bd-danger: var(--rs-status-danger);
     --bd-info: var(--rs-status-info);
-    --bd-purple: #8B5CF6;
+    --bd-purple: var(--rs-accent-cyan);
     --bd-teal: #14B8A6;
     --bd-orange: #F97316;
     --bd-success-muted: var(--rs-success-muted);
     --bd-warning-muted: var(--rs-warning-muted);
     --bd-danger-muted: var(--rs-danger-muted);
     --bd-info-muted: var(--rs-info-muted);
-    --bd-purple-muted: rgba(139, 92, 246, 0.13);
+    --bd-purple-muted: var(--rs-cyan-muted);
     --bd-teal-muted: rgba(20, 184, 166, 0.13);
     --bd-orange-muted: rgba(249, 115, 22, 0.13);
     --bd-success-border: var(--rs-success-border);
     --bd-warning-border: var(--rs-warning-border);
     --bd-danger-border: var(--rs-danger-border);
     --bd-info-border: var(--rs-info-border);
-    --bd-purple-border: rgba(139, 92, 246, 0.28);
+    --bd-purple-border: var(--rs-cyan-border);
     --bd-teal-border: rgba(20, 184, 166, 0.28);
     --bd-orange-border: rgba(249, 115, 22, 0.28);
     --bd-sidebar-bg: rgba(17, 18, 20, 0.92);

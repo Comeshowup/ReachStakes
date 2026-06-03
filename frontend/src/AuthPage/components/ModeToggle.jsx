@@ -19,7 +19,7 @@ const ModeToggle = ({ mode, setMode, isBrand }) => {
                             layoutId="active-mode"
                             className={cn(
                                 "absolute inset-0 rounded-sm shadow-lg",
-                                isBrand ? "bg-indigo-600" : "bg-teal-600"
+                                isBrand ? "bg-indigo-600" : "bg-emerald-600"
                             )}
                             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                         />

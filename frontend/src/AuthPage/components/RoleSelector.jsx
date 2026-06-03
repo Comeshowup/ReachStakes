@@ -20,7 +20,7 @@ const RoleSelector = ({ role, setRole }) => {
                             layoutId="activeRole"
                             className={cn(
                                 "absolute inset-0 rounded-lg shadow-lg",
-                                r === "brand" ? "bg-gradient-to-r from-indigo-600 to-indigo-500 shadow-indigo-500/20" : "bg-gradient-to-r from-teal-600 to-teal-500 shadow-teal-500/20"
+                                r === "brand" ? "bg-gradient-to-r from-indigo-600 to-indigo-500 shadow-indigo-500/20" : "bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-emerald-500/20"
                             )}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />

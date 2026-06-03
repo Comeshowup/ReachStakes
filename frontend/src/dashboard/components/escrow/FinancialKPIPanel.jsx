@@ -70,7 +70,7 @@ const KPI_CONFIG = [
         key: 'availableBalance',
         label: 'Unallocated Capital',
         icon: DollarSign,
-        colorVar: '--bd-purple',
+        colorVar: '--bd-success',
         trendKey: 'unallocated',
         tooltip: 'Available escrow balance not currently allocated to active campaigns.',
         breakdown: null,
@@ -83,7 +83,7 @@ const CHART_COLORS = {
     '--bd-info': '#3b82f6',
     '--bd-success': '#10b981',
     '--bd-warning': '#f59e0b',
-    '--bd-purple': '#8b5cf6',
+    '--bd-purple': '#22d3ee',
 };
 
 // ─── Count-up Hook ───────────────────────────────

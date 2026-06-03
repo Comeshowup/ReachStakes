@@ -54,7 +54,7 @@ const ErrorFallback = ({ onRetry }) => (
 
 // --- Icon Color Map (semantic tokens) ---
 const iconStyles = {
-    purple: { background: 'var(--bd-purple-muted)', color: 'var(--bd-purple)' },
+    cyan: { background: 'var(--bd-purple-muted)', color: 'var(--bd-purple)' },
     green: { background: 'var(--bd-success-muted)', color: 'var(--bd-success)' },
     blue: { background: 'var(--bd-info-muted)', color: 'var(--bd-info)' },
 };
@@ -105,7 +105,7 @@ const PerformanceMetricsWidget = React.memo(function PerformanceMetricsWidget({ 
                 <div className="bd-card col-span-1 flex flex-col group overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b"
                         style={{ borderColor: 'var(--bd-border-default)', background: 'var(--bd-surface-header)' }}>
-                        <div className="p-2.5 rounded-2xl" style={iconStyles.purple}>
+                        <div className="p-2.5 rounded-2xl" style={iconStyles.cyan}>
                             <Target className="h-5 w-5" />
                         </div>
                         <button className="h-8 w-8 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
