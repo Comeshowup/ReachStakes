@@ -81,9 +81,11 @@ export const useCampaignWorkspace = (campaignId) => {
     }, [fetchWorkspace]);
 
     // Derive deliverables from campaign data
-    // Structured for future backend deliverable entities
+    // Prefer the new structured deliverableItems; fall back to legacy JSON build
     const deliverables = campaign
-        ? buildDeliverables(campaign)
+        ? (campaign.deliverableItems && campaign.deliverableItems.length > 0
+            ? campaign.deliverableItems
+            : buildDeliverables(campaign))
         : [];
 
     // Derive payment info

@@ -184,6 +184,7 @@ export const NAV_GROUPS = [
             { label: "Dashboard", path: "/brand", icon: LayoutGrid },
             { label: "Active Campaigns", path: "/brand/campaigns", icon: Briefcase },
             { label: "Approvals", path: "/brand/approvals", icon: CheckCircle, badge: "3" },
+            { label: "Templates", path: "/brand/templates", icon: FileText },
             { label: "Escrow Vault", path: "/brand/financials", icon: CreditCard },
         ]
     },

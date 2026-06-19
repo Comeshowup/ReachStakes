@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { createNotification } from "../services/notificationService.js";
 import { DealPricingService } from "../services/dealPricing.service.js";
+import { DeliverableService } from "../services/deliverable.service.js";
 
 // @desc    Create a new campaign
 // @route   POST /api/campaigns
@@ -460,7 +461,7 @@ export const getCampaignById = async (req, res) => {
 export const inviteToCampaign = async (req, res) => {
     try {
         const campaignId = parseInt(req.params.id);
-        const { creatorId, notes, deliverables, milestones } = req.body;
+        const { creatorId, notes, deliverables, milestones, structuredDeliverables } = req.body;
         const offer = DealPricingService.buildOffer(req.body);
 
         const campaign = await prisma.campaign.findUnique({
@@ -562,6 +563,19 @@ export const inviteToCampaign = async (req, res) => {
         );
 
         res.status(201).json({ status: 'success', data: collaboration });
+
+        // Auto-create structured Deliverable records if provided
+        if (Array.isArray(structuredDeliverables) && structuredDeliverables.length > 0) {
+            try {
+                await DeliverableService.createDeliverables(
+                    collaboration.id,
+                    structuredDeliverables.filter(d => d.title?.trim()),
+                    req.user.id
+                );
+            } catch (delErr) {
+                console.error('[inviteToCampaign] Deliverable creation failed (non-fatal):', delErr.message);
+            }
+        }
     } catch (error) {
         console.error("Error inviting:", error);
         res.status(500).json({ status: 'error', message: 'Failed to send invitation' });

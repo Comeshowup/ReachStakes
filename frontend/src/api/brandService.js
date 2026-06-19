@@ -145,6 +145,42 @@ export const createCampaign = async (campaignData) => {
     return response.data;
 };
 
+// ── DELIVERABLE TEMPLATES CRUD ───────────────────────────────────────────
+export const getTemplates = async () => {
+    const response = await api.get('/templates', {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
+export const getTemplate = async (id) => {
+    const response = await api.get(`/templates/${id}`, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
+export const createTemplate = async (templateData) => {
+    const response = await api.post('/templates', templateData, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
+export const updateTemplate = async (id, templateData) => {
+    const response = await api.patch(`/templates/${id}`, templateData, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
+export const deleteTemplate = async (id) => {
+    const response = await api.delete(`/templates/${id}`, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
 export default {
     getBrandProfile,
     updateBrandProfile,
@@ -156,5 +192,10 @@ export default {
     deleteBrandPost,
     getBrandCampaigns,
     deleteAccount,
-    createCampaign
+    createCampaign,
+    getTemplates,
+    getTemplate,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate
 };

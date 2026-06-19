@@ -26,7 +26,16 @@ router.get("/my-submissions", protect, async (req, res) => {
                             }
                         }
                     }
-                }
+                },
+                deliverableItems: {
+                    include: {
+                        submissions: {
+                            orderBy: [{ type: 'asc' }, { version: 'desc' }],
+                            take: 5,
+                        },
+                    },
+                    orderBy: { sortOrder: 'asc' },
+                },
             },
             orderBy: {
                 updatedAt: 'desc' // Sort by most recent activity
@@ -70,11 +79,25 @@ router.get("/my-submissions", protect, async (req, res) => {
             payoutReleased: collab.payoutReleased || false,
             payoutDate: collab.payoutDate || null,
             escrowStatus: collab.campaign.escrowBalance > 0 ? 'Locked' : 'Not Funded',
-            // New Fields
+            // Legacy JSON fields (backward compat)
             deliverables: collab.deliverables,
             milestones: collab.milestones,
             usageAgreed: collab.usageAgreed,
-            isWhitelisted: collab.isWhitelisted
+            isWhitelisted: collab.isWhitelisted,
+            // New structured deliverable items
+            deliverableItems: (collab.deliverableItems || []).map(d => ({
+                id: d.id,
+                title: d.title,
+                platform: d.platform,
+                contentType: d.contentType,
+                status: d.status,
+                paymentAmount: d.paymentAmount ? parseFloat(d.paymentAmount) : null,
+                paymentStatus: d.paymentStatus,
+                deadline: d.deadline,
+                requireScript: d.requireScript,
+                requireMockDraft: d.requireMockDraft,
+                latestSubmission: d.submissions?.[0] || null,
+            })),
         }));
 
         res.json(mappedCollaborations);

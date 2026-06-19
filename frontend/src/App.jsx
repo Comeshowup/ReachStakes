@@ -48,6 +48,7 @@ import CreatorLayout from "./dashboard/layout/CreatorLayout";
 import CreatorDashboardHome from "./dashboard/pages/creator/CreatorDashboardHome";
 import CampaignsPage from "./dashboard/pages/creator/CampaignsPage";
 import CampaignWorkspacePage from "./dashboard/pages/creator/CampaignWorkspacePage";
+import DeliverableDetailPage from "./dashboard/pages/creator/DeliverableDetailPage";
 import MySubmissions from "./dashboard/pages/creator/MySubmissions";
 import ExploreCampaigns from "./dashboard/pages/creator/ExploreCampaigns";
 import AnalyticsPage from "./dashboard/pages/creator/AnalyticsPage";
@@ -61,6 +62,7 @@ import SocialAccountsPage from "./features/settings/pages/SocialAccountsPage";
 import PayoutsPage from "./features/settings/pages/PayoutsPage";
 import OnboardingStatusPage from "./dashboard/pages/creator/OnboardingStatusPage";
 import BrandProfile from "./dashboard/pages/BrandProfile";
+import TemplateManagerPage from "./dashboard/pages/TemplateManagerPage";
 import ProfilePage from "./dashboard/pages/ProfilePage";
 import AdminLayout from "./dashboard/layout/AdminLayout";
 import AdminGuard from "./dashboard/layout/AdminGuard";
@@ -123,6 +125,7 @@ function App() {
         <Route path="campaigns" element={<CampaignManagement />} />
         <Route path="profile" element={<BrandProfile />} />
         <Route path="approvals" element={<ApprovalQueue />} />
+        <Route path="templates" element={<TemplateManagerPage />} />
         <Route path="financials" element={<EscrowVault />} />
         <Route path="escrow" element={<EscrowVault />} />
         <Route path="payment-status/:transactionId" element={<PaymentStatus />} />
@@ -141,6 +144,7 @@ function App() {
         {/* Campaigns — flat layout (no nested tabs) */}
         <Route path="campaigns" element={<CampaignsPage />} />
         <Route path="campaigns/discover" element={<ExploreCampaigns />} />
+        <Route path="campaigns/:campaignId/deliverables/:deliverableId" element={<DeliverableDetailPage />} />
         <Route path="campaigns/:campaignId" element={<CampaignWorkspacePage />} />
 
         {/* Analytics */}

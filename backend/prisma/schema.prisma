@@ -59,6 +59,9 @@ model User {
   assignedTasks         CampaignTask[]          @relation("AssignedTasks")
   createdTasks          CampaignTask[]          @relation("CreatedTasks")
 
+  // Deliverable System
+  deliverableTemplates  DeliverableTemplate[]
+
   @@index([email])
   @@index([role])
   @@map("users")
@@ -249,6 +252,9 @@ model Campaign {
   escrowFundedAt  DateTime?     @map("escrow_funded_at")
   isGuaranteedPay Boolean       @default(false) @map("is_guaranteed_pay")
 
+  // Campaign Resources (brand brief, guidelines, assets, etc.)
+  resources Json? // { overview, brandBrief, guidelines, dosAndDonts, assets[], legalRequirements, hashtags, ctaRequirements, brandKit, referenceVideos[], productImages[], downloadableFiles[] }
+
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime? @updatedAt @map("updated_at")
 
@@ -354,6 +360,11 @@ model CampaignCollaboration {
   estimatedEmv       Decimal? @map("estimated_emv") @db.Decimal(10, 2)
 
   feedbackNotes String?  @map("feedback_notes") @db.Text
+
+  // Creator Assignment Notes (brand-specific instructions per creator)
+  assignmentNotes String? @map("assignment_notes") @db.Text
+  joinedAt        DateTime? @map("joined_at")
+
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -361,6 +372,9 @@ model CampaignCollaboration {
   creator          User              @relation("CreatorCollaborations", fields: [creatorId], references: [id])
   invoices         Invoice[]
   contentFeedbacks ContentFeedback[]
+
+  // Deliverable System
+  deliverableItems Deliverable[]
 
   // Campaign Manager Relations
   collabMessages   CampaignMessage[]
@@ -1172,4 +1186,156 @@ model CampaignTask {
   @@index([assigneeId])
   @@index([dueDate])
   @@map("campaign_tasks")
+}
+
+// =============================================
+// DELIVERABLE SYSTEM MODELS
+// =============================================
+
+// --- DELIVERABLE ENUMS ---
+
+enum DeliverableStatus {
+  Pending
+  ScriptRequired      @map("Script_Required")
+  ScriptSubmitted     @map("Script_Submitted")
+  ScriptApproved      @map("Script_Approved")
+  MockDraftSubmitted  @map("Mock_Draft_Submitted")
+  MockDraftApproved   @map("Mock_Draft_Approved")
+  FinalDraftSubmitted @map("Final_Draft_Submitted")
+  RevisionRequested   @map("Revision_Requested")
+  FinalApproved       @map("Final_Approved")
+  Published
+  PaymentReleased     @map("Payment_Released")
+}
+
+enum ContentType {
+  InstagramReel       @map("Instagram_Reel")
+  InstagramStory      @map("Instagram_Story")
+  TikTokVideo         @map("TikTok_Video")
+  YouTubeShort        @map("YouTube_Short")
+  YouTubeIntegration  @map("YouTube_Integration")
+  UGCVideo            @map("UGC_Video")
+  ProductReview       @map("Product_Review")
+  Testimonial
+  StaticPost          @map("Static_Post")
+  Custom
+}
+
+enum SubmissionType {
+  Script
+  MockDraft           @map("Mock_Draft")
+  FinalDraft          @map("Final_Draft")
+}
+
+enum DeliverablePaymentStatus {
+  DPending
+  EscrowFunded        @map("Escrow_Funded")
+  Locked
+  DApproved           @map("D_Approved")
+  Released
+}
+
+// 27. Deliverable (per-assignment content item)
+model Deliverable {
+  id               Int                      @id @default(autoincrement())
+  collaborationId  Int                      @map("collaboration_id")
+  title            String                   @db.VarChar(255)
+  platform         Platform?
+  contentType      ContentType?             @map("content_type")
+  paymentAmount    Decimal?                 @map("payment_amount") @db.Decimal(10, 2)
+  paymentStatus    DeliverablePaymentStatus @default(DPending) @map("payment_status")
+  deadline         DateTime?
+  status           DeliverableStatus        @default(Pending)
+  sortOrder        Int                      @default(0) @map("sort_order")
+
+  // Guidelines (structured JSON)
+  guidelines       Json?   // { objective, talkingPoints, scenes, cta, hashtags, mentions, duration, aspectRatio, resolution, platformReqs, prohibited }
+  checklist        Json?   // [{ id, label, required }]
+  checklistState   Json?   @map("checklist_state") // [{ id, completed, completedAt }]
+  assets           Json?   // [{ url, name, type }]
+
+  // Workflow configuration
+  requireScript    Boolean @default(false) @map("require_script")
+  requireMockDraft Boolean @default(false) @map("require_mock_draft")
+
+  // Template reference
+  templateId       Int?    @map("template_id")
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  collaboration    CampaignCollaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+  submissions      DeliverableSubmission[]
+  events           DeliverableEvent[]
+  template         DeliverableTemplate?  @relation(fields: [templateId], references: [id])
+
+  @@index([collaborationId])
+  @@index([status])
+  @@map("deliverables")
+}
+
+// 28. Deliverable Submission (Versioned — scripts, mock drafts, final drafts)
+model DeliverableSubmission {
+  id              Int            @id @default(autoincrement())
+  deliverableId   Int            @map("deliverable_id")
+  submitterId     Int            @map("submitter_id")
+  type            SubmissionType
+  version         Int            @default(1)
+
+  // Content (URL-only for now — Google Drive, Dropbox, etc.)
+  textContent     String?        @map("text_content") @db.Text    // Script text, caption draft
+  fileUrl         String?        @map("file_url") @db.VarChar(500) // External link (Google Drive, Dropbox)
+  externalUrl     String?        @map("external_url") @db.VarChar(500) // Platform URL (YouTube, IG, etc.)
+  notes           String?        @db.Text
+
+  // Review
+  reviewStatus    String?        @map("review_status") @db.VarChar(50) // pending, approved, rejected, revision_requested
+  reviewedBy      Int?           @map("reviewed_by")
+  reviewedAt      DateTime?      @map("reviewed_at")
+  reviewFeedback  String?        @map("review_feedback") @db.Text
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  deliverable     Deliverable    @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@index([deliverableId, type])
+  @@index([deliverableId, version])
+  @@map("deliverable_submissions")
+}
+
+// 29. Deliverable Event (Activity Timeline)
+model DeliverableEvent {
+  id             Int         @id @default(autoincrement())
+  deliverableId  Int         @map("deliverable_id")
+  type           String      @db.VarChar(50) // status_change, submission, review, comment, payment
+  description    String?     @db.Text
+  actorId        Int?        @map("actor_id")
+  metadata       Json?
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  deliverable    Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+
+  @@index([deliverableId])
+  @@map("deliverable_events")
+}
+
+// 30. Deliverable Template (Reusable brand templates)
+model DeliverableTemplate {
+  id               Int          @id @default(autoincrement())
+  brandId          Int          @map("brand_id")
+  name             String       @db.VarChar(255)
+  contentType      ContentType? @map("content_type")
+  platform         Platform?
+  guidelines       Json?
+  checklist        Json?        // [{ id, label, required }]
+  requireScript    Boolean      @default(false) @map("require_script")
+  requireMockDraft Boolean      @default(false) @map("require_mock_draft")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  brand            User         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  deliverables     Deliverable[]
+
+  @@index([brandId])
+  @@map("deliverable_templates")
 }

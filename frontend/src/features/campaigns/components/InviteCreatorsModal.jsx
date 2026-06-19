@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAvailableCreators, useInviteCreators } from '../hooks/useCampaigns.js';
+import * as brandService from '../../../api/brandService';
 import { PLATFORMS, CATEGORIES } from '../types/index.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -57,10 +58,26 @@ const FOLLOWER_RANGES = [
 
 const STEPS = [
   { label: 'Select', icon: Users },
-  { label: 'Offer', icon: DollarSign },
+  { label: 'Deliverables', icon: DollarSign },
   { label: 'Message', icon: MessageSquare },
   { label: 'Review', icon: Eye },
 ];
+
+const CONTENT_TYPES = [
+  'Instagram_Reel','Instagram_Story','TikTok_Video',
+  'YouTube_Short','YouTube_Integration','UGC_Video',
+  'Product_Review','Testimonial','Static_Post','Custom',
+];
+
+const newDeliverable = () => ({
+  title: '',
+  contentType: '',
+  platform: '',
+  paymentAmount: '',
+  deadline: '',
+  requireScript: false,
+  requireMockDraft: false,
+});
 
 const StepIndicator = ({ currentStep }) => (
   <div className="flex items-center gap-0">
@@ -260,136 +277,185 @@ const Step1SelectCreators = ({ selected, onSelect }) => {
   );
 };
 
-// ─── Step 2: Offer Setup ──────────────────────────────────────────
+// ─── Step 2: Structured Deliverable Builder ───────────────────────
+
+const DeliverableRow = ({ d, i, total, onChange, onRemove }) => (
+  <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)' }}>
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Deliverable {i + 1}</span>
+      {total > 1 && (
+        <button onClick={() => onRemove(i)} className="p-1 text-gray-400 hover:text-red-500 transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+
+    {/* Title */}
+    <div>
+      <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Title <span className="text-red-500">*</span></label>
+      <input
+        placeholder="e.g. Instagram Reel — Product Review"
+        value={d.title}
+        onChange={e => onChange(i, 'title', e.target.value)}
+        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+
+    {/* Content Type + Platform */}
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Content Type</label>
+        <select value={d.contentType} onChange={e => onChange(i, 'contentType', e.target.value)}
+          className="w-full px-2 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">— Select —</option>
+          {CONTENT_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Platform</label>
+        <select value={d.platform} onChange={e => onChange(i, 'platform', e.target.value)}
+          className="w-full px-2 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">— Select —</option>
+          {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+    </div>
+
+    {/* Payment + Deadline */}
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Payment ($)</label>
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+          <input type="number" min="0" placeholder="500" value={d.paymentAmount}
+            onChange={e => onChange(i, 'paymentAmount', e.target.value)}
+            className="w-full pl-6 pr-3 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Deadline</label>
+        <input type="date" value={d.deadline} onChange={e => onChange(i, 'deadline', e.target.value)}
+          className="w-full px-2 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+    </div>
+
+    {/* Workflow flags */}
+    <div className="flex items-center gap-4">
+      {[['requireScript','Require Script'],['requireMockDraft','Require Mock Draft']].map(([key,label]) => (
+        <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" checked={d[key]} onChange={e => onChange(i, key, e.target.checked)}
+            className="w-3.5 h-3.5 rounded accent-indigo-600" />
+          <span className="text-xs text-gray-600 dark:text-zinc-400">{label}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+);
 
 const Step2OfferSetup = ({ offer, setOffer, errors }) => {
+  const [templates, setTemplates] = React.useState([]);
+
+  React.useEffect(() => {
+    brandService.getTemplates()
+      .then(res => {
+        if (res.status === 'success') {
+          setTemplates(res.data || []);
+        }
+      })
+      .catch(err => console.error('Error fetching templates in invite modal:', err));
+  }, []);
+
+  const updateDeliverable = (i, key, val) =>
+    setOffer(prev => ({ ...prev, structuredDeliverables: prev.structuredDeliverables.map((d, idx) => idx === i ? { ...d, [key]: val } : d) }));
+
   const addDeliverable = () =>
-    setOffer((prev) => ({ ...prev, deliverables: [...prev.deliverables, ''] }));
+    setOffer(prev => ({ ...prev, structuredDeliverables: [...prev.structuredDeliverables, newDeliverable()] }));
+
+  const addFromTemplate = (templateId) => {
+    if (!templateId) return;
+    const t = templates.find(temp => temp.id === parseInt(templateId));
+    if (!t) return;
+    const newD = {
+      title: t.name,
+      contentType: t.contentType || '',
+      platform: t.platform || '',
+      paymentAmount: '',
+      deadline: '',
+      requireScript: t.requireScript || false,
+      requireMockDraft: t.requireMockDraft || false,
+    };
+    setOffer(prev => {
+      // If the first item is empty, replace it, otherwise append.
+      const current = prev.structuredDeliverables;
+      if (current.length === 1 && !current[0].title.trim() && !current[0].paymentAmount) {
+        return { ...prev, structuredDeliverables: [newD] };
+      }
+      return { ...prev, structuredDeliverables: [...current, newD] };
+    });
+  };
 
   const removeDeliverable = (i) =>
-    setOffer((prev) => ({
-      ...prev,
-      deliverables: prev.deliverables.filter((_, idx) => idx !== i),
-    }));
+    setOffer(prev => ({ ...prev, structuredDeliverables: prev.structuredDeliverables.filter((_, idx) => idx !== i) }));
 
-  const updateDeliverable = (i, val) =>
-    setOffer((prev) => ({
-      ...prev,
-      deliverables: prev.deliverables.map((d, idx) => (idx === i ? val : d)),
-    }));
+  const totalPay = offer.structuredDeliverables.reduce((s, d) => s + (parseFloat(d.paymentAmount) || 0), 0);
 
   return (
-    <div className="space-y-5">
-      {/* Amount */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="space-y-4">
+      {/* Pricing model */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-            Payment Model <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={offer.pricingModel}
-            onChange={(e) => setOffer((prev) => ({ ...prev, pricingModel: e.target.value }))}
-            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
+          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Payment Model</label>
+          <select value={offer.pricingModel} onChange={e => setOffer(prev => ({ ...prev, pricingModel: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="flat_fee">Flat per video</option>
             <option value="cpm">CPM based</option>
-            <option value="hybrid">Hybrid</option>
             <option value="milestone">Milestone based</option>
           </select>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-            {offer.pricingModel === 'cpm' ? 'Total Offer Cap' : 'Offer Amount'} <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-            <input
-              type="number"
-              min="0"
-              placeholder="500"
-              value={offer.amount}
-              onChange={(e) => setOffer((prev) => ({ ...prev, amount: e.target.value }))}
-              className={`w-full pl-7 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-900 dark:text-white ${
-                errors?.amount
-                  ? 'border-red-400 dark:border-red-500'
-                  : 'border-gray-200 dark:border-zinc-700'
-              }`}
-            />
-          </div>
-          {errors?.amount && (
-            <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
-          )}
-        </div>
-        {(offer.pricingModel === 'cpm' || offer.pricingModel === 'hybrid') && (
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-              Estimated Views
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="50000"
-              value={offer.estimatedViews}
-              onChange={(e) => setOffer((prev) => ({ ...prev, estimatedViews: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {Number(offer.amount) > 0 && Number(offer.estimatedViews) > 0 && (
-              <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
-                Implied CPM: ${(Number(offer.amount) / Number(offer.estimatedViews) * 1000).toFixed(2)}
-              </p>
-            )}
+        {totalPay > 0 && (
+          <div className="flex flex-col justify-end">
+            <p className="text-xs text-gray-500 dark:text-zinc-400">Total offer</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-white">${totalPay.toLocaleString()}</p>
           </div>
         )}
       </div>
 
-      {/* Deliverables */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-          Deliverables <span className="text-red-500">*</span>
-        </label>
-        <div className="space-y-2">
-          {offer.deliverables.map((d, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                placeholder={`e.g. ${i === 0 ? '1 Reel' : i === 1 ? '2 Stories' : '1 Post'}`}
-                value={d}
-                onChange={(e) => updateDeliverable(i, e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {offer.deliverables.length > 1 && (
-                <button
-                  onClick={() => removeDeliverable(i)}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
+      {/* Templates select */}
+      {templates.length > 0 && (
+        <div className="bg-slate-50 dark:bg-zinc-800/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between gap-4">
+          <div className="shrink-0">
+            <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Deliverable Templates</p>
+            <p className="text-[10px] text-gray-500 dark:text-zinc-500">Pre-fill standard task settings</p>
+          </div>
+          <select
+            onChange={e => {
+              addFromTemplate(e.target.value);
+              e.target.value = '';
+            }}
+            className="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-gray-800 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[200px]"
+          >
+            <option value="">— Select Template —</option>
+            {templates.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
         </div>
-        {errors?.deliverables && (
-          <p className="text-xs text-red-500 mt-1">{errors.deliverables}</p>
-        )}
-        <button
-          onClick={addDeliverable}
-          className="flex items-center gap-1.5 mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add deliverable
-        </button>
+      )}
+
+      {/* Deliverable cards */}
+      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+        {offer.structuredDeliverables.map((d, i) => (
+          <DeliverableRow key={i} d={d} i={i} total={offer.structuredDeliverables.length}
+            onChange={updateDeliverable} onRemove={removeDeliverable} />
+        ))}
       </div>
 
-      {/* Deadline */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">
-          Deadline
-        </label>
-        <input
-          type="date"
-          value={offer.deadline}
-          onChange={(e) => setOffer((prev) => ({ ...prev, deadline: e.target.value }))}
-          className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
+      {errors?.deliverables && <p className="text-xs text-red-500">{errors.deliverables}</p>}
+
+      <button onClick={addDeliverable}
+        className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors">
+        <Plus className="w-3.5 h-3.5" /> Add Deliverable
+      </button>
     </div>
   );
 };
@@ -502,7 +568,8 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
     pricingModel: 'flat_fee',
     amount: '',
     estimatedViews: '',
-    deliverables: [''],
+    deliverables: [''],   // legacy plain-text (kept for backward compat)
+    structuredDeliverables: [newDeliverable()], // new structured format
     deadline: '',
   });
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
@@ -513,7 +580,7 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
   const reset = useCallback(() => {
     setStep(0);
     setSelected(new Map());
-    setOffer({ pricingModel: 'flat_fee', amount: '', estimatedViews: '', deliverables: [''], deadline: '' });
+    setOffer({ pricingModel: 'flat_fee', amount: '', estimatedViews: '', deliverables: [''], structuredDeliverables: [newDeliverable()], deadline: '' });
     setMessage(DEFAULT_MESSAGE);
     setErrors({});
   }, []);
@@ -525,16 +592,12 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
 
   const validateStep = (stepIndex) => {
     if (stepIndex === 0) {
-      if (selected.size === 0) {
-        toast.error('Select at least one creator');
-        return false;
-      }
+      if (selected.size === 0) { toast.error('Select at least one creator'); return false; }
     }
     if (stepIndex === 1) {
       const errs = {};
-      if (!offer.amount || Number(offer.amount) <= 0) errs.amount = 'Amount is required';
-      const validDeliverables = offer.deliverables.filter(Boolean);
-      if (validDeliverables.length === 0) errs.deliverables = 'Add at least one deliverable';
+      const valid = offer.structuredDeliverables.filter(d => d.title.trim());
+      if (valid.length === 0) errs.deliverables = 'Add at least one deliverable with a title';
       setErrors(errs);
       return Object.keys(errs).length === 0;
     }
@@ -551,18 +614,28 @@ const InviteCreatorsModal = ({ campaignId, isOpen, onClose }) => {
   };
 
   const handleSend = async () => {
+    const validStructured = offer.structuredDeliverables.filter(d => d.title.trim());
+    const totalPay = validStructured.reduce((s, d) => s + (parseFloat(d.paymentAmount) || 0), 0);
     const payload = {
       creatorIds: Array.from(selected.keys()),
       offer: {
-        amount: Number(offer.amount),
-        proposedPrice: Number(offer.amount),
+        amount: totalPay || Number(offer.amount) || 0,
+        proposedPrice: totalPay || Number(offer.amount) || 0,
         pricingModel: offer.pricingModel,
         estimatedViews: offer.estimatedViews ? Number(offer.estimatedViews) : undefined,
-        deliverables: offer.deliverables.filter(Boolean),
-        milestones: offer.pricingModel === 'milestone'
-          ? offer.deliverables.filter(Boolean).map((title, index) => ({ title, status: 'pending', order: index + 1 }))
-          : undefined,
-        deadline: offer.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        // Legacy plain-text deliverables (backward compat)
+        deliverables: validStructured.map(d => d.title),
+        // New structured deliverables — backend creates Deliverable records
+        structuredDeliverables: validStructured.map(d => ({
+          title: d.title,
+          contentType: d.contentType || null,
+          platform: d.platform || null,
+          paymentAmount: d.paymentAmount ? parseFloat(d.paymentAmount) : null,
+          deadline: d.deadline || null,
+          requireScript: d.requireScript,
+          requireMockDraft: d.requireMockDraft,
+        })),
+        deadline: validStructured[0]?.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       },
       message: message || undefined,
     };

@@ -32,6 +32,21 @@ export class CampaignQueryService {
                                 creatorProfile: true,
                             },
                         },
+                        deliverableItems: {
+                            select: {
+                                id: true,
+                                title: true,
+                                contentType: true,
+                                platform: true,
+                                status: true,
+                                paymentAmount: true,
+                                paymentStatus: true,
+                                deadline: true,
+                                requireScript: true,
+                                requireMockDraft: true,
+                            },
+                            orderBy: { sortOrder: 'asc' },
+                        },
                     },
                 },
                 transactions: {
@@ -191,6 +206,21 @@ export class CampaignQueryService {
             offerExpiresAt: collab.offerExpiresAt || null,
             offerAcceptedAt: collab.offerAcceptedAt || null,
             payoutReleased: collab.payoutReleased || false,
+            // New deliverable items
+            creatorId: collab.creatorId,
+            creatorName: collab.creator?.creatorProfile?.fullName || collab.creator?.name || null,
+            deliverableItems: (collab.deliverableItems || []).map(d => ({
+                id: d.id,
+                title: d.title,
+                contentType: d.contentType,
+                platform: d.platform,
+                status: d.status,
+                paymentAmount: d.paymentAmount ? parseFloat(d.paymentAmount) : null,
+                paymentStatus: d.paymentStatus,
+                deadline: d.deadline,
+                requireScript: d.requireScript,
+                requireMockDraft: d.requireMockDraft,
+            })),
         }));
 
         // Activity Feed

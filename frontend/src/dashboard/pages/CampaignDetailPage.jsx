@@ -9,8 +9,9 @@ import {
     ArrowLeft, ArrowUpRight, ArrowDownRight, Download, MoreHorizontal, Edit3,
     TrendingUp, DollarSign, Users, Activity, Shield, Calendar, ChevronUp,
     ChevronDown, AlertTriangle, CheckCircle, Clock, Zap, Info, UserPlus,
-    BarChart3, FileText, X, Banknote,
+    BarChart3, FileText, X, Banknote, ListChecks,
 } from 'lucide-react';
+import DeliverableManagementTable from '../components/brand/DeliverableManagementTable';
 
 /* ================================================================
    SHARED CONSTANTS
@@ -705,6 +706,25 @@ const CampaignDetailPage = () => {
                         </div>
                     )}
                 </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                DELIVERABLES MANAGEMENT
+               ═══════════════════════════════════════════ */}
+            <section style={{ marginBottom: SECTION_GAP }}>
+                <SectionHeader icon={ListChecks} title="Deliverables">
+                    <button
+                        onClick={() => navigate(`/brand/campaigns/${campaign.id}/invitations?invite=1`)}
+                        className="bd-cm-btn-primary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.8125rem' }}
+                    >
+                        <UserPlus size={13} /> Invite Creators
+                    </button>
+                </SectionHeader>
+                <DeliverableManagementTable
+                    collaborations={creators || []}
+                    campaignId={campaign.id}
+                />
             </section>
 
             {/* ═══════════════════════════════════════════

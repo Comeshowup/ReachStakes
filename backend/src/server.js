@@ -22,6 +22,8 @@ import brandCampaignRoutes from './routes/campaign.routes.js';
 import escrowRoutes from './routes/escrowRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import deliverableRoutes from './routes/deliverableRoutes.js';
+import templateRoutes from './routes/templateRoutes.js';
 import adminCampaignRoutes from './routes/adminCampaignRoutes.js';
 import adminCreatorRoutes from './routes/adminCreatorRoutes.js';
 import adminBrandRoutes from './routes/adminBrandRoutes.js';
@@ -114,7 +116,9 @@ app.use('/api/v1/brand/campaigns', brandCampaignRoutes); // Campaign Wizard & De
 app.use('/api/escrow', escrowRoutes); // Escrow Vault
 app.use('/api/notifications', notificationRoutes); // In-App Notifications
 app.use('/api/support', supportRoutes); // Support System
-
+app.use('/api/deliverables', deliverableRoutes); // Deliverable System
+app.use('/api/templates', templateRoutes); // Deliverable Templates
+// Trigger reload comment
 // Admin Campaign Manager Routes
 app.use('/api/admin/campaigns', adminCampaignRoutes);
 app.use('/api/admin/creators', adminCreatorRoutes);
