@@ -7,6 +7,147 @@ import { DealPricingService } from "../services/dealPricing.service.js";
 
 const router = express.Router();
 
+const collaborationLocks = new Map();
+
+async function ensureStructuredDeliverables(collab) {
+    const lockKey = collab.id;
+
+    // Wait if another request is currently processing this collaboration
+    while (collaborationLocks.has(lockKey)) {
+        await collaborationLocks.get(lockKey);
+    }
+
+    let resolveLock;
+    const lockPromise = new Promise((resolve) => {
+        resolveLock = resolve;
+    });
+    collaborationLocks.set(lockKey, lockPromise);
+
+    try {
+        // Check if deliverables exist in DB directly
+        const existing = await prisma.deliverable.findMany({
+            where: { collaborationId: collab.id },
+            include: { submissions: { orderBy: [{ type: 'asc' }, { version: 'desc' }], take: 5 } },
+            orderBy: { sortOrder: 'asc' }
+        });
+        if (existing.length > 0) {
+            return existing;
+        }
+
+        // Auto-create deliverables in the database
+        const campaignData = collab.campaign;
+        const deliverablesToCreate = [];
+
+        // Parse legacy deliverables JSON field
+        if (collab.deliverables && Array.isArray(collab.deliverables)) {
+            collab.deliverables.forEach((item, idx) => {
+                const title = typeof item === 'string' ? item : (item.title || item.name || `Deliverable ${idx + 1}`);
+                const platform = typeof item === 'object' && item.platform 
+                    ? item.platform 
+                    : (campaignData.platformRequired || campaignData.platform || 'Multi-Platform');
+                const contentType = typeof item === 'object' && item.contentType
+                    ? item.contentType
+                    : (campaignData.contentType || 'Video');
+                
+                deliverablesToCreate.push({
+                    title,
+                    platform,
+                    contentType,
+                    paymentAmount: collab.agreedPrice ? (Number(collab.agreedPrice) / collab.deliverables.length) : null,
+                    deadline: collab.offerExpiresAt || campaignData.deadline || campaignData.endDate || null,
+                });
+            });
+        }
+
+        // Fallback: create a single primary deliverable if none specified
+        if (deliverablesToCreate.length === 0) {
+            const platform = campaignData.platformRequired || campaignData.platform || 'Multi-Platform';
+            const contentType = campaignData.contentType || 'Video';
+            deliverablesToCreate.push({
+                title: `${platform} ${contentType}`,
+                platform,
+                contentType,
+                paymentAmount: collab.agreedPrice ? Number(collab.agreedPrice) : null,
+                deadline: collab.offerExpiresAt || campaignData.deadline || campaignData.endDate || null,
+            });
+        }
+
+        const createdItems = [];
+        for (let i = 0; i < deliverablesToCreate.length; i++) {
+            const item = deliverablesToCreate[i];
+            
+            // Double check to be absolutely safe
+            const alreadyExists = await prisma.deliverable.findFirst({
+                where: {
+                    collaborationId: collab.id,
+                    title: item.title,
+                    sortOrder: i
+                },
+                include: { submissions: { orderBy: [{ type: 'asc' }, { version: 'desc' }], take: 5 } }
+            });
+            if (alreadyExists) {
+                createdItems.push(alreadyExists);
+                continue;
+            }
+
+            let platformEnum = 'Other';
+            if (['Instagram', 'InstagramReel', 'InstagramStory'].includes(item.platform)) platformEnum = 'Instagram';
+            else if (['TikTok', 'TikTokVideo'].includes(item.platform)) platformEnum = 'TikTok';
+            else if (['YouTube', 'YouTubeShort', 'YouTubeIntegration'].includes(item.platform)) platformEnum = 'YouTube';
+            else if (['Twitch'].includes(item.platform)) platformEnum = 'Twitch';
+            else if (['Twitter'].includes(item.platform)) platformEnum = 'Twitter';
+            else if (['Facebook'].includes(item.platform)) platformEnum = 'Facebook';
+            else if (['Blog'].includes(item.platform)) platformEnum = 'Blog';
+
+            let contentTypeEnum = 'Custom';
+            const cType = String(item.contentType).replace(/[\s_]+/g, '').toLowerCase();
+            if (cType.includes('instagramreel') || cType === 'reel') contentTypeEnum = 'InstagramReel';
+            else if (cType.includes('instagramstory') || cType === 'story') contentTypeEnum = 'InstagramStory';
+            else if (cType.includes('tiktokvideo') || cType === 'tiktok') contentTypeEnum = 'TikTokVideo';
+            else if (cType.includes('youtubeshort') || cType === 'short') contentTypeEnum = 'YouTubeShort';
+            else if (cType.includes('youtubeintegration') || cType.includes('integration')) contentTypeEnum = 'YouTubeIntegration';
+            else if (cType.includes('ugc')) contentTypeEnum = 'UGCVideo';
+            else if (cType.includes('productreview') || cType.includes('review')) contentTypeEnum = 'ProductReview';
+            else if (cType.includes('testimonial')) contentTypeEnum = 'Testimonial';
+            else if (cType.includes('staticpost')) contentTypeEnum = 'StaticPost';
+
+            let status = 'Pending';
+            if (collab.status === 'Completed') status = 'FinalApproved';
+            else if (collab.status === 'Revision_Requested') status = 'RevisionRequested';
+            else if (collab.status === 'Under_Review') status = 'FinalDraftSubmitted';
+
+            const created = await prisma.deliverable.create({
+                data: {
+                    collaborationId: collab.id,
+                    title: item.title,
+                    platform: platformEnum,
+                    contentType: contentTypeEnum,
+                    paymentAmount: item.paymentAmount,
+                    deadline: item.deadline,
+                    status,
+                    sortOrder: i,
+                    guidelines: {
+                        objective: campaignData.description || campaignData.brief || 'Complete campaign deliverables according to guidelines.',
+                        cta: 'Check out the product link in my bio/description!',
+                        mentions: [campaignData.brand?.brandProfile?.companyName || campaignData.brand?.name || 'Brand'],
+                        dos: ['Highlight product key features clearly', 'Disclose the partnership (e.g. #ad)'],
+                        donts: ['Do not mention competitors', 'Do not make unsupported claims']
+                    },
+                    checklist: [
+                        { id: '1', label: 'Submit draft for brand approval', required: true },
+                        { id: '2', label: 'Disclose partnership clearly', required: true }
+                    ]
+                }
+            });
+            createdItems.push(created);
+        }
+        return createdItems;
+    } finally {
+        collaborationLocks.delete(lockKey);
+        resolveLock();
+    }
+}
+
 // Get collaborations for the logged-in CREATOR (My Submissions)
 // Route: GET /api/collaborations/my-submissions
 router.get("/my-submissions", protect, async (req, res) => {
@@ -41,6 +182,14 @@ router.get("/my-submissions", protect, async (req, res) => {
                 updatedAt: 'desc' // Sort by most recent activity
             }
         });
+
+        // Ensure all collaborations have structured deliverables in DB
+        for (let i = 0; i < collaborations.length; i++) {
+            const collab = collaborations[i];
+            if (!collab.deliverableItems || collab.deliverableItems.length === 0) {
+                collab.deliverableItems = await ensureStructuredDeliverables(collab);
+            }
+        }
 
         // Map data to match Frontend "MySubmissions.jsx" expectations
         const mappedCollaborations = collaborations.map(collab => ({
@@ -340,14 +489,35 @@ router.get("/creator/:creatorId", async (req, res) => {
             include: {
                 campaign: {
                     include: {
-                        brand: true // Get brand details
+                        brand: {
+                            include: {
+                                brandProfile: true // Get brand profile for company name
+                            }
+                        }
                     }
-                }
+                },
+                deliverableItems: {
+                    include: {
+                        submissions: {
+                            orderBy: [{ type: 'asc' }, { version: 'desc' }],
+                            take: 5,
+                        },
+                    },
+                    orderBy: { sortOrder: 'asc' },
+                },
             },
             orderBy: {
                 joinedAt: 'desc'
             }
         });
+
+        // Ensure structured deliverables exist here too
+        for (let i = 0; i < collaborations.length; i++) {
+            const collab = collaborations[i];
+            if (!collab.deliverableItems || collab.deliverableItems.length === 0) {
+                collab.deliverableItems = await ensureStructuredDeliverables(collab);
+            }
+        }
 
         res.json(collaborations);
 

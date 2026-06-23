@@ -132,7 +132,24 @@ function buildDeliverables(campaign) {
 
     // If campaign has explicit deliverables, use them
     if (campaign.deliverables && Array.isArray(campaign.deliverables)) {
-        return campaign.deliverables;
+        return campaign.deliverables.map((item, idx) => {
+            if (typeof item === 'string') {
+                return {
+                    id: `del-${campaign.id}-${idx}`,
+                    title: item,
+                    status: mapCollaborationStatusToDeliverable(campaign.status),
+                    dueDate: campaign.deadline || campaignData.endDate || null,
+                    platform: campaignData.platformRequired || campaignData.platform || 'Multi-Platform',
+                };
+            }
+            return {
+                id: item.id || `del-${campaign.id}-${idx}`,
+                title: item.title || item.name || 'Deliverable',
+                status: item.status || mapCollaborationStatusToDeliverable(campaign.status),
+                dueDate: item.dueDate || item.deadline || campaign.deadline || campaignData.endDate || null,
+                platform: item.platform || campaignData.platformRequired || campaignData.platform || 'Multi-Platform',
+            };
+        });
     }
 
     // Otherwise, generate from campaign metadata

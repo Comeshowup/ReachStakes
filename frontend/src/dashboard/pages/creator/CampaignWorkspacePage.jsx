@@ -9,9 +9,9 @@ import CampaignTabs from '../../components/workspace/CampaignTabs';
 import CampaignOverview from '../../components/workspace/CampaignOverview';
 import DeliverablesList from '../../components/workspace/DeliverablesList';
 import DeliverableCard from '../../components/deliverables/DeliverableCard';
-import { SubmissionsModule } from '../../../features/submissions/index.js';
 import CampaignMessages from '../../components/workspace/CampaignMessages';
 import PaymentStatus from '../../components/workspace/PaymentStatus';
+import DeliverableWorkspaceDrawer from '../../components/deliverables/DeliverableWorkspaceDrawer';
 
 /**
  * Campaign Workspace Page
@@ -26,6 +26,7 @@ const CampaignWorkspacePage = () => {
     const { campaignId } = useParams();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedDeliverableId, setSelectedDeliverableId] = useState(null);
 
     const {
         campaign,
@@ -40,9 +41,7 @@ const CampaignWorkspacePage = () => {
 
     // Fetch structured deliverables from the new API using the collaboration ID
     const collabId = campaign?.id;
-    const { deliverables: structuredDeliverables, loading: delLoading } = useDeliverables(
-        activeTab === 'deliverables' ? collabId : null
-    );
+    const { deliverables: structuredDeliverables, loading: delLoading, refetch: refetchDeliverables } = useDeliverables(collabId);
 
     if (loading) {
         return (
@@ -106,7 +105,7 @@ const CampaignWorkspacePage = () => {
                         <DeliverableCard
                             key={deliverable.id}
                             deliverable={deliverable}
-                            campaignId={campaignId}
+                            onSelect={setSelectedDeliverableId}
                         />
                     ))}
                 </div>
@@ -136,22 +135,15 @@ const CampaignWorkspacePage = () => {
     const renderTabContent = () => {
         switch (activeTab) {
             case 'overview':
-                return <CampaignOverview campaign={campaign} />;
+                return <CampaignOverview campaign={campaign} deliverables={structuredDeliverables} />;
             case 'deliverables':
                 return renderDeliverablesTab();
-            case 'submissions':
-                return (
-                    <SubmissionsModule
-                        campaignId={campaignId}
-                        campaign={campaign}
-                    />
-                );
             case 'messages':
                 return <CampaignMessages messages={messages} campaign={campaign} />;
             case 'payment':
                 return <PaymentStatus payment={payment} />;
             default:
-                return <CampaignOverview campaign={campaign} />;
+                return <CampaignOverview campaign={campaign} deliverables={structuredDeliverables} />;
         }
     };
 
@@ -172,6 +164,14 @@ const CampaignWorkspacePage = () => {
                     {renderTabContent()}
                 </motion.div>
             </AnimatePresence>
+
+            <DeliverableWorkspaceDrawer
+                deliverableId={selectedDeliverableId}
+                campaignId={campaignId}
+                isOpen={selectedDeliverableId !== null}
+                onClose={() => setSelectedDeliverableId(null)}
+                onRefreshParent={refetchDeliverables}
+            />
         </div>
     );
 };
